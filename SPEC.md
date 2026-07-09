@@ -28,8 +28,8 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 - CLI 用于服务管理、配置、凭据、任务提交、状态和审批操作。
 - WebUI 是运行过程的观察窗口与人工审批入口；所有权限判断、动作执行和状态转移均由 server-side harness core 完成。
 - 系统可保存多个 Run，但同一 workspace 同时最多一个活动 Run；同一 Run 内 Step 串行推进，不执行并行动作。
-- 本地模式可操作用户指定的 workspace；默认使用受 workspace 围栏和策略约束的本地执行器，可选 Docker 沙箱执行后端。
-- 公网演示模式仅使用固定示例 workspace 与 Mock LLM，不接受项目上传或用户 API key，不持久化用户上传内容。
+- 本地或 self-hosted 模式可操作用户显式允许的 workspace；默认使用受 workspace 围栏和策略约束的本地执行器，可选 Docker 沙箱执行后端。
+- 公网演示模式仅使用固定示例 workspace 与 Mock LLM，不接受项目上传或用户 API key，不持久化用户上传内容，并按策略重置 demo workspace。
 - 首版记录结构化运行事件与追加式审计日志，但不实现数据库级完整 event sourcing。
 - 真实 LLM API key 只通过安全凭据来源读取，不进入 workspace、配置、SQLite、事件或日志，也不在 WebUI 明文展示。
 
@@ -46,7 +46,7 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 作为独立开发者，我希望通过 CLI 向指定 workspace 提交编码任务，以便 agent 在明确边界内工作。
 
 - CLI 可创建 Run 并返回 run ID。【CLI 演示】
-- workspace 不存在、越权或已有活动 Run 时拒绝启动。【Mock LLM/核心单元测试】
+- workspace 不存在、不在 `allowedWorkspaceRoots`、与 GCAH 数据/凭据/审计目录重叠，或已有活动 Run 时拒绝启动。【Mock LLM/核心单元测试】
 
 ### US-2：三级治理
 
@@ -102,26 +102,33 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 作为演示观看者，我希望通过公网 WebUI 观察隔离示例任务的事件时间线和审批过程，以便理解机制而不会接触真实代码库。
 
 - 公网 demo URL 可访问固定示例 WebUI。【WebUI 演示】
-- 任意 shell、网络、依赖安装、真实 LLM 和用户 key 均被 public-demo 策略拒绝，并限制任务启动频率。【核心单元测试/WebUI 演示】
+- 任意命令执行、网络、依赖安装、真实 LLM 和用户 key 均被 public-demo 策略拒绝，并限制任务启动频率。【核心单元测试/WebUI 演示】
 
 ### US-10：可复制分发与持续集成
 
 作为评审者，我希望按照 README 的命令启动镜像并看到通过的 CI，以便在新环境中复现项目。
 
 - Docker 镜像可通过 README 的 `docker build` 与 `docker run` 示例启动；示例包含端口映射、workspace 挂载和 GCAH 数据目录挂载。【Docker 演示】
-- `.gitlab-ci.yml` 包含名为 `unit-test` 的 job，最终提交对应的最后一次 CI/CD 执行为 pass。【CI 证据】
+- `.gitlab-ci.yml` 包含名为 `unit-test` 的 job，GitHub Actions 存在等价验证，最终提交对应的两套 CI 执行均为 pass。【CI 证据】
 
 ## 3. 功能规格
 
 ### 3.1 Agent 主循环
 
 **输入**：任务、workspace、运行模式、不可变配置快照、预算状态和按需记忆。
-**行为**：组装最小上下文，调用 `LlmClient`，将响应解析为严格 `Action` schema，经 governance 决策后分发工具；对状态变更动作运行验证，将结构化结果回灌，再执行停机判断。
+**行为**：组装最小上下文，调用 `LlmClient`，将响应解析为严格响应协议，经 governance 决策后分发工具；对状态变更动作运行必需验证，将结构化结果回灌，再执行停机判断。
 **输出**：结构化事件、状态变化、工具/验证结果和明确 `StopReason`。
-**边界**：自然语言只能进入 `rationale` 字段，不可直接驱动工具；同一 Run 内动作串行。
+**边界**：自然语言只能进入不可信的 `rationale` 展示字段，不可直接驱动工具；同一 Run 内动作串行。
 **错误处理**：动作协议解析失败最多重试 `maxProtocolRetries` 次，超过后以 `PROTOCOL_ERROR` 停止。
 
 `StopReason` 至少包含：`COMPLETED`、`BUDGET_EXHAUSTED`、`USER_CANCELLED`、`POLICY_DENIED`、`APPROVAL_REJECTED`、`UNFIXABLE_FAILURE`、`REPEATED_FAILURE`、`PROTOCOL_ERROR`、`INTERRUPTED`。
+
+LLM 响应协议是二选一 discriminated union：
+
+- `ToolAction`：`{ "kind": "tool", "tool": string, "args": object, "rationale": string }`，只能请求一个已注册工具。
+- `FinishAction`：`{ "kind": "finish", "summary": string, "rationale": string }`，表示模型认为任务完成。
+
+`rationale` 不参与权限判断、路径解析、命令选择或状态转移；它是未受信任的展示字段，必须限长、HTML/Markdown 转义并经过凭据与路径脱敏后才可进入日志或 WebUI。`FinishAction` 只有在最近一次代码变更后的必需验证全部通过，且没有未处理的审批、失败或预算触限时，才能把 Run 转为 `COMPLETED`；否则 core 将其转为结构化反馈并继续或按停机规则停止。
 
 ### 3.2 LLM 抽象层
 
@@ -133,13 +140,15 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 
 ### 3.3 工具注册与分发
 
-首版工具为 `list`、`read`、`write`、`patch`、`shell`、`run_validation` 和 `memory_search`。
+首版工具为 `list`、`read`、`write`、`patch`、`delete`、`run_command`、`run_validation` 和 `memory_search`。
 
 **输入**：通过工具 schema 校验的参数。
 **行为**：参数规范化后必须先通过 governance gateway；工具实现本身不决定权限。`patch` 是首选编辑方式；`write` 只用于新文件或经审批的已有文件全量覆盖。
 **输出**：统一的状态、摘要、截断 stdout/stderr、耗时与副作用描述。
-**边界**：不存在绕过 governance 的公开执行入口。`shell` 仅执行配置允许的命令模板；`run_validation` 是独立工具，不通过任意 shell 暴露给 LLM。
+**边界**：不存在绕过 governance 的公开执行入口。`run_command` 使用结构化参数 `executable + args + cwd + timeout`，不调用系统 shell、不解释 shell 元字符，且只能匹配配置允许的命令模板；`run_validation` 是独立工具，不通过任意命令执行能力暴露给 LLM。
 **错误处理**：未知工具、参数错误、路径越界、超时和输出过大均形成结构化错误，不向 LLM 暴露原始异常堆栈。
+
+`patch` 参数必须包含 `path`、`baseSha256` 和 `unifiedDiff`。执行器在应用前读取当前文件并计算 sha256；若与 `baseSha256` 不一致，则不应用 diff，返回 `STALE_BASE`，由 core 将其作为可修正反馈回灌。`write` 创建新文件时必须确认目标不存在；已有文件全量覆盖默认 `REQUIRE_APPROVAL`。`delete` 是显式工具，不允许用空 patch 或 write 间接表达删除。
 
 ### 3.4 Governance 与审批
 
@@ -148,10 +157,10 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 **输出**：可审计的 `GovernanceDecision` 或 `ApprovalRequest`。
 **边界条件**：
 
-- `ALLOW`：安全读取、列举、记忆检索与范围内低风险 patch。
-- `REQUIRE_APPROVAL`：覆盖已有文件、大范围删除、修改配置/锁文件/CI 文件、workspace 内破坏性操作、网络请求、依赖安装、Git 发布及本地模式中的高风险 shell。
+- `ALLOW`：安全读取、列举、记忆检索与范围内低风险 patch。低风险 patch 指单个非敏感源码或文档文件内的小范围 unified diff，不创建/删除文件，不覆盖全文件，不修改配置、锁文件、CI、凭据、审计或 GCAH 自身治理相关文件，且变更行数、文件大小和路径均低于策略阈值。
+- `REQUIRE_APPROVAL`：覆盖已有文件、大范围变更、新文件创建、删除文件、修改配置/锁文件/CI 文件、workspace 内破坏性操作、网络请求、依赖安装、Git 发布及本地模式中的高风险命令。大范围变更包括跨多个文件、超过行数阈值、重命名/移动目录、生成大量文件或难以人工快速审阅的 patch。
 - `DENY`：越出 workspace、访问凭据区、提权、篡改 GCAH 护栏或审计记录。
-- public demo mode 额外默认拒绝任意 shell、网络、依赖安装和真实 LLM。
+- public demo mode 额外默认拒绝任意命令执行、网络、依赖安装和真实 LLM。
 
 审批支持“仅本次”和“本会话同类动作”。同类授权必须绑定工具名、规范化路径范围、命令模板、风险类别、`scopeHash` 和过期轮次，不能按自然语言理由匹配。执行前重新计算 `normalizedActionHash` 或 `scopeHash`；参数变化、过期或越界时重新审批。
 
@@ -166,22 +175,26 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 
 反馈只给出客观诊断和关注范围，不代替 LLM 生成修复代码。失败指纹优先使用验证器类别、测试标识、文件位置与稳定诊断码，并去除时间戳等噪声。
 
+必需验证由不可变 `ConfigSnapshot` 定义。代码状态发生变化后，Run 只有在所有必需验证通过后才允许接受 `FinishAction` 并进入 `COMPLETED`；验证未运行、失败、超时或配置缺失但被标记为必需时，均不能完成。
+
 ### 3.6 综合预算与停机
 
-预算同时包含最大轮数、token、墙钟时间和重复失败阈值。预算用于防止无限循环，也用于控制真实 LLM 费用。任一预算触限都产生可解释事件并以 `BUDGET_EXHAUSTED` 停止；连续相同失败触发 `REPEATED_FAILURE`。
+预算同时包含最大轮数、token、墙钟时间和重复失败阈值。预算用于防止无限循环，也用于控制真实 LLM 费用。任一预算触限都产生包含 `kind`、`limit`、`used`、`remaining`、`observedAtStep` 的 `BudgetStopDetail`，并以 `BUDGET_EXHAUSTED` 停止；连续相同失败触发 `REPEATED_FAILURE`。如果真实 LLM 不返回 token usage，core 必须记录 `usageUnavailable=true`，不能把缺失值当作 0；当 token 预算启用但 usage 缺失时，该 Run 不得进入自动无限继续模式，必须依赖轮数和时间预算，并在事件中提示费用不可精确统计。
 
 ### 3.7 记忆
 
 **输入**：项目约定、人工审批决策或失败摘要。
-**行为**：保存 workspace、类型、标签、关键词、来源 Run、摘要与时间；按类型、标签、关键词和时间检索。
+**行为**：保存 workspace、类型、标签、关键词、来源 Run、摘要与时间；按类型、标签、关键词和时间检索。记忆写入来源仅包括：用户主动添加项目约定、core 自动记录审批摘要、失败分类器自动记录验证失败摘要。
 **输出**：受条数与字符预算约束的上下文片段。
-**边界**：首版无向量检索；历史批准不能成为当前授权；记忆不能修改策略。
+**边界**：首版无向量检索；历史批准不能成为当前授权；记忆不能修改策略；不向 LLM 暴露 `memory_write` 能力。
 
 ### 3.8 配置
 
 项目配置位于 `.gcah/config.yaml`。覆盖顺序为：内置默认值 → 项目配置 → CLI 参数。合并、校验后形成绑定到 Run 的不可变 `ConfigSnapshot`。
 
-配置包含 workspace、运行模式、预算、验证命令、风险规则、LLM 非敏感元数据和执行后端，不包含 API key。未知字段、非法预算、危险路径或互相冲突的规则导致启动失败，并返回可定位字段的错误。
+配置包含 `allowedWorkspaceRoots`、运行模式、预算、验证命令、风险规则、LLM 非敏感元数据和执行后端，不包含 API key。未知字段、非法预算、危险路径或互相冲突的规则导致启动失败，并返回可定位字段的错误。
+
+每个 Run 的 workspace 必须位于 `allowedWorkspaceRoots` 中某个规范化真实路径之下。workspace 不得与 GCAH 数据目录、credential 相关目录、审计日志目录重叠，也不得互为父子目录；违反时启动失败。该限制用于防止 LLM 通过“项目文件”读取或修改 harness 自身状态、凭据引用或审计记录。
 
 ### 3.9 凭据管理
 
@@ -193,9 +206,11 @@ CLI 提供 `credential status/set/update/clear`，录入时隐藏输入，状态
 
 Node server 提供任务、状态、事件、审批、配置状态和凭据状态 API，并在事件持久化后通过 SSE 推送。CLI 连接同一 server；WebUI 展示时间线、风险解释、验证结果和审批入口。
 
-CLI 与 WebUI 使用单用户管理令牌认证。本地首次启动生成令牌并存入系统凭据库；公网部署令牌来自部署平台 Secret。WebUI 仅提交审批意图，server-side core 负责最终校验与状态转移。
+local/self-hosted 模式使用单用户管理令牌认证，本地首次启动生成令牌并存入系统凭据库；self-hosted 部署可使用显式 Secret。public-demo 模式使用匿名但能力受限的接口，只允许访问固定示例 Run、启动受限示例任务和提交演示审批，不提供真实 workspace、真实 LLM、凭据或任意命令能力。部署 Secret 只在 server 侧读取，绝不暴露给浏览器。
 
-服务异常重启后，活动 Run 标记为 `INTERRUPTED`，只能由用户显式恢复；不得自动重放可能产生副作用的动作。
+浏览器认证采用 same-origin cookie；REST 与 SSE 均依赖同源 Cookie 认证和 CSRF/Origin 校验，不把 bearer token 放入前端 JavaScript 可读存储。SSE 连接必须与 API 同源；断线后用事件游标补取。
+
+服务异常重启后，活动 Run 标记为 `INTERRUPTED`。首版取消 `INTERRUPTED` Run 原地恢复：用户只能查看、关闭该 Run，或基于原任务创建新的 Run；系统绝不自动重放可能产生副作用的动作。
 
 ## 4. 非功能性需求
 
@@ -207,15 +222,15 @@ CLI 与 WebUI 使用单用户管理令牌认证。本地首次启动生成令牌
 
 ### 4.2 安全与威胁模型
 
-**威胁来源**：恶意或错误的 LLM 输出、workspace prompt injection、路径穿越、symlink 逃逸、shell 参数注入、审批复用、恶意配置、日志泄密和 public demo 滥用。
+**威胁来源**：恶意或错误的 LLM 输出、workspace prompt injection、路径穿越、symlink 逃逸、命令参数注入、审批复用、恶意配置、日志泄密和 public demo 滥用。
 
 **凭据威胁**：API key 可能被 LLM 请求读取、被 workspace 中的提示注入诱导输出、被日志/WebUI 泄露，或被误写进配置、事件与存储。凭据明文只在 LLM adapter 调用边界短暂可用；core 其他模块只接触 `CredentialStatus`。日志脱敏作为第二道防线，但不能替代数据流隔离。
 
 **路径策略**：先规范化路径，再解析真实路径；解析后的真实路径必须仍位于 workspace root。默认禁止跟随指向 workspace 外部的 symlink。
 
-**主要对策**：严格 Action schema、命令模板、执行前治理、审批哈希二次校验、不可变配置快照、敏感值隔离与脱敏、单 workspace 运行锁、public-demo 硬拒绝规则及频率限制。workspace 内容始终视为不可信数据，不能修改系统策略。
+**主要对策**：严格响应协议、命令模板、执行前治理、审批哈希二次校验、不可变配置快照、敏感值隔离与脱敏、单 workspace 运行锁、public-demo 硬拒绝规则及频率限制。workspace 内容始终视为不可信数据，不能修改系统策略。
 
-public demo 不接受用户 API key，不持久化用户上传内容，并对任务启动频率实施基础限制。
+public demo 不接受用户 API key，不持久化用户上传内容，并对任务启动频率实施基础限制。demo workspace 从仓库内固定示例或镜像内只读模板重置；每次示例 Run 前恢复到已知状态，Run 后可丢弃临时副本，防止跨访客污染。
 
 ### 4.3 可用性
 
@@ -235,7 +250,7 @@ public demo 不接受用户 API key，不持久化用户上传内容，并对任
 - 核心状态转换必须幂等，或通过唯一 action ID 防重。
 - 数据库写入失败时不得继续执行工具。
 - SSE 断连不影响 core；客户端可按游标补取事件。
-- 服务异常退出后的活动 Run 统一标记 `INTERRUPTED`。
+- 服务异常退出后的活动 Run 统一标记 `INTERRUPTED`，只能查看、关闭或基于原任务创建新 Run，不能原地恢复。
 
 ## 5. 系统架构
 
@@ -271,7 +286,7 @@ core 的 LLM、repository、clock、tool gateway 等依赖均通过接口注入�
 CLI 提交任务
   → Server 创建 Run 与不可变配置快照
   → Core 检索受预算约束的记忆
-  → LLM 提出严格 Action
+  → LLM 提出严格 ToolAction / FinishAction
   → Governance 判定 ALLOW / REQUIRE_APPROVAL / DENY
   → 必要时暂停并等待 WebUI/CLI 审批
   → Tool Gateway 调用本地或 Docker 执行器
@@ -280,7 +295,7 @@ CLI 提交任务
   → 完成、拒绝、失败、取消或预算停机
 ```
 
-工具执行前必须经过 governance；工具实现不直接决定权限。默认执行后端是受 workspace 围栏和策略约束的本地执行器，Docker 沙箱是可选后端，不改变 core 契约。
+工具执行前必须经过 governance；工具实现不直接决定权限。默认执行后端是受 workspace 围栏和策略约束的 `LocalExecutor`，Docker 沙箱是可选后端，不改变 core 契约。`LocalExecutor` 不是 OS 级沙箱：它能在执行前限制 GCAH 直接发起的路径和命令，但不能保证已批准子进程不会访问宿主其他文件或网络；因此高风险命令、网络、依赖安装和 public-demo 命令执行必须由治理策略限制或拒绝。
 
 ### 5.3 外部依赖
 
@@ -295,28 +310,32 @@ CLI 提交任务
 
 ### 6.1 实体
 
-- `Workspace`：ID、规范化根路径、执行后端、运行模式。
-- `Run`：ID、workspace ID、任务摘要、状态、配置快照 ID、预算用量、时间与 `StopReason`。
-- `Step`：ID、run ID、串行序号、上下文摘要、LLM usage、状态。
-- `Action`：ID、step ID、工具名、严格参数、rationale、规范化摘要、风险类别、状态。
+- `Workspace`：ID、规范化根路径、所属 `allowedWorkspaceRoot`、执行后端、运行模式。
+- `Run`：ID、workspace ID、任务摘要、状态、配置快照 ID、预算用量、时间、`StopReason` 与可选 `StopDetail`。
+- `Step`：ID、run ID、串行序号、上下文摘要、LLM usage、usage 是否缺失、状态。
+- `Action`：ID、step ID、`kind`、工具名或 finish summary、严格参数、rationale、规范化摘要、风险类别、状态。
 - `GovernanceDecision`：action ID、结果、规则 ID、风险类别、解释、时间。
 - `ApprovalRequest`：action ID、`normalizedActionHash`、动作摘要、状态、创建/过期时间、人工理由。
 - `SessionGrant`：run ID、工具名、路径范围、命令模板、风险类别、`scopeHash`、过期轮次、授权者。
-- `ToolResult`：action ID、状态、退出码、截断输出、耗时、副作用摘要。
+- `ToolResult`：action ID、状态、退出码、工具错误码、截断输出、耗时、副作用摘要。
 - `ValidationResult`：action ID、类型、命令快照、结果、失败类别、失败指纹、诊断摘要、耗时。
 - `Feedback`：来源 decision/validation ID、类别、摘要、是否已回灌。
 - `MemoryEntry`：workspace ID、类型、标签、关键词、来源 run ID、摘要、时间。
 - `RunEvent`：run ID、step ID、类型、关联实体 ID、摘要、时间、递增游标。
-- `ConfigSnapshot`：非敏感配置、schema 版本、内容哈希；创建后不可变。
+- `ConfigSnapshot`：非敏感配置、`allowedWorkspaceRoots`、schema 版本、内容哈希；创建后不可变。
 - `CredentialStatus`：provider、是否配置、来源类型、更新时间；不含密钥。
 
 ### 6.2 状态与约束
 
 - `Run.status` 至少包含 `PENDING`、`RUNNING`、`WAITING_APPROVAL`、`COMPLETED`、`STOPPED`、`FAILED`、`INTERRUPTED`、`CANCELLED`。
 - `Action.status` 至少包含 `PROPOSED`、`DENIED`、`WAITING_APPROVAL`、`APPROVED`、`EXECUTED`、`FAILED`、`SKIPPED`。
+- 典型映射：`COMPLETED` status 只对应 `StopReason=COMPLETED`；`CANCELLED` status 对应 `USER_CANCELLED`；`INTERRUPTED` status 对应 `INTERRUPTED`；`STOPPED` status 对应 `BUDGET_EXHAUSTED`、`POLICY_DENIED`、`APPROVAL_REJECTED`、`REPEATED_FAILURE` 或 `PROTOCOL_ERROR`；`FAILED` status 对应 `UNFIXABLE_FAILURE` 或不可恢复基础设施错误。`WAITING_APPROVAL` 不设置最终 `StopReason`。
+- `BUDGET_EXHAUSTED` 必须携带 `BudgetStopDetail`；非预算停机可携带对应类别的 `StopDetail`。
 - 同一 workspace 最多一个活动 Run；同一 Run 内 Step 序号唯一且串行推进。
 - 每个工具执行结果必须追溯到 `ALLOW` 决策或仍有效的审批授权。
 - 已有文件的全量 write 必须关联有效审批。
+- `patch` 必须存储或可重建 `path`、`baseSha256`、`unifiedDiff` 与 `STALE_BASE` 错误。
+- `rationale` 入库前必须限长、转义和脱敏；它不能参与 action hash、scope hash 或权限判断。
 - 事件游标单调递增；配置快照不可变。
 - 持久化 schema 中不存在 API key 明文字段。
 
@@ -324,21 +343,21 @@ CLI 提交任务
 
 ### 7.1 凭据生命周期
 
-首次使用真实 LLM 时，CLI 检查凭据状态并引导隐藏录入。系统凭据库是推荐主来源。原生 Node 运行目标为 Windows、macOS 与 Linux；Linux Secret Service 或桌面会话不可用时应明确提示。
+首次使用真实 LLM 时，CLI 检查凭据状态并引导隐藏录入。系统凭据库是推荐主来源。主要验证平台收缩为 Windows 原生与 Linux `amd64` Docker；macOS、Linux 原生桌面和 Linux Secret Service 为 best-effort，底层不可用时应明确提示。
 
 Docker 通常不能访问宿主凭据库。容器内真实 LLM 只有在用户显式指定环境变量来源或 Secret 文件映射时才启用；不得自动创建明文密钥文件。Secret 只在 adapter 调用边界读取，不复制到 GCAH 数据目录。
 
 ### 7.2 分发形态
 
 - 主要交付物：OCI/Docker 镜像。
-- 必须目标：Linux `amd64`；`arm64` 为尽力支持。
+- 必须目标：Windows 原生开发运行与 Linux `amd64` Docker；macOS、Linux 原生桌面与 `arm64` 为尽力支持。
 - CI 至少构建 Linux `amd64` 镜像。
 - README 必须提供可复制的单条 `docker build` 和 `docker run` 示例，包含端口映射、workspace 挂载和 GCAH 数据目录挂载。
 - GCAH 数据目录只保存 SQLite、审计日志和非敏感运行状态，不保存 API key 明文。
 
 ### 7.3 公网部署
 
-公网版本为 Linux OCI 单容器，只运行固定示例 workspace 与 Mock LLM。网络、依赖安装、任意 shell 和真实 LLM 默认 `DENY`。部署镜像不绑定厂商，可部署到 Render、Railway 或课程允许的平台；最终提交必须提供可访问 URL。
+公网版本为 Linux OCI 单容器，只运行固定示例 workspace 与 Mock LLM。网络、依赖安装、任意命令执行和真实 LLM 默认 `DENY`。部署镜像不绑定厂商，可部署到 Render、Railway 或课程允许的平台；最终提交必须提供可访问 URL。镜像必须推送到公开 registry，便于评审复现。
 
 ## 8. 技术选型与理由
 
@@ -351,7 +370,7 @@ Docker 通常不能访问宿主凭据库。容器内真实 LLM 只有在用户�
 - **CredentialStore adapter**：优先评估仍维护的 `cross-keychain`；不把多年未更新的 `keytar` 作为默认方案。底层不可用时显式失败，不降级为明文文件。
 - **OpenAI-compatible adapter**：通过 `baseUrl`、`model`、`apiKey`、`providerName` 接入课程网关的 DeepSeek、Qwen 等模型；暂不实现 Anthropic。
 - **Docker / OCI**：提供一致分发与公网演示环境；Docker 沙箱仅为可选执行后端。
-- **GitLab CI 为主**：`.gitlab-ci.yml` 是必交配置并包含 `unit-test` job；GitHub Actions 可作为补充或镜像配置，但不作为唯一 CI 证据。
+- **GitLab CI + GitHub Actions**：两者均要求提供；`.gitlab-ci.yml` 必须包含 `unit-test` job，GitHub Actions 镜像默认离线验证与镜像构建，二者共同作为 CI 证据。
 
 所有第三方库只承担 HTTP、数据库、schema、UI、系统凭据或单次 LLM 调用等底层能力。agent loop、工具治理、审批、反馈、记忆选择和停机逻辑均由本项目代码实现。
 
@@ -361,7 +380,7 @@ Docker 通常不能访问宿主凭据库。容器内真实 LLM 只有在用户�
 
 - 文件发现与读取：`list`、`read`。
 - 代码修改：优先 `patch`，受控 `write`。
-- 命令：基于配置模板的 `shell`。
+- 命令：基于配置模板的结构化 `run_command`，不使用系统 shell。
 - 客观验证：独立 `run_validation`。
 - 上下文：`memory_search`。
 
@@ -371,7 +390,7 @@ test、lint、typecheck 的退出码和结构化诊断构成客观信号。反�
 
 ### 9.3 危险动作
 
-风险动作包括文件全量覆盖、大范围删除、敏感配置/锁文件/CI 修改、网络、依赖安装、Git 发布和高风险 shell；绝对禁区包括 workspace 外访问、凭据探测、提权与治理/审计篡改。识别、拦截、审批与二次校验均是确定性代码机制。
+风险动作包括文件全量覆盖、大范围变更、新文件、删除文件、敏感配置/锁文件/CI 修改、网络、依赖安装、Git 发布和高风险命令；绝对禁区包括 workspace 外访问、workspace 与 GCAH 数据/凭据/审计目录重叠、凭据探测、提权与治理/审计篡改。识别、拦截、审批与二次校验均是确定性代码机制。
 
 ### 9.4 记忆需求
 
@@ -382,7 +401,7 @@ test、lint、typecheck 的退出码和结构化诊断构成客观信号。反�
 治理是每个副作用动作的强制前置条件；反馈决定动作之后是否继续自动修正。两者由同一显式状态机衔接：
 
 ```text
-PROPOSED
+PROPOSED ToolAction / FinishAction
   → ALLOW → EXECUTE → VALIDATE → NEXT / COMPLETED / STOPPED
   → REQUIRE_APPROVAL → APPROVE → EXECUTE
                      → REJECT → FEEDBACK_ONCE → SAFE_ALTERNATIVE / STOPPED
@@ -396,23 +415,28 @@ PROPOSED
 ### 10.1 核心机制
 
 - Mock LLM 可完整驱动主循环、工具分发、治理、反馈、记忆和停机测试。
-- 严格 Action schema 阻止自然语言直接触发工具。
+- 严格 `ToolAction | FinishAction` 响应协议阻止自然语言直接触发工具。
 - 所有工具执行均有治理决定或有效审批授权。
+- 代码变更后，只有必需验证全部通过才允许 `FinishAction` 进入 `COMPLETED`。
+- patch 的 `baseSha256` 不一致时返回 `STALE_BASE` 且不修改文件。
 - 一键机制演示稳定复现危险动作拦截、失败反馈后改变动作、会话授权过期后重新审批。
 - 自动验证只由可能改变代码状态的动作触发，且命令来自不可变配置快照。
 
 ### 10.2 安全
 
 - realpath 后的访问仍限制于 workspace，外部 symlink 被拒绝。
+- workspace 必须落在 `allowedWorkspaceRoots` 中，且不得与 GCAH data、credential、audit 目录重叠。
 - 凭据不出现在 workspace、配置、SQLite、事件、日志或 WebUI。
-- public demo 拒绝 shell、网络、依赖安装、真实 LLM 和用户 key。
+- public demo 拒绝命令执行、网络、依赖安装、真实 LLM 和用户 key，浏览器无法读取部署 Secret。
 - 审批哈希、作用域和过期轮次均通过确定性测试。
 
 ### 10.3 分发与 CI
 
 - README 的 build/run 命令可在全新环境启动 Linux `amd64` 镜像。
-- `.gitlab-ci.yml` 包含 `unit-test` job；默认离线测试、lint、typecheck 和镜像构建通过。
-- 最后一次提交证据中的 GitLab CI/CD 状态为 pass。
+- `.gitlab-ci.yml` 包含 `unit-test` job；GitHub Actions 也存在并执行等价默认验证。
+- `pnpm test` 运行离线单元测试；`pnpm verify` 运行 lint、typecheck 与 test；`pnpm demo:mechanisms` 一键运行确定性机制演示。
+- 最后一次提交证据中的 GitLab CI/CD 和 GitHub Actions 状态为 pass。
+- Linux `amd64` 镜像被构建并推送到公开 registry。
 - 公网 demo URL 可访问固定示例 WebUI。
 
 ### 10.4 真实 LLM 手动演示
@@ -426,7 +450,7 @@ PROPOSED
 
 - **系统凭据库兼容性**：实施前用最小技术验证覆盖 Windows Credential Manager、macOS Keychain 和 Linux Secret Service；失败时更换 adapter 底层库，不降级保存明文。
 - **Docker 与宿主凭据隔离**：容器只接受显式环境变量或 Secret 映射；public demo 禁用真实 LLM。
-- **shell 模板规避**：命令解析为 executable 与参数列表，拒绝未声明 shell 元字符；无法可靠解析时拒绝或审批。
+- **命令模板规避**：`run_command` 使用 executable 与 args，不调用系统 shell；无法匹配声明模板时拒绝或审批。
 - **跨平台路径差异**：规范化与 realpath 双重校验，并建立 Windows、POSIX、容器测试矩阵。
 - **审批范围过宽**：使用工具、路径、命令模板、风险类别、哈希和过期轮次联合约束。
 - **反馈循环抖动**：失败指纹去除非稳定噪声；综合预算和重复失败阈值强制停机。
@@ -436,11 +460,12 @@ PROPOSED
 - **课程 API 额度耗尽或模型不可用**：默认测试与机制演示使用 Mock LLM；DeepSeek/Qwen 仅手动 integration demo，失败不阻断默认 CI。
 - **SPEC/PLAN 含隐性上下文**：正式实现前由不同类型 agent 在全新 session 中仅凭 `SPEC.md` 与 `PLAN.md` 冷启动试做 1–2 个 task；将误解、提问和修订 diff 记录到 `SPEC_PROCESS.md`。
 - **npm 供应链风险**：提交并锁定 pnpm lockfile；CI 使用 frozen lockfile；关键安全依赖变更记录到 `AGENT_LOG.md`。
+- **本地执行器隔离不足**：`LocalExecutor` 不是 OS 级沙箱，不能限制已批准子进程的全部宿主文件和网络访问；通过默认拒绝/审批高风险命令、public-demo 禁止命令执行和可选 Docker 后端降低风险。
 - **范围膨胀**：多用户、云端仓库、向量记忆、多 agent、完整 event sourcing 和 Anthropic adapter 均推迟。
 
 ### 11.2 实现前需验证的适配器选择
 
-系统凭据库底层库与最终公网托管商需要在实现准备阶段完成技术验证。两者均位于适配器边界，不改变本 SPEC 的功能、安全或状态机语义。公网平台必须支持 Linux OCI 镜像、持久数据目录、部署 Secret 与稳定 URL。
+系统凭据库底层库与最终公网托管商需要技术验证。所有技术 spike 均安排在 `PLAN.md` 和冷启动验证完成之后、实现代码开始之前；不得在当前 SPEC 阶段或 PLAN 冷启动前提前写实现。两者均位于适配器边界，不改变本 SPEC 的功能、安全或状态机语义。公网平台必须支持 Linux OCI 镜像、持久数据目录、部署 Secret 与稳定 URL。
 
 ## 12. 测试与机制演示策略
 
@@ -449,6 +474,6 @@ PROPOSED
 - **WebUI 测试**：状态渲染、事件时间线、审批提交与 SSE 重连。
 - **机制演示**：一键脚本使用 Mock LLM 确定性演示三项核心行为。
 - **手动 integration demo**：显式启用时调用课程 API 网关 DeepSeek/Qwen；不进入默认 CI。
-- **CI**：GitLab `unit-test` 为必交 job；使用 frozen lockfile，运行 lint、typecheck、离线测试并至少构建 Linux `amd64` 镜像。GitHub Actions 可镜像相同检查。
+- **CI**：GitLab `unit-test` 为必交 job；GitHub Actions 也必须存在。CI 使用 frozen lockfile，运行 `pnpm test`、`pnpm verify`、`pnpm demo:mechanisms`，并至少构建 Linux `amd64` 镜像。镜像推送到公开 registry；真实 LLM integration demo 不进入默认 CI。
 
 在 `SPEC.md` 与后续 `PLAN.md` 通过冷启动验证之前，不开始实现代码。
