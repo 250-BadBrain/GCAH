@@ -1,0 +1,24 @@
+ .npmrc                                      |    3 +
+ eslint.config.js                            |   10 +
+ package.json                                |   22 +
+ packages/shared/package.json                |   27 +
+ packages/shared/src/agent-response.ts       |   20 +
+ packages/shared/src/api-contracts.ts        |   27 +
+ packages/shared/src/entities.ts             |  185 ++
+ packages/shared/src/index.ts                |    7 +
+ packages/shared/src/safe-display.ts         |   43 +
+ packages/shared/src/status.ts               |   64 +
+ packages/shared/src/tool-contracts.ts       |   53 +
+ packages/shared/test/agent-response.test.ts |   57 +
+ packages/shared/test/api-contracts.test.ts  |   37 +
+ packages/shared/test/entities.test.ts       |  224 +++
+ packages/shared/test/safe-display.test.ts   |   41 +
+ packages/shared/test/smoke.test.ts          |    4 +
+ packages/shared/test/status.test.ts         |   80 +
+ packages/shared/test/tool-contracts.test.ts |   94 +
+ packages/shared/tsconfig.json               |    8 +
+ pnpm-lock.yaml                              | 2663 +++++++++++++++++++++++++++
+ pnpm-workspace.yaml                         |    6 +
+ tsconfig.base.json                          |   15 +
+ vitest.workspace.ts                         |    3 +
+ 23 files changed, 3693 insertions(+)

@@ -6,12 +6,13 @@
 
 **Architecture:** A pnpm TypeScript workspace separates shared runtime schemas, the dependency-injected harness core, LLM adapters, governed tools, persistence, Fastify server, CLI, and React WebUI. The server owns all authority and state transitions; CLI and WebUI are clients. Default tests and demonstrations use scripted mocks, in-memory repositories, fake clocks, and fake executors without network or credentials.
 
-**Tech Stack:** Node.js LTS, TypeScript, pnpm workspace, Zod, Vitest, Fastify, SQLite, React, Vite, Docker/OCI, GitLab CI, GitHub Actions.
+**Tech Stack:** Node.js LTS, TypeScript, pnpm workspace, Zod 4, Vitest, Fastify, SQLite, React, Vite, Docker/OCI, GitLab CI, GitHub Actions.
 
 ## Global Constraints
 
 - `SPEC.md` is the sole product specification. If a task cannot be completed deterministically from it and this plan, stop and ask; do not guess.
 - Formal implementation begins only after plan approval, isolated cold-start validation, cold-start documentation/revisions, and the two adapter/platform spikes.
+- Gate CS rules override any formal child-task closeout steps. During cold-start, do not update `PLAN.md` or `AGENT_LOG.md`, do not commit, and do not record formal task hashes inside the disposable worktree; those steps apply only to formal implementation tasks after Gate CS is complete.
 - Use TDD for every formal task: add a focused failing test, run it and observe the expected red failure, add the minimum implementation, rerun to green, then refactor while green.
 - Default `pnpm test`, `pnpm verify`, and `pnpm demo:mechanisms` must not access the network, require an API key, or call a real LLM.
 - The core must not use LangChain AgentExecutor, AutoGen, CrewAI, LlamaIndex agent, or another SDK-provided agent runner.
@@ -20,6 +21,7 @@
 - `LocalExecutor` is not an OS sandbox. Public demo denies command execution, network, dependency installation, real LLM calls, and user credentials.
 - Secret plaintext may exist only briefly at three explicit boundaries: CLI hidden input → `CredentialStore`, `CredentialStore`/`AdminTokenStore` authentication operations, and `CredentialResolver` → LLM adapter call. It must never enter a domain object, config/config snapshot, repository, SQLite, event, audit/log record, workspace, browser state, or serialized error. JavaScript cannot guarantee memory zeroization; the enforceable promise is to minimize lifetime/scope, avoid copies, and prevent persistence/serialization/logging.
 - Commit the pnpm lockfile; CI installs with a frozen lockfile. Record material security-dependency changes in `AGENT_LOG.md`.
+- Package-manager build scripts must be controlled by an explicit allowlist committed in workspace configuration. Interactive build-script approval is not part of CI or formal task execution.
 - One active Run per workspace; Steps within a Run execute serially. Interrupted Runs are never resumed or replayed in place.
 
 ---
@@ -118,15 +120,16 @@ Worktree/PR groups are review-sized feature modules, not individual microsteps:
 
 ### Atomic child-task decomposition for oversized tasks
 
-The child IDs below are the executable fresh-subagent units. Each belongs to its parent's PR/worktree, updates `PLAN.md` and `AGENT_LOG.md`, and receives compliance review before quality review. Every numbered step is intended to take 2–5 minutes; if a step cannot be completed in that interval, stop at a coherent edit and continue as the next checkbox without expanding scope.
+The child IDs below are the executable fresh-subagent units. Each belongs to its parent's PR/worktree, updates `PLAN.md` and `AGENT_LOG.md`, and receives compliance review before quality review. Gate CS is the only exception: its disposable implementation attempts these child scopes for evidence but must not update `PLAN.md`/`AGENT_LOG.md`, commit, or record task hashes. Every numbered step is intended to take 2–5 minutes; if a step cannot be completed in that interval, stop at a coherent edit and continue as the next checkbox without expanding scope.
 
 #### T01a — Minimal non-product workspace/test runner
 
-**Goal:** Make Vitest start for `@gcah/shared` without adding product behavior. **Dependencies:** Gate CS/S01/S02 for formal work; none inside PR-01. **Files:** root/shared manifests, `pnpm-workspace.yaml`, `vitest.workspace.ts`, `.npmrc`, empty shared test configuration listed by T01. **Red:** Not applicable to product behavior; this is prerequisite scaffolding and must end with a successful no-test/pass-with-no-tests runner invocation. **Expected implementation:** Only package-manager and test-runner wiring.
+**Goal:** Make Vitest start for `@gcah/shared` without adding product behavior. **Dependencies:** Gate CS/S01/S02 for formal work; none inside PR-01. **Files:** root/shared manifests, `pnpm-workspace.yaml`, `vitest.workspace.ts`, `.npmrc`, empty shared test configuration listed by T01. **Red:** Not applicable to product behavior; this is prerequisite scaffolding and must end with a successful no-test/pass-with-no-tests runner invocation. **Expected implementation:** Only package-manager and test-runner wiring. T01a must not create `workspaceReady`, behavior tests, shared domain schemas, or any product behavior.
 
 - [ ] Add root `package.json` with pinned pnpm and workspace scripts.
 - [ ] Add `pnpm-workspace.yaml` and `packages/shared/package.json`.
 - [ ] Add minimal `vitest.workspace.ts` plus shared test script.
+- [ ] Configure pnpm build-script handling with an explicit allowlist for required native/build packages; do not rely on interactive `pnpm approve-builds` during CI or formal task execution.
 - [ ] Install once to generate `pnpm-lock.yaml`.
 - [ ] Run `pnpm --filter @gcah/shared test -- --passWithNoTests`; expect exit 0.
 - [ ] Update `PLAN.md`/`AGENT_LOG.md`, commit, and record hash.
@@ -135,8 +138,9 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 #### T01b — Behavioral workspace smoke export
 
-**Goal:** Establish the first real red-green-refactor cycle and remaining quality configuration. **Dependencies:** T01a. **Files:** `packages/shared/test/smoke.test.ts`, `packages/shared/src/index.ts`, `tsconfig.base.json`, `eslint.config.js`, package TS configs, root scripts. **First red:** Import missing `workspaceReady`; Vitest must fail only on missing export/module member. **Expected implementation:** One constant export plus lint/typecheck/verify wiring.
+**Goal:** Establish the first real red-green-refactor cycle and remaining quality configuration. **Dependencies:** T01a. **Files:** `packages/shared/test/smoke.test.ts`, `packages/shared/src/index.ts`, `tsconfig.base.json`, `eslint.config.js`, package TS configs, root scripts. **First red:** Import missing `workspaceReady`; Vitest must fail only on missing export/module member. **Expected implementation:** One constant export plus lint/typecheck/verify wiring. T01b owns creation of `packages/shared/src/index.ts`; if the file does not yet exist, first create an empty export file so the behavioral red is specifically the missing `workspaceReady` export, not a module-resolution failure.
 
+- [ ] Create `packages/shared/src/index.ts` as an empty module if T01a did not create it.
 - [ ] Add the exact smoke test shown in T01.
 - [ ] Run `pnpm --filter @gcah/shared test`; confirm missing-export red.
 - [ ] Add `workspaceReady = true` export.
@@ -148,29 +152,29 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 #### T02a — Status, StopReason, and entity schemas
 
-**Goal:** Define SPEC §6 entities and exact status/stop mappings. **Dependencies:** T01b. **Files:** `packages/shared/src/status.ts`, `entities.ts`, tests `status.test.ts`, `entities.test.ts`. **First red:** Imports missing enums/schemas; mapping assertions cannot compile. **Expected implementation:** Zod schemas and derived types without secret fields.
+**Goal:** Define SPEC §6 entities and exact status/stop mappings. **Dependencies:** T01b. **Files:** `packages/shared/src/status.ts`, `entities.ts`, tests `status.test.ts`, `entities.test.ts`. **First red:** Imports missing enums/schemas; mapping assertions cannot compile. **Expected implementation:** Zod 4 schemas and derived types without secret fields, including `StepStatus` and explicit required/optional/nullable constraints for every core entity.
 
-- [ ] Add enum/mapping tests for every Run/Action status and StopReason.
+- [ ] Add enum/mapping tests for every Run/Step/Action status and StopReason.
 - [ ] Run `pnpm --filter @gcah/shared test -- status entities`; confirm missing exports.
-- [ ] Add minimal status and entity schemas.
+- [ ] Add minimal status and complete SPEC §6 entity schemas using Zod 4 APIs.
 - [ ] Rerun focused tests to green.
-- [ ] Refactor shared IDs/timestamps and add no-API-key schema assertion.
+- [ ] Refactor shared IDs/timestamps and add no-API-key plus required/optional/nullable schema assertions.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** Exact entity/status contracts pass. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Exact entity/status contracts pass, including `StepStatus`, all SPEC §6 entities, and required/optional/nullable assertions. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
 
 #### T02b — AgentResponse and tool argument schemas
 
-**Goal:** Strictly parse `ToolAction | FinishAction` and all tool arguments. **Dependencies:** T02a. **Files:** `packages/shared/src/agent-response.ts`, `tool-contracts.ts`; tests `agent-response.test.ts`, `tool-contracts.test.ts`. **First red:** Free-form strings and malformed discriminators are not yet rejected by a missing schema. **Expected implementation:** Strict Zod discriminated union plus patch and structured-command contracts.
+**Goal:** Strictly parse `ToolAction | FinishAction`, `ToolRequestSchema`, `ToolResultSchema`, and all tool arguments. **Dependencies:** T02a. **Files:** `packages/shared/src/agent-response.ts`, `tool-contracts.ts`; tests `agent-response.test.ts`, `tool-contracts.test.ts`. **First red:** Free-form strings, malformed discriminators, and unknown tool names are not yet rejected by a missing schema. **Expected implementation:** Strict Zod 4 discriminated union, supported tool-name enum, patch and structured-command contracts, normalized tool request envelope, and sanitized tool result envelope.
 
-- [ ] Add valid ToolAction/FinishAction and invalid free-form/multi-action tests.
+- [ ] Add valid ToolAction/FinishAction and invalid free-form/multi-action/unknown-tool tests.
 - [ ] Run focused shared tests; confirm missing-schema red.
 - [ ] Add minimal strict response schemas.
-- [ ] Add per-tool argument tests and minimal schemas.
+- [ ] Add per-tool argument tests plus `ToolRequestSchema` and `ToolResultSchema` tests and minimal schemas.
 - [ ] Rerun to green; refactor bounded primitives and exports.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** Only one registered structured action can parse. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Only one registered structured action can parse, and normalized tool requests/results are tested and exported. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
 
 #### T02c — Safe display, event, and API schemas
 
@@ -431,11 +435,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Exact paths:** The disposable worktree may create only paths listed by T01 and T02. After findings are reviewed, the permanent branch is allowed and required to update exactly `SPEC.md`, `PLAN.md`, `SPEC_PROCESS.md`, and `AGENT_LOG.md`.
 
+**Precedence:** Gate CS overrides all formal child-task closeout instructions. The fresh cold-start agent must not update `PLAN.md` or `AGENT_LOG.md`, must not commit, and must not record formal task hashes inside the disposable worktree. Those closeout steps resume only on the permanent branch when documenting cold-start findings.
+
 - [ ] Create one disposable branch and one disposable worktree from the approved documentation commit.
 - [ ] Start one different-type fresh agent with access only to repository `SPEC.md` and `PLAN.md`; do not pass chat history, memory, or explanations.
 - [ ] Start a hard two-hour wall-clock timer when the fresh agent begins; the agent must stop immediately on ambiguity and ask rather than spend the timebox guessing.
 - [ ] Instruct the agent to attempt T01a then T01b; only after both are attempted may it begin T02a, followed by later T02 children as time permits.
 - [ ] At two hours, stop the experiment even if a test, T02 child, or refactor remains incomplete. Partial implementation and partial validation caused by timeout are valid cold-start evidence, not failure to follow the plan.
+- [ ] During the disposable attempt, ignore formal task steps that say to update `PLAN.md`/`AGENT_LOG.md`, commit, or record hashes; capture findings in external evidence instead.
 - [ ] Record in `SPEC_PROCESS.md`: questions and assumptions, blockers, interpretations that diverged from intent, actual versus expected output, validation results, and proposed SPEC/PLAN diffs.
 - [ ] Do not merge, cherry-pick, copy, or otherwise reuse any cold-start test, source, lockfile, or generated artifact.
 - [ ] Delete or mark the entire temporary worktree/branch abandoned; discard T01 and T02 together and reuse no file, diff, lockfile, test, or implementation.
@@ -489,7 +496,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Files:** Create `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig.base.json`, `eslint.config.js`, `vitest.workspace.ts`, `.npmrc`, `.gitignore`, `packages/shared/package.json`, `packages/shared/tsconfig.json`, `packages/shared/src/index.ts`, `packages/shared/test/smoke.test.ts`; modify `AGENT_LOG.md` only if a security-sensitive dependency decision requires a record.
 
-**Expected implementation:** Pin the package manager and exact dependency versions in the lockfile; define `pnpm test`, `pnpm lint`, `pnpm typecheck`, and `pnpm verify`; use frozen-lockfile-ready settings; exclude `.env`; export one smoke constant so all three quality tools have a real target.
+**Expected implementation:** Pin the package manager and exact dependency versions in the lockfile; define `pnpm test`, `pnpm lint`, `pnpm typecheck`, and `pnpm verify`; use frozen-lockfile-ready settings; control dependency build scripts through an explicit pnpm allowlist; exclude `.env`; export one smoke constant so all three quality tools have a real target.
 
 **First failing test:** First create only the minimum non-product test runner/workspace scaffolding needed for Vitest to start successfully. Then add this behavioral test:
 
@@ -504,10 +511,10 @@ describe("workspace", () => it("exports the shared package", () => expect(worksp
 **Minimum implementation:**
 
 - [ ] Add the minimum root/shared manifests and Vitest workspace configuration, then run an empty/smoke runner invocation to prove Vitest starts; do not claim red yet.
-- [ ] Add the test importing missing `workspaceReady` and run `pnpm --filter @gcah/shared test` to observe the intended missing-export failure.
+- [ ] Ensure `packages/shared/src/index.ts` exists as an empty module, then add the test importing missing `workspaceReady` and run `pnpm --filter @gcah/shared test` to observe the intended missing-export failure.
 - [ ] Add only `export const workspaceReady = true as const;` and rerun the focused package test to green.
 - [ ] Add shared TS/ESLint configuration and root scripts where `verify` runs lint, typecheck, and test, with no network-bearing hooks.
-- [ ] Run `pnpm install` once to create the lockfile, then verify `pnpm install --frozen-lockfile` makes no changes.
+- [ ] Run `pnpm install` once to create the lockfile with the explicit build-script allowlist, then verify `pnpm install --frozen-lockfile` makes no changes.
 
 **Refactor:** Remove duplicated compiler/lint settings, ensure package exports use ESM consistently, and keep every script platform-neutral.
 
@@ -525,9 +532,9 @@ describe("workspace", () => it("exports the shared package", () => expect(worksp
 
 **PR/worktree:** PR-01 / `feat/foundation-contracts`.
 
-**Files:** Create `packages/shared/src/status.ts`, `entities.ts`, `agent-response.ts`, `tool-contracts.ts`, `events.ts`, `api-contracts.ts`, `safe-display.ts`; modify `packages/shared/src/index.ts`; create tests `packages/shared/test/agent-response.test.ts`, `status.test.ts`, `safe-display.test.ts`, `tool-contracts.test.ts`.
+**Files:** Create `packages/shared/src/status.ts`, `entities.ts`, `agent-response.ts`, `tool-contracts.ts`, `events.ts`, `api-contracts.ts`, `safe-display.ts`; modify `packages/shared/src/index.ts`; create tests `packages/shared/test/agent-response.test.ts`, `status.test.ts`, `entities.test.ts`, `safe-display.test.ts`, `tool-contracts.test.ts`, `events.test.ts`, `api-contracts.test.ts`.
 
-**Interfaces:** Produces `AgentResponseSchema`, `ToolActionSchema`, `FinishActionSchema`, `RunStatus`, `ActionStatus`, `StopReason`, `BudgetStopDetail`, entity types from SPEC §6, `ToolRequestSchema`, `ToolResultSchema`, `RunEventSchema`, and `sanitizeRationale(input, policy)`.
+**Interfaces:** Produces `AgentResponseSchema`, `ToolActionSchema`, `FinishActionSchema`, `RunStatus`, `StepStatus`, `ActionStatus`, `StopReason`, `BudgetStopDetail`, complete entity schemas from SPEC §6, `ToolRequestSchema`, `ToolResultSchema`, `RunEventSchema`, and `sanitizeRationale(input, policy)`. Ownership is fixed here: T02a owns all entity/status schemas, T02b owns `AgentResponseSchema`, per-tool argument schemas, `ToolRequestSchema`, and `ToolResultSchema`, and T02c owns safe display, event schemas, and HTTP DTO schemas.
 
 **First failing test:**
 
@@ -544,16 +551,18 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 **Minimum implementation:**
 
 - [ ] Define exact Zod discriminators and derive TypeScript types from schemas.
-- [ ] Add each SPEC entity/status without API-key plaintext fields.
+- [ ] Add each SPEC entity/status, including `StepStatus`, with explicit required/optional/nullable constraints and without API-key plaintext fields.
 - [ ] Define per-tool argument schemas, including `patch(path, baseSha256, unifiedDiff)` and `run_command(executable,args,cwd,timeout)`.
+- [ ] Define `ToolRequestSchema` as the normalized request envelope consumed by governance/tool gateway, and `ToolResultSchema` as the sanitized result envelope persisted and returned to clients.
 - [ ] Implement deterministic rationale truncation, escaping, credential redaction, and sensitive-path redaction; exclude rationale from hashable action data.
 - [ ] Export stable DTO schemas for later server/CLI/WebUI use.
+- [ ] Perform a parent acceptance audit before closing T02: verify every SPEC §6 entity, every status enum, `ToolRequestSchema`, `ToolResultSchema`, and every supported tool argument schema has at least one focused test and public export.
 
 **Refactor:** Centralize bounded-string and identifier helpers; eliminate duplicated enum literals; preserve JSON-serializable contracts.
 
 **Verification:** `pnpm --filter @gcah/shared test`; `pnpm lint`; `pnpm typecheck`.
 
-**Done:** Invalid/free-form responses never produce an action; every status/entity in SPEC §§3 and 6 validates; schemas contain no secret field; shared tests pass offline.
+**Done:** Invalid/free-form responses never produce an action; unknown tool names fail schema/protocol validation; every status/entity in SPEC §§3 and 6 validates with explicit required/optional/nullable semantics; `ToolRequestSchema`, `ToolResultSchema`, and all supported tool argument schemas are tested/exported; schemas contain no secret field; shared tests pass offline.
 
 **Parallel:** Unlocks T03, T05, T09, and T14. **Status:** Not started. **Commit:** — (record after execution).
 
@@ -1234,7 +1243,7 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 | SPEC scope | Implementing tasks |
 |---|---|
 | pnpm workspace, quality, frozen lockfile | T01, T25 |
-| Shared schema, entities, AgentResponse/ToolAction/FinishAction, rationale safety | T02 |
+| Shared schema, complete entities, StepStatus, AgentResponse/ToolAction/FinishAction, ToolRequestSchema/ToolResultSchema, supported tool enum, rationale safety | T02 |
 | Core-owned repository/clock/tool-gateway/validation/workspace/LLM ports and in-memory adapter | T03 |
 | Core state machines with no adapter-package imports | T04, T16 |
 | Standalone governance package and workspace/path/symlink/overlap fence | T05 |

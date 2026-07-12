@@ -125,10 +125,10 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 
 LLM 响应协议是二选一 discriminated union：
 
-- `ToolAction`：`{ "kind": "tool", "tool": string, "args": object, "rationale": string }`，只能请求一个已注册工具。
+- `ToolAction`：`{ "kind": "tool", "tool": SupportedToolName, "args": object, "rationale": string }`，只能请求一个已注册工具枚举中的工具。
 - `FinishAction`：`{ "kind": "finish", "summary": string, "rationale": string }`，表示模型认为任务完成。
 
-`rationale` 不参与权限判断、路径解析、命令选择或状态转移；它是未受信任的展示字段，必须限长、HTML/Markdown 转义并经过凭据与路径脱敏后才可进入日志或 WebUI。`FinishAction` 只有在最近一次代码变更后的必需验证全部通过，且没有未处理的审批、失败或预算触限时，才能把 Run 转为 `COMPLETED`；否则 core 将其转为结构化反馈并继续或按停机规则停止。
+`rationale` 不参与权限判断、路径解析、命令选择或状态转移；它是不可信纯文本展示字段，必须限长、按目标展示介质转义，并经过凭据与路径脱敏后才可进入日志或 WebUI。实现不得把 `rationale` 当作 Markdown/HTML/命令/路径解析，也不得让其参与 action hash、scope hash 或任何状态机判断。`FinishAction` 只有在最近一次代码变更后的必需验证全部通过，且没有未处理的审批、失败或预算触限时，才能把 Run 转为 `COMPLETED`；否则 core 将其转为结构化反馈并继续或按停机规则停止。
 
 ### 3.2 LLM 抽象层
 
@@ -140,7 +140,7 @@ LLM 响应协议是二选一 discriminated union：
 
 ### 3.3 工具注册与分发
 
-首版工具为 `list`、`read`、`write`、`patch`、`delete`、`run_command`、`run_validation` 和 `memory_search`。
+首版工具为 `list`、`read`、`write`、`patch`、`delete`、`run_command`、`run_validation` 和 `memory_search`。LLM 响应中的工具名必须来自该受支持工具枚举；未知工具名在 schema/协议层即视为无效响应，不能进入 governance 或工具分发。
 
 **输入**：通过工具 schema 校验的参数。
 **行为**：参数规范化后必须先通过 governance gateway；工具实现本身不决定权限。`patch` 是首选编辑方式；`write` 只用于新文件或经审批的已有文件全量覆盖。
@@ -325,9 +325,12 @@ CLI 提交任务
 - `ConfigSnapshot`：非敏感配置、`allowedWorkspaceRoots`、schema 版本、内容哈希；创建后不可变。
 - `CredentialStatus`：provider、是否配置、来源类型、更新时间；不含密钥。
 
+实体 schema 必须显式区分 required、optional 和 nullable：ID、外键、状态、序号、时间戳、schema 版本和审计所需关联字段为 required；仅在实体生命周期中尚未产生或确实不存在的值才可 optional；只有业务语义允许“已知为空”的字段才可 nullable。密钥明文、原始未脱敏 rationale、原始异常堆栈和浏览器/环境 Secret 永远不得成为任何实体 schema 字段。
+
 ### 6.2 状态与约束
 
 - `Run.status` 至少包含 `PENDING`、`RUNNING`、`WAITING_APPROVAL`、`COMPLETED`、`STOPPED`、`FAILED`、`INTERRUPTED`、`CANCELLED`。
+- `Step.status` 至少包含 `PENDING`、`BUILDING_CONTEXT`、`WAITING_LLM`、`PARSING_RESPONSE`、`PROPOSED_ACTION`、`WAITING_APPROVAL`、`EXECUTING_TOOL`、`VALIDATING`、`FEEDBACK_RECORDED`、`COMPLETED`、`FAILED`、`SKIPPED`。
 - `Action.status` 至少包含 `PROPOSED`、`DENIED`、`WAITING_APPROVAL`、`APPROVED`、`EXECUTED`、`FAILED`、`SKIPPED`。
 - 典型映射：`COMPLETED` status 只对应 `StopReason=COMPLETED`；`CANCELLED` status 对应 `USER_CANCELLED`；`INTERRUPTED` status 对应 `INTERRUPTED`；`STOPPED` status 对应 `BUDGET_EXHAUSTED`、`POLICY_DENIED`、`APPROVAL_REJECTED`、`REPEATED_FAILURE` 或 `PROTOCOL_ERROR`；`FAILED` status 对应 `UNFIXABLE_FAILURE` 或不可恢复基础设施错误。`WAITING_APPROVAL` 不设置最终 `StopReason`。
 - `BUDGET_EXHAUSTED` 必须携带 `BudgetStopDetail`；非预算停机可携带对应类别的 `StopDetail`。
@@ -363,7 +366,7 @@ Docker 通常不能访问宿主凭据库。容器内真实 LLM 只有在用户�
 
 - **TypeScript / Node.js LTS / pnpm workspace**：前后端共享 schema 与类型，适合实现可注入接口和结构化协议。
 - **Fastify**：用于 API、插件边界、schema 集成、SSE 与统一错误响应；不承担 agent 决策。
-- **Zod**：运行时校验 Action、配置、工具参数和 API 输入。
+- **Zod 4**：运行时校验 Action、配置、工具参数和 API 输入；正式实现必须通过 `pnpm-lock.yaml` 锁定兼容版本，schema 写法以 Zod 4 API 为准。
 - **SQLite + repository adapters**：本地部署简单；核心逻辑不绑定 SQL，测试使用 in-memory adapter。
 - **React + Vite**：构建轻量运行控制台。计划采用 Open Design 的 `linear-app` 设计系统；若工具不可用，使用等价的简洁工程控制台风格，并在 `AGENT_LOG.md` 记录偏离原因。计划使用 `od-react-export` skill 辅助 UI 产出。
 - **Vitest**：Mock LLM、假时钟、in-memory repository 和 fake executor 驱动确定性测试。

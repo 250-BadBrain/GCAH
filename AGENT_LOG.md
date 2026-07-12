@@ -20,3 +20,41 @@
 - Commit: <你的 commit hash>
 - Lesson:
   - deterministic boundaries must be stated precisely enough to become tests
+
+## 2026-07-12 — CS-001
+
+- Scope: Gate CS cold-start validation, attempt 1
+- Agent: DeepSeek V4 Flash
+- Evidence:
+  - `docs/evidence/cold-start/2026-07-12-attempt-1-invalid-main-worktree.md`
+  - `docs/evidence/cold-start/2026-07-12-attempt-1-main-status.txt`
+- Result:
+  - Invalid. The attempt wrote implementation artifacts into the main worktree instead of a disposable worktree.
+- Human intervention:
+  - Identified untracked implementation files in the main worktree status.
+  - Rejected the attempt as cold-start evidence.
+  - Ensured the cold-start code was not merged, copied, cherry-picked, or reused.
+- Decision:
+  - Gate CS evidence must come only from a disposable worktree. Cold-start implementation artifacts are always discarded.
+
+## 2026-07-12 — CS-002
+
+- Scope: Gate CS cold-start validation, attempt 2
+- Agent: DeepSeek V4 Flash
+- Base commit: `3b04048a3bf95a05e1d9c2ac975fab75fa42566d`
+- Branch/worktree: `cold-start/spec-validation` at `E:/Desktop/GCAH-cold-start`
+- Duration: about 7 minutes within the 2-hour timebox
+- Evidence:
+  - `docs/evidence/cold-start/attempt-2-valid-report.md`
+  - `docs/evidence/cold-start/attempt-2-verify-output.txt`
+  - `docs/evidence/cold-start/attempt-2-status.txt`
+  - `docs/evidence/cold-start/attempt-2-environment.txt`
+- Result:
+  - Valid disposable-worktree cold-start. T01a, T01b, T02a, T02b, and T02c were attempted and reported complete.
+  - `pnpm verify` passed with 7 test files and 47 tests.
+- Findings:
+  - SPEC needed explicit `Step.status`, Zod 4 version expectations, supported tool-name enum handling, rationale as untrusted plain text, and required/optional/nullable entity constraints.
+  - PLAN needed Gate CS precedence over formal closeout steps, a no-commit/no-doc-update rule during cold-start, sharper T01a/T01b boundaries, pnpm build-script allowlisting, T02 parent acceptance audit, and schema ownership for `ToolRequestSchema`, `ToolResultSchema`, and complete entities.
+  - The cold-start agent made assumptions after encountering ambiguity instead of strictly pausing, so the pause-on-ambiguity rule remains mandatory.
+- Decision:
+  - Cold-start code was fully discarded and is not part of formal implementation.

@@ -1,0 +1,9 @@
+?? .npmrc
+?? docs/evidence/
+?? eslint.config.js
+?? package.json
+?? packages/
+?? pnpm-lock.yaml
+?? pnpm-workspace.yaml
+?? tsconfig.base.json
+?? vitest.workspace.ts

@@ -1,0 +1,5 @@
+Root: E:/Desktop/GCAH-cold-start
+Branch: cold-start/spec-validation
+Base commit: 3b04048a3bf95a05e1d9c2ac975fab75fa42566d
+Node: v22.19.0
+pnpm: 11.5.0
