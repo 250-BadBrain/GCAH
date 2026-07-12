@@ -1,0 +1,22 @@
+## 2026-07-09 — SPEC-001
+
+- Superpowers skill: brainstorming
+- Agent: OpenAI Codex
+- Goal: define GCAH product boundary and architecture
+- Context:
+  - docs/course/AI4SE_Final_Project_通用要求.md
+  - docs/course/AI4SE_Final_Project_A_Coding_Agent_Harness.md
+- Key decisions:
+  - TypeScript / Node.js / React
+  - governance-driven feedback loop as main contribution
+  - Mock LLM for default tests
+  - public demo restricted to fixed workspace and Mock LLM
+- Human intervention:
+  - clarified LocalExecutor is not an OS sandbox
+  - added FinishAction protocol
+  - restricted memory writes and interrupted-run recovery
+- Result:
+  - SPEC.md completed and reviewed
+- Commit: <你的 commit hash>
+- Lesson:
+  - deterministic boundaries must be stated precisely enough to become tests
