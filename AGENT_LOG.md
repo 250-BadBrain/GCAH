@@ -902,4 +902,4 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
-- Commit: pending.
+- Commit: `4207e6a` (`feat: add serial agent loop`), plus boundary test `e697991` (`test: add core loop import boundary`).
