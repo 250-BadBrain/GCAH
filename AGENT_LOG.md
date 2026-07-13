@@ -315,3 +315,25 @@
   - `pnpm verify` exited 0.
 - Generated output: removed `packages/shared/dist` after validation; it remains ignored build output.
 - Commit: `5440937` (`chore: add shared build script`).
+
+## 2026-07-13 - PR-01 Review Fixes
+
+- Scope: PR-01 independent review findings for T02 schemas.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5a58-7724-71d0-8b69-825ff049bd22`.
+  - Code quality/security reviewer: `019f5a58-b090-7311-96dc-639d67b40227`.
+- Findings addressed:
+  - `BudgetStopDetailSchema` now uses SPEC fields `kind`, `limit`, `used`, `remaining`, and `observedAtStep`.
+  - `RunSchema` now rejects terminal status/stopReason mismatches and requires `BudgetStopDetail` for `BUDGET_EXHAUSTED`.
+  - Persisted `ActionSchema` now uses `displayRationale` instead of raw `rationale`.
+  - `AgentResponseSchema` now validates `args` according to the selected supported tool.
+  - `ToolResultSchema` now enforces bounded stdout/stderr and rejects obvious unredacted `sk-` sentinels.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities agent-response tool-contracts` exited 1 with the expected review issues.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities agent-response tool-contracts` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 18 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: pending follow-up hash record.

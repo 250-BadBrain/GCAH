@@ -1,13 +1,31 @@
 import { z } from "zod";
 
-import { SupportedToolName } from "./tool-contracts.js";
+import {
+  DeleteArgsSchema,
+  ListArgsSchema,
+  MemorySearchArgsSchema,
+  PatchArgsSchema,
+  ReadArgsSchema,
+  RunCommandArgsSchema,
+  RunValidationArgsSchema,
+  WriteArgsSchema
+} from "./tool-contracts.js";
 
-export const ToolActionSchema = z.object({
+const ToolActionBaseSchema = z.object({
   kind: z.literal("tool"),
-  tool: SupportedToolName,
-  args: z.record(z.string(), z.unknown()),
   rationale: z.string()
-}).strict();
+});
+
+export const ToolActionSchema = z.discriminatedUnion("tool", [
+  ToolActionBaseSchema.extend({ tool: z.literal("list"), args: ListArgsSchema }).strict(),
+  ToolActionBaseSchema.extend({ tool: z.literal("read"), args: ReadArgsSchema }).strict(),
+  ToolActionBaseSchema.extend({ tool: z.literal("write"), args: WriteArgsSchema }).strict(),
+  ToolActionBaseSchema.extend({ tool: z.literal("patch"), args: PatchArgsSchema }).strict(),
+  ToolActionBaseSchema.extend({ tool: z.literal("delete"), args: DeleteArgsSchema }).strict(),
+  ToolActionBaseSchema.extend({ tool: z.literal("run_command"), args: RunCommandArgsSchema }).strict(),
+  ToolActionBaseSchema.extend({ tool: z.literal("run_validation"), args: RunValidationArgsSchema }).strict(),
+  ToolActionBaseSchema.extend({ tool: z.literal("memory_search"), args: MemorySearchArgsSchema }).strict()
+]);
 
 export type ToolAction = z.infer<typeof ToolActionSchema>;
 

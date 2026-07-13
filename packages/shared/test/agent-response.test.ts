@@ -40,5 +40,11 @@ describe("agent response schema", () => {
       rationale: "ok",
       extra: true
     })).toThrow();
+    expect(() => AgentResponseSchema.parse({
+      kind: "tool",
+      tool: "patch",
+      args: {},
+      rationale: "missing patch args"
+    })).toThrow();
   });
 });

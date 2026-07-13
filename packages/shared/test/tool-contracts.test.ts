@@ -85,4 +85,19 @@ describe("tool contracts", () => {
       args: {}
     })).toThrow();
   });
+
+  it("rejects unsanitized or oversized tool output", () => {
+    expect(() => ToolResultSchema.parse({
+      id: "result-secret",
+      actionId: "action-1",
+      status: "OK",
+      exitCode: 0,
+      toolErrorCode: null,
+      stdout: "sk-test-secret",
+      stderr: "",
+      durationMs: 1,
+      sideEffectSummary: "none",
+      createdAt: "2026-07-13T00:00:00.000Z"
+    })).toThrow();
+  });
 });

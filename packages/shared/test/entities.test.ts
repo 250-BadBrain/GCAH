@@ -44,6 +44,25 @@ describe("entity schemas", () => {
       updatedAt: timestamp
     }).status).toBe("PENDING");
 
+    expect(RunSchema.parse({
+      id: "run-budget",
+      workspaceId: "workspace-1",
+      taskSummary: "budget stopped",
+      status: "STOPPED",
+      configSnapshotId: "config-1",
+      budgetUsage: { rounds: 5, tokens: 100, elapsedMs: 1000, repeatedFailures: 0 },
+      stopReason: "BUDGET_EXHAUSTED",
+      stopDetail: {
+        kind: "rounds",
+        limit: 5,
+        used: 5,
+        remaining: 0,
+        observedAtStep: 5
+      },
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }).stopReason).toBe("BUDGET_EXHAUSTED");
+
     expect(StepSchema.parse({
       id: "step-1",
       runId: "run-1",
@@ -63,7 +82,7 @@ describe("entity schemas", () => {
       toolName: "read",
       finishSummary: null,
       args: { path: "README.md" },
-      rationale: "read file",
+      displayRationale: "read file",
       normalizedSummary: "read README.md",
       riskCategory: "low",
       status: "PROPOSED",
@@ -190,5 +209,72 @@ describe("entity schemas", () => {
         expect(keys).not.toContain(key);
       }
     }
+  });
+
+  it("enforces run terminal status and stop reason invariants", () => {
+    const baseRun = {
+      id: "run-invalid",
+      workspaceId: "workspace-1",
+      taskSummary: "invalid state",
+      configSnapshotId: "config-1",
+      budgetUsage: { rounds: 0, tokens: 0, elapsedMs: 0, repeatedFailures: 0 },
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    expect(() => RunSchema.parse({
+      ...baseRun,
+      status: "COMPLETED",
+      stopReason: null,
+      stopDetail: null
+    })).toThrow();
+    expect(() => RunSchema.parse({
+      ...baseRun,
+      status: "STOPPED",
+      stopReason: "COMPLETED",
+      stopDetail: null
+    })).toThrow();
+    expect(() => RunSchema.parse({
+      ...baseRun,
+      status: "STOPPED",
+      stopReason: "BUDGET_EXHAUSTED",
+      stopDetail: null
+    })).toThrow();
+    expect(() => RunSchema.parse({
+      ...baseRun,
+      status: "WAITING_APPROVAL",
+      stopReason: "APPROVAL_REJECTED",
+      stopDetail: null
+    })).toThrow();
+  });
+
+  it("rejects raw rationale and unbounded tool output in persisted entities", () => {
+    expect(() => ActionSchema.parse({
+      id: "action-secret",
+      stepId: "step-1",
+      kind: "tool",
+      toolName: "read",
+      finishSummary: null,
+      args: { path: "README.md" },
+      rationale: "raw sk-test-secret",
+      normalizedSummary: "read README.md",
+      riskCategory: "low",
+      status: "PROPOSED",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    })).toThrow();
+
+    expect(() => ToolResultSchema.parse({
+      id: "tool-result-long",
+      actionId: "action-1",
+      status: "OK",
+      exitCode: 0,
+      toolErrorCode: null,
+      stdout: "x".repeat(4097),
+      stderr: "",
+      durationMs: 12,
+      sideEffectSummary: "read-only",
+      createdAt: timestamp
+    })).toThrow();
   });
 });

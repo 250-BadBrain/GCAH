@@ -7,9 +7,11 @@ const IsoTimestamp = z.string().datetime({ offset: true });
 const JsonObject = z.record(z.string(), z.unknown());
 
 export const BudgetStopDetailSchema = z.object({
-  limit: z.enum(["rounds", "tokens", "elapsedMs", "repeatedFailures"]),
+  kind: z.enum(["rounds", "tokens", "elapsedMs", "repeatedFailures"]),
+  limit: z.number().nonnegative(),
   used: z.number().nonnegative(),
-  max: z.number().nonnegative()
+  remaining: z.number().nonnegative(),
+  observedAtStep: z.number().int().nonnegative()
 }).strict();
 
 export type BudgetStopDetail = z.infer<typeof BudgetStopDetailSchema>;
@@ -30,7 +32,7 @@ export const WorkspaceSchema = z.object({
   createdAt: IsoTimestamp
 }).strict();
 
-export const RunSchema = z.object({
+const RunBaseSchema = z.object({
   id: EntityId,
   workspaceId: EntityId,
   taskSummary: z.string(),
@@ -42,6 +44,60 @@ export const RunSchema = z.object({
   createdAt: IsoTimestamp,
   updatedAt: IsoTimestamp
 }).strict();
+
+function hasBudgetStopDetail(value: unknown): value is BudgetStopDetail {
+  return BudgetStopDetailSchema.safeParse(value).success;
+}
+
+export const RunSchema = RunBaseSchema.superRefine((run, context) => {
+  const allowedStopReasons: Record<
+    z.infer<typeof RunStatus>,
+    ReadonlySet<z.infer<typeof StopReason>>
+  > = {
+    PENDING: new Set(),
+    RUNNING: new Set(),
+    WAITING_APPROVAL: new Set(),
+    COMPLETED: new Set(["COMPLETED"]),
+    STOPPED: new Set([
+      "BUDGET_EXHAUSTED",
+      "POLICY_DENIED",
+      "APPROVAL_REJECTED",
+      "REPEATED_FAILURE",
+      "PROTOCOL_ERROR"
+    ]),
+    FAILED: new Set(["UNFIXABLE_FAILURE"]),
+    INTERRUPTED: new Set(["INTERRUPTED"]),
+    CANCELLED: new Set(["USER_CANCELLED"])
+  };
+
+  const allowed = allowedStopReasons[run.status];
+  if (allowed.size === 0) {
+    if (run.stopReason !== null) {
+      context.addIssue({
+        code: "custom",
+        message: `${run.status} must not carry a terminal stopReason`,
+        path: ["stopReason"]
+      });
+    }
+    return;
+  }
+
+  if (run.stopReason === null || !allowed.has(run.stopReason)) {
+    context.addIssue({
+      code: "custom",
+      message: `${run.status} has invalid stopReason`,
+      path: ["stopReason"]
+    });
+  }
+
+  if (run.stopReason === "BUDGET_EXHAUSTED" && !hasBudgetStopDetail(run.stopDetail)) {
+    context.addIssue({
+      code: "custom",
+      message: "BUDGET_EXHAUSTED requires BudgetStopDetail",
+      path: ["stopDetail"]
+    });
+  }
+});
 
 export const LlmUsageSchema = z.object({
   inputTokens: z.number().int().nonnegative(),
@@ -68,7 +124,7 @@ export const ActionSchema = z.object({
   toolName: z.string().min(1).nullable(),
   finishSummary: z.string().nullable(),
   args: JsonObject,
-  rationale: z.string(),
+  displayRationale: z.string().max(2048),
   normalizedSummary: z.string(),
   riskCategory: z.string().min(1),
   status: ActionStatus,
@@ -117,8 +173,12 @@ export const ToolResultSchema = z.object({
   status: z.enum(["OK", "ERROR"]),
   exitCode: z.number().int().nullable(),
   toolErrorCode: z.string().nullable(),
-  stdout: z.string(),
-  stderr: z.string(),
+  stdout: z.string().max(4096).refine((value) => !/sk-[A-Za-z0-9_-]+/u.test(value), {
+    message: "stdout must be redacted before persistence"
+  }),
+  stderr: z.string().max(4096).refine((value) => !/sk-[A-Za-z0-9_-]+/u.test(value), {
+    message: "stderr must be redacted before persistence"
+  }),
   durationMs: z.number().int().nonnegative(),
   sideEffectSummary: z.string(),
   createdAt: IsoTimestamp
