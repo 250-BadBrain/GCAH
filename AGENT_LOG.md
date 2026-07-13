@@ -337,3 +337,21 @@
   - `git diff --check` exited 0.
 - Generated output: removed `packages/shared/dist` after build validation.
 - Commit: `d20a88c` (`fix: harden shared contracts after review`).
+
+## 2026-07-13 - PR-01 Re-review Fixes
+
+- Scope: PR-01 second quality/security review findings.
+- Agent: OpenAI Codex.
+- Reviewer:
+  - Code quality/security re-reviewer: `019f5a62-6051-7870-bf91-545f267f4fd3`.
+- Findings addressed:
+  - `ActionSchema` now enforces the `tool` vs `finish` discriminator shape: supported tool name and null finish summary for tool actions; null tool name, non-empty finish summary, and empty args for finish actions.
+  - `ToolResultSchema` now rejects additional obvious output leakage patterns including `api_key=`, `Authorization: Bearer`, Windows user-home paths, and POSIX `/home/` paths.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities` exited 1 for the expected action-shape and leakage gaps.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 19 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: pending follow-up hash record.

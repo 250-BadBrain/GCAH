@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ActionStatus, RunStatus, StepStatus, StopReason } from "./status.js";
+import { SupportedToolName } from "./tool-contracts.js";
 
 const EntityId = z.string().min(1);
 const IsoTimestamp = z.string().datetime({ offset: true });
@@ -117,20 +118,37 @@ export const StepSchema = z.object({
   updatedAt: IsoTimestamp
 }).strict();
 
-export const ActionSchema = z.object({
+const ActionBaseSchema = z.object({
   id: EntityId,
   stepId: EntityId,
-  kind: z.enum(["tool", "finish"]),
-  toolName: z.string().min(1).nullable(),
-  finishSummary: z.string().nullable(),
-  args: JsonObject,
   displayRationale: z.string().max(2048),
   normalizedSummary: z.string(),
   riskCategory: z.string().min(1),
   status: ActionStatus,
   createdAt: IsoTimestamp,
   updatedAt: IsoTimestamp
-}).strict();
+});
+
+export const ActionSchema = z.discriminatedUnion("kind", [
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: SupportedToolName,
+    finishSummary: z.null(),
+    args: JsonObject
+  }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("finish"),
+    toolName: z.null(),
+    finishSummary: z.string().min(1),
+    args: z.object({}).strict()
+  }).strict()
+]);
+
+const SensitiveOutputSchema = z.string().max(4096).refine((value) => {
+  return !/(sk-[A-Za-z0-9_-]+|api[_-]?key\s*=|authorization:\s*bearer\s+|[A-Za-z]:[\\/]+Users[\\/]+|\/home\/)/iu.test(value);
+}, {
+  message: "output must be redacted before persistence"
+});
 
 export const GovernanceDecisionSchema = z.object({
   id: EntityId,
@@ -173,12 +191,8 @@ export const ToolResultSchema = z.object({
   status: z.enum(["OK", "ERROR"]),
   exitCode: z.number().int().nullable(),
   toolErrorCode: z.string().nullable(),
-  stdout: z.string().max(4096).refine((value) => !/sk-[A-Za-z0-9_-]+/u.test(value), {
-    message: "stdout must be redacted before persistence"
-  }),
-  stderr: z.string().max(4096).refine((value) => !/sk-[A-Za-z0-9_-]+/u.test(value), {
-    message: "stderr must be redacted before persistence"
-  }),
+  stdout: SensitiveOutputSchema,
+  stderr: SensitiveOutputSchema,
   durationMs: z.number().int().nonnegative(),
   sideEffectSummary: z.string(),
   createdAt: IsoTimestamp

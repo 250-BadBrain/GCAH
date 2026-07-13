@@ -204,9 +204,9 @@ describe("entity schemas", () => {
     const forbidden = ["apiKey", "secret", "plaintext", "rawStack", "browserSecret"];
 
     for (const schema of Object.values(entitySchemas)) {
-      const keys = schema.keyof().options;
+      const keys = JSON.stringify(schema.def);
       for (const key of forbidden) {
-        expect(keys).not.toContain(key);
+        expect(keys).not.toContain(`"${key}"`);
       }
     }
   });
@@ -275,6 +275,79 @@ describe("entity schemas", () => {
       durationMs: 12,
       sideEffectSummary: "read-only",
       createdAt: timestamp
+    })).toThrow();
+    expect(() => ToolResultSchema.parse({
+      id: "tool-result-token",
+      actionId: "action-1",
+      status: "OK",
+      exitCode: 0,
+      toolErrorCode: null,
+      stdout: "Authorization: Bearer token-value",
+      stderr: "",
+      durationMs: 12,
+      sideEffectSummary: "read-only",
+      createdAt: timestamp
+    })).toThrow();
+    expect(() => ToolResultSchema.parse({
+      id: "tool-result-path",
+      actionId: "action-1",
+      status: "OK",
+      exitCode: 0,
+      toolErrorCode: null,
+      stdout: "C:/Users/Alice/.ssh/id_rsa",
+      stderr: "",
+      durationMs: 12,
+      sideEffectSummary: "read-only",
+      createdAt: timestamp
+    })).toThrow();
+  });
+
+  it("enforces action kind, tool name, finish summary, and strict params", () => {
+    const baseAction = {
+      id: "action-invalid",
+      stepId: "step-1",
+      displayRationale: "safe",
+      normalizedSummary: "summary",
+      riskCategory: "low",
+      status: "PROPOSED",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    expect(() => ActionSchema.parse({
+      ...baseAction,
+      kind: "tool",
+      toolName: null,
+      finishSummary: null,
+      args: { path: "README.md" }
+    })).toThrow();
+    expect(() => ActionSchema.parse({
+      ...baseAction,
+      kind: "tool",
+      toolName: "network_fetch",
+      finishSummary: null,
+      args: {}
+    })).toThrow();
+    expect(() => ActionSchema.parse({
+      ...baseAction,
+      kind: "tool",
+      toolName: "read",
+      finishSummary: "done",
+      args: { path: "README.md" }
+    })).toThrow();
+    expect(() => ActionSchema.parse({
+      ...baseAction,
+      kind: "finish",
+      toolName: "read",
+      finishSummary: "done",
+      args: {}
+    })).toThrow();
+    expect(() => ActionSchema.parse({
+      ...baseAction,
+      kind: "finish",
+      toolName: null,
+      finishSummary: "done",
+      args: { path: "README.md" }
     })).toThrow();
   });
 });
