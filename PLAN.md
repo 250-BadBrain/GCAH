@@ -855,7 +855,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Equivalent failures share a fingerprint, trigger rules match SPEC, and completion readiness is objectively derivable.
 
-**Parallel:** Yes, with T06 after T04. **Status:** Complete. **Commit:** `71f1efc` (`feat: add validation feedback services`).
+**Parallel:** Yes, with T06 after T04. **Status:** Complete. **Commit:** `71f1efc` (`feat: add validation feedback services`), review fix `e1d0252` (`fix: address feedback memory review findings`).
 
 ### Task T14: Implement configuration loading, validation, merge order, and immutable snapshots
 
@@ -881,7 +881,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Snapshot cannot mutate after Run creation and no accepted config field can contain a secret.
 
-**Parallel:** Yes, with T03/T09 after T02. **Status:** Complete. **Commit:** `ddfd7ff` (`feat: add core configuration snapshots`).
+**Parallel:** Yes, with T03/T09 after T02. **Status:** Complete. **Commit:** `ddfd7ff` (`feat: add core configuration snapshots`), review fix `e1d0252` (`fix: address feedback memory review findings`).
 
 ### Task T15: Implement bounded memory writes and keyword/tag retrieval
 
@@ -907,7 +907,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Only three authorized sources can persist memory and retrieval is bounded, deterministic, and non-authoritative.
 
-**Parallel:** Yes after T13; may proceed independently of server. **Status:** Complete. **Commit:** `4b209b5` (`feat: add bounded memory service`).
+**Parallel:** Yes after T13; may proceed independently of server. **Status:** Complete. **Commit:** `4b209b5` (`feat: add bounded memory service`), review fix `e1d0252` (`fix: address feedback memory review findings`).
 
 ### Task T16: Implement MockLlmClient and the complete harness loop
 

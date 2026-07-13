@@ -810,3 +810,40 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `4b209b5` (`feat: add bounded memory service`).
+
+## 2026-07-13 - PR-05 Review Fixes
+
+- Scope: PR-05 `feedback-memory`, review fixes for T13-T15.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/feedback-memory` at `E:/Desktop/GCAH-feedback-memory`.
+- Baseline commit: `2b86eac`.
+- Review findings addressed:
+  - T13 validation now consumes immutable `ConfigSnapshot.validation.required` and calls `ValidationRunner.runValidator(validatorId, configSnapshot)`.
+  - T14 config preserves allowed-root precedence, includes risk thresholds in immutable snapshots, rejects secret-like accepted config/CLI values, and uses deterministic SHA-256 content hashes.
+  - T15 memory retrieval enforces `charBudget` across the returned result set.
+- Regression evidence:
+  - Red tests reproduced the validation port mismatch, allowed-root/risk-threshold gaps, secret-like config acceptance, and per-entry memory budget behavior before fixes.
+  - `pnpm --filter @gcah/core test -- config memory validation ports` exited 0 with 4 files and 10 tests.
+  - `pnpm --filter @gcah/tools test -- run-validation` exited 0 with 1 file and 1 test.
+  - `pnpm verify` exited 0 with 33 files and 75 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Initial review evidence:
+  - Spec compliance reviewer `019f5bd9-2506-7773-955e-3020d85d9fe3`: FAIL with T13/T14/T15 findings.
+  - Code quality/security reviewer `019f5bdb-13fb-7892-a73b-9ac6fe15ea6f`: FAIL with config secret/hash and memory budget findings.
+  - Additional reviewer `019f5bd9-8844-7400-9b46-54238728f2d2` flagged completion gating in T16 scope; this remains assigned to PR-06 T16 completion gate.
+- Re-review evidence:
+  - Spec compliance re-reviewer `019f5be2-6644-7360-8c1e-618dc0d692d9`: PASS.
+  - Code quality/security re-reviewer `019f5be2-eb9f-73f2-b43c-c17f7dac76e0`: PASS.
+- Commit: `e1d0252` (`fix: address feedback memory review findings`).
+
+## 2026-07-13 - PR-05 Final Verification
+
+- Scope: PR-05 `feedback-memory` final pre-merge gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/feedback-memory` at `E:/Desktop/GCAH-feedback-memory`.
+- Verification evidence:
+  - `pnpm verify` exited 0 with 33 files and 75 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Final commit under review: `e1d0252` (`fix: address feedback memory review findings`).
