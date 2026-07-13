@@ -700,3 +700,21 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `3a6bec5` (`feat: add mutation file tools`).
+
+## 2026-07-13 - T12
+
+- Scope: PR-04 `governed-tools`, T12 structured run_command and independent run_validation dispatch.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `cbb11b6`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- command` exited 1 because command template matching and `CommandRunner` were not exported.
+- Green evidence:
+  - Added exact command-template matching, direct runner dispatch with `shell:false`, public-demo command denial, and validator-ID-only run_validation routing.
+  - Focused command and run-validation tests exited 0 with 3 files and 4 tests.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 28 files and 64 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `4c8185a` (`feat: add structured command tools`).

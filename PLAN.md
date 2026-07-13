@@ -829,7 +829,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Tests prove system shell is never invoked, public demo cannot run commands, and LLM cannot alter validation commands.
 
-**Parallel:** No; unlocks full loop. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; unlocks full loop. **Status:** Complete. **Commit:** `4c8185a` (`feat: add structured command tools`).
 
 ### Task T13: Implement validation orchestration, failure classification, fingerprints, and feedback
 
