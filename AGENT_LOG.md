@@ -86,3 +86,33 @@
 - Decision:
   - Recommend `cross-keychain@1.1.0` for T19, wrapped by a GCAH adapter that explicitly allows only OS-backed backends and rejects `file`, `null`, and unknown backends.
   - Do not begin formal CredentialStore implementation in S01.
+
+## 2026-07-13 - S02
+
+- Scope: Cloudflare-only hosting feasibility spike for public demo deployment.
+- Agent: OpenAI Codex
+- Branch/worktree: `spike/hosting` at `E:/Desktop/GCAH-spike-hosting`
+- Base commit: `c90233373a6937af164017b636aae2b1c590a7d6`
+- Evidence:
+  - `.spikes/hosting/README.md`
+  - `.spikes/hosting/worker-sse-shape.ts`
+  - `.spikes/hosting/cloudflare-topology-notes.md`
+  - `docs/spikes/hosting.md`
+- Commands:
+  - `git rev-parse --show-toplevel`
+  - `git branch --show-current`
+  - `git rev-parse HEAD`
+  - `git status --short`
+  - `rg -n "S02|hosting|Cloudflare|Docker|OCI|public demo|Pages|Workers|SQLite|SSE|T26|T27" PLAN.md SPEC.md`
+- Result:
+  - React + Vite frontend is feasible on Cloudflare Pages.
+  - Backend is feasible on Cloudflare Workers if implemented as a Fetch API Worker composition root.
+  - Current Fastify + SQLite + Linux OCI public deployment assumption does not map directly to Cloudflare production.
+  - SSE is feasible with Web Streams plus persisted cursor replay.
+  - Cloudflare production needs D1 repositories and likely Durable Objects for coordination/live fan-out; local SQLite remains for local/Docker/self-hosted.
+- Blocked external operations:
+  - No Cloudflare deployment was attempted because login, account authorization, token creation, and possible DNS/domain operations require human confirmation.
+- Decision:
+  - Recommend Cloudflare Pages + Workers as the public demo topology, with D1 primary persistence, Durable Objects for coordination where needed, KV/R2 for narrower supporting roles.
+  - Docker should remain for local development, tests, course distribution, and self-hosted fallback, not Cloudflare production deployment.
+  - SPEC.md and PLAN.md should be revised before formal implementation proceeds.
