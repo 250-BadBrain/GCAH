@@ -224,14 +224,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Implement deterministic single-response scripts and request capture against the core-owned client port. **Dependencies:** T02c and T03a. **Files:** LLM manifests, `packages/llm/src/mock-client.ts`, `errors.ts`, `index.ts`, `packages/llm/test/mock-client.test.ts`. **First red:** Script sequencing/request capture imports are missing. **Expected implementation:** Offline `MockLlmClient` implementing core `LlmClientPort`; no duplicate client port in `packages/llm`.
 
-- [ ] Add response sequencing and exhaustion tests.
-- [ ] Run `pnpm --filter @gcah/llm test`; confirm missing-client red.
-- [ ] Import core `LlmClientPort` and add only the minimal scripted queue implementation.
-- [ ] Rerun tests; add usage/missing-usage case.
-- [ ] Refactor immutable request capture; typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add response sequencing and exhaustion tests.
+- [x] Run `pnpm --filter @gcah/llm test`; confirm missing-client red.
+- [x] Import core `LlmClientPort` and add only the minimal scripted queue implementation.
+- [x] Rerun tests; add usage/missing-usage case.
+- [x] Refactor immutable request capture; typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Mock is deterministic and makes no network call. **Parallel:** Yes after T02c. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Mock is deterministic and makes no network call. **Parallel:** Yes after T02c. **Status:** Complete. **Commit:** `1248ec6` (`feat: add scripted mock llm client`).
 
 #### T16b — Context builder, protocol retry, and completion gate
 

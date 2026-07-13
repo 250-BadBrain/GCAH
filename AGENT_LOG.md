@@ -864,4 +864,4 @@
   - `pnpm typecheck` exited 0.
   - `pnpm build` exited 0.
   - Removed package `dist` directories after build validation.
-- Commit: pending.
+- Commit: `1248ec6` (`feat: add scripted mock llm client`).
