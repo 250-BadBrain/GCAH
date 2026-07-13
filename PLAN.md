@@ -166,7 +166,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor shared IDs/timestamps and add no-API-key plus required/optional/nullable schema assertions.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** Exact entity/status contracts pass, including `StepStatus`, all SPEC §6 entities, and required/optional/nullable assertions. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Exact entity/status contracts pass, including `StepStatus`, all SPEC §6 entities, and required/optional/nullable assertions. **Parallel:** No. **Status:** Complete. **Commit:** pending follow-up hash record.
 
 #### T02b — AgentResponse and tool argument schemas
 

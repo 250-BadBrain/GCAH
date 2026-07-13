@@ -207,3 +207,36 @@
   - `pnpm install --frozen-lockfile` exited 0.
 - External operations: npm metadata was checked for TypeScript/ESLint package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
 - Commit: `3f6b2c8` (`chore: add shared smoke quality checks`).
+
+## 2026-07-13 - T02a
+
+- Scope: PR-01 `foundation-contracts`, T02a status, StopReason, and entity schemas.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `7705b3a5b4ba1fbaf0cb32e6fd39bc78de4f6c01`.
+- Files added/modified:
+  - `packages/shared/src/status.ts`
+  - `packages/shared/src/entities.ts`
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/status.test.ts`
+  - `packages/shared/test/entities.test.ts`
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - `pnpm --filter @gcah/shared test -- status entities` exited 1 because `../src/status.js` and `../src/entities.js` did not exist.
+- Green evidence:
+  - Added Zod 4 schemas for SPEC status enums, stop mappings, budget usage/detail, and persisted entity contracts.
+  - Added no-secret-field assertions across exported entity schemas.
+  - `pnpm --filter @gcah/shared test -- status entities` exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - Added `zod@4.4.3` as a locked runtime dependency.
+  - `pnpm --filter @gcah/shared test` exited 0 with 3 files and 5 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- External operations: npm metadata was checked for Zod version; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: pending follow-up hash record.

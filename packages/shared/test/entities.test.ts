@@ -1,0 +1,194 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  ActionSchema,
+  ApprovalRequestSchema,
+  ConfigSnapshotSchema,
+  CredentialStatusSchema,
+  FeedbackSchema,
+  GovernanceDecisionSchema,
+  MemoryEntrySchema,
+  RunEventSchema,
+  RunSchema,
+  SessionGrantSchema,
+  StepSchema,
+  ToolResultSchema,
+  ValidationResultSchema,
+  WorkspaceSchema,
+  entitySchemas
+} from "../src/entities.js";
+
+const timestamp = "2026-07-13T00:00:00.000Z";
+
+describe("entity schemas", () => {
+  it("parses the required SPEC entity set", () => {
+    expect(WorkspaceSchema.parse({
+      id: "workspace-1",
+      rootPath: "E:/example",
+      allowedWorkspaceRoot: "E:/",
+      executionBackend: "local",
+      runMode: "local",
+      createdAt: timestamp
+    }).id).toBe("workspace-1");
+
+    expect(RunSchema.parse({
+      id: "run-1",
+      workspaceId: "workspace-1",
+      taskSummary: "make a change",
+      status: "PENDING",
+      configSnapshotId: "config-1",
+      budgetUsage: { rounds: 0, tokens: 0, elapsedMs: 0, repeatedFailures: 0 },
+      stopReason: null,
+      stopDetail: null,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }).status).toBe("PENDING");
+
+    expect(StepSchema.parse({
+      id: "step-1",
+      runId: "run-1",
+      sequence: 1,
+      contextSummary: "context",
+      llmUsage: null,
+      usageMissing: false,
+      status: "PENDING",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }).sequence).toBe(1);
+
+    expect(ActionSchema.parse({
+      id: "action-1",
+      stepId: "step-1",
+      kind: "tool",
+      toolName: "read",
+      finishSummary: null,
+      args: { path: "README.md" },
+      rationale: "read file",
+      normalizedSummary: "read README.md",
+      riskCategory: "low",
+      status: "PROPOSED",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }).toolName).toBe("read");
+
+    expect(GovernanceDecisionSchema.parse({
+      id: "decision-1",
+      actionId: "action-1",
+      result: "ALLOW",
+      ruleId: "GOV-READ",
+      riskCategory: "low",
+      explanation: "safe read",
+      createdAt: timestamp
+    }).result).toBe("ALLOW");
+
+    expect(ApprovalRequestSchema.parse({
+      id: "approval-1",
+      actionId: "action-1",
+      normalizedActionHash: "hash-1",
+      actionSummary: "write file",
+      status: "PENDING",
+      createdAt: timestamp,
+      expiresAt: timestamp,
+      decidedAt: null,
+      humanReason: null
+    }).status).toBe("PENDING");
+
+    expect(SessionGrantSchema.parse({
+      id: "grant-1",
+      runId: "run-1",
+      toolName: "patch",
+      pathScope: "packages/shared",
+      commandTemplate: null,
+      riskCategory: "medium",
+      scopeHash: "scope-1",
+      expiresAtRound: 3,
+      grantedBy: "human",
+      createdAt: timestamp
+    }).toolName).toBe("patch");
+
+    expect(ToolResultSchema.parse({
+      id: "tool-result-1",
+      actionId: "action-1",
+      status: "OK",
+      exitCode: 0,
+      toolErrorCode: null,
+      stdout: "ok",
+      stderr: "",
+      durationMs: 12,
+      sideEffectSummary: "read-only",
+      createdAt: timestamp
+    }).status).toBe("OK");
+
+    expect(ValidationResultSchema.parse({
+      id: "validation-1",
+      actionId: "action-1",
+      type: "test",
+      commandSnapshot: "pnpm test",
+      result: "PASS",
+      failureCategory: null,
+      failureFingerprint: null,
+      diagnosticSummary: null,
+      durationMs: 100,
+      createdAt: timestamp
+    }).result).toBe("PASS");
+
+    expect(FeedbackSchema.parse({
+      id: "feedback-1",
+      sourceId: "validation-1",
+      sourceType: "validation",
+      category: "validation_failed",
+      summary: "tests failed",
+      injected: false,
+      createdAt: timestamp
+    }).injected).toBe(false);
+
+    expect(MemoryEntrySchema.parse({
+      id: "memory-1",
+      workspaceId: "workspace-1",
+      type: "project_constraint",
+      tags: ["policy"],
+      keywords: ["workspace"],
+      sourceRunId: "run-1",
+      summary: "stay in workspace",
+      createdAt: timestamp
+    }).tags).toEqual(["policy"]);
+
+    expect(RunEventSchema.parse({
+      id: "event-1",
+      runId: "run-1",
+      stepId: "step-1",
+      type: "action.proposed",
+      relatedEntityId: "action-1",
+      summary: "action proposed",
+      cursor: 1,
+      createdAt: timestamp
+    }).cursor).toBe(1);
+
+    expect(ConfigSnapshotSchema.parse({
+      id: "config-1",
+      schemaVersion: 1,
+      allowedWorkspaceRoots: ["E:/Desktop"],
+      nonSensitiveConfig: { maxRounds: 5 },
+      contentHash: "config-hash",
+      createdAt: timestamp
+    }).schemaVersion).toBe(1);
+
+    expect(CredentialStatusSchema.parse({
+      provider: "openai-compatible",
+      configured: false,
+      sourceType: "os",
+      updatedAt: null
+    }).configured).toBe(false);
+  });
+
+  it("rejects secret-shaped fields from every persisted entity schema", () => {
+    const forbidden = ["apiKey", "secret", "plaintext", "rawStack", "browserSecret"];
+
+    for (const schema of Object.values(entitySchemas)) {
+      const keys = schema.keyof().options;
+      for (const key of forbidden) {
+        expect(keys).not.toContain(key);
+      }
+    }
+  });
+});
