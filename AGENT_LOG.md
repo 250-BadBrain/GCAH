@@ -467,7 +467,7 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
-- Commit: pending follow-up hash record.
+- Commit: `415782b` (`feat: add core state machines`).
 
 ## 2026-07-13 - T03a
 

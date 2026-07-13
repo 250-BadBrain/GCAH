@@ -621,7 +621,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Every legal and illegal transition has a deterministic test; no code path resumes or replays an interrupted action.
 
-**Parallel:** No within PR-02; enables T13/T16. **Status:** Complete. **Commit:** pending follow-up hash record.
+**Parallel:** No within PR-02; enables T13/T16. **Status:** Complete. **Commit:** `415782b` (`feat: add core state machines`).
 
 ### Task T05: Enforce workspace roots, real paths, overlap, traversal, and symlink safety
 
