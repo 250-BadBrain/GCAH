@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.5.0",
   "scripts": {
+    "build": "tsc -p packages/shared/tsconfig.build.json --pretty false",
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json --pretty false",

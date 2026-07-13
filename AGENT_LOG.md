@@ -302,3 +302,16 @@
   - `git diff --check` exited 0.
 - External operations: none beyond local verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
 - Commit: `5107713` (`feat: add shared display api event contracts`).
+
+## 2026-07-13 - PR-01 Build Script Acceptance
+
+- Scope: PR-01 `foundation-contracts` build verification gap.
+- Agent: OpenAI Codex.
+- Red evidence:
+  - `pnpm build` exited 1 because no `build` script existed.
+- Green evidence:
+  - Added root `build` script and `packages/shared/tsconfig.build.json` for declaration-only shared package output.
+  - `pnpm build` exited 0.
+  - `pnpm verify` exited 0.
+- Generated output: removed `packages/shared/dist` after validation; it remains ignored build output.
+- Commit: pending follow-up hash record.
