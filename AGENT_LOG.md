@@ -392,3 +392,21 @@
   - `git diff --check` exited 0.
 - Generated output: removed `packages/shared/dist` after build validation.
 - Commit: `a172b3a` (`fix: reject summary leakage in shared schemas`).
+
+## 2026-07-13 - PR-01 Final Scoped Review Pass
+
+- Scope: final scoped verification of the persisted/display summary leakage High finding.
+- Reviewers:
+  - Spec compliance scoped verifier: `019f5ab3-38ae-7340-bea2-e8c6a6e0a5b2` (`PASS`).
+  - Code quality/security scoped verifier: `019f5ab3-70ee-7112-836a-b587b44adbc7` (`PASS`).
+- Verified surfaces:
+  - `ToolResultSchema.sideEffectSummary`
+  - `ValidationResultSchema.diagnosticSummary`
+  - `FeedbackSchema.summary`
+  - `MemoryEntrySchema.summary`
+  - `RunEventSchema.summary`
+  - `EventDtoSchema.summary`
+- Verification:
+  - Both reviewers directly inspected code/tests and confirmed the prior High finding is resolved.
+  - No reviewer edits were performed.
+- Commit: pending follow-up hash record.
