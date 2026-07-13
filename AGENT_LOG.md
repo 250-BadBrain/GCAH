@@ -239,4 +239,4 @@
   - `pnpm install --frozen-lockfile` exited 0.
   - `git diff --check` exited 0.
 - External operations: npm metadata was checked for Zod version; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
-- Commit: pending follow-up hash record.
+- Commit: `fe9553a` (`feat: add shared entity status schemas`).
