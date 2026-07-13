@@ -725,7 +725,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Parameter drift, expiry, wrong run, wrong scope, duplicate responses, and repeated denial are all deterministically covered.
 
-**Parallel:** No; unlocks T12/T16. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; unlocks T12/T16. **Status:** Complete. **Commit:** `1c4814d` (`feat: add approval grants`).
 
 ### Task T09: Define executor ports and the mandatory governance ToolGateway
 

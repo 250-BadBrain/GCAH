@@ -586,3 +586,24 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `9ca6187` (`feat: add deterministic governance engine`).
+
+## 2026-07-13 - T08
+
+- Scope: PR-03 `safety-governance`, T08 approval requests, session grants, scope hashes, expiry, and rejection feedback.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/safety-governance` at `E:/Desktop/GCAH-safety-governance`.
+- Baseline commit: `2650c92`.
+- Red evidence:
+  - `pnpm --filter @gcah/governance test -- approval` exited 1 because approval hashing and `ApprovalService` were not exported.
+- Green evidence:
+  - Added canonical action normalization/hash and scope hash helpers that exclude rationale.
+  - Added pure `ApprovalService` request/approve/reject/authorize flow with run, action hash, scope hash, risk category, and round-expiry binding.
+  - Covered parameter drift, wrong run, expiry, duplicate rejection idempotency, one rejection feedback, and repeated denied-class `APPROVAL_REJECTED`.
+  - Focused approval tests exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - Approval logic remains pure in `@gcah/governance` and imports no core state machine.
+  - `pnpm verify` exited 0 with 20 files and 49 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `1c4814d` (`feat: add approval grants`).
