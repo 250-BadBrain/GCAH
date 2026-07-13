@@ -173,3 +173,37 @@
   - `rg -n "workspaceReady" .` found no source or test implementation, only existing planning/evidence text.
 - External operations: npm metadata was checked for package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
 - Commit: `91ac7ea` (`chore: bootstrap shared test runner`).
+
+## 2026-07-13 - T01b
+
+- Scope: PR-01 `foundation-contracts`, T01b behavioral workspace smoke export and quality configuration.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `2e6f01ae3588f2204ddabb2aa49644d206349d98`.
+- Files added/modified:
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/smoke.test.ts`
+  - `packages/shared/tsconfig.json`
+  - `tsconfig.base.json`
+  - `tsconfig.json`
+  - `eslint.config.js`
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - With `packages/shared/src/index.ts` as an empty module, `pnpm --filter @gcah/shared test` exited 1 because `workspaceReady` was absent and the assertion received `undefined`.
+- Green evidence:
+  - Added only `export const workspaceReady = true as const;`.
+  - `pnpm --filter @gcah/shared test` exited 0.
+- Refactor/verification evidence:
+  - Added strict TypeScript, ESLint, package tsconfig, and root `lint`, `typecheck`, and `verify` scripts.
+  - `pnpm peers check` first rejected `typescript@7.0.2` for `typescript-eslint@8.63.0`; changed to compatible `typescript@6.0.3`.
+  - Prevented typecheck output from creating test artifacts by using `tsc --noEmit -p packages/shared/tsconfig.json --pretty false`.
+  - `pnpm lint` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm --filter @gcah/shared test` exited 0 with 1 test file and 1 test.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+- External operations: npm metadata was checked for TypeScript/ESLint package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: pending follow-up hash record.

@@ -153,7 +153,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Add TS/ESLint/verify config and run lint/typecheck/verify.
 - [ ] Refactor duplicated config, update logs/status, commit, record hash.
 
-**Done:** T01 acceptance holds. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T01 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** pending follow-up hash record.
 
 #### T02a — Status, StopReason, and entity schemas
 
