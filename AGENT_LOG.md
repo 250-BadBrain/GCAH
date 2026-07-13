@@ -336,4 +336,4 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Generated output: removed `packages/shared/dist` after build validation.
-- Commit: pending follow-up hash record.
+- Commit: `d20a88c` (`fix: harden shared contracts after review`).
