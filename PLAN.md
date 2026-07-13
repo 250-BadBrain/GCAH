@@ -803,7 +803,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Stale patches never change files; overwrite/delete cannot execute without current authorization; successful mutations request validation.
 
-**Parallel:** No within PR-04. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No within PR-04. **Status:** Complete. **Commit:** `3a6bec5` (`feat: add mutation file tools`).
 
 ### Task T12: Implement structured run_command and independent run_validation dispatch
 

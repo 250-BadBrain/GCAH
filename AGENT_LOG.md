@@ -679,3 +679,24 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `260ae6b` (`feat: add read-only local tools`).
+
+## 2026-07-13 - T11
+
+- Scope: PR-04 `governed-tools`, T11 patch/write/delete with stale-base and mutation semantics.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `258665f`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- patch write-delete` exited 1 because `registerMutationTools` was not exported.
+- Green evidence:
+  - Added file hashing, one-file unified diff application, atomic sibling writes, create-only write, explicit delete, and mutation registration.
+  - Covered successful patch, stale base no-op, create-only write, delete, and validation-required marking after successful mutation.
+  - Focused mutation tests exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 25 files and 60 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `3a6bec5` (`feat: add mutation file tools`).
