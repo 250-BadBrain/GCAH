@@ -607,3 +607,24 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `1c4814d` (`feat: add approval grants`).
+
+## 2026-07-13 - PR-03 Review Fixes
+
+- Scope: PR-03 independent review findings for T05, T07, and T08.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5b9c-408f-7e93-a7b6-7b52baa71398`.
+  - Code quality/security reviewer: `019f5b9c-7dc7-7823-997b-68603672fbd9`.
+- Findings addressed:
+  - Added guardrail-path DENY coverage and implementation.
+  - Added Windows root-relative and UNC path escape DENY coverage and implementation.
+  - Added path-qualified/suffixed elevation executable DENY coverage and implementation.
+  - Fixed approval grant lookup so an earlier stale/partial grant cannot block a later valid grant.
+- Regression evidence:
+  - Added focused failing tests before implementation for guardrail/path/elevation and later-valid-grant cases.
+  - `pnpm --filter @gcah/governance test -- governance approval-service` exited 0 with 2 files and 6 tests after fixes.
+  - `pnpm verify` exited 0 with 20 files and 50 tests after fixes.
+  - `pnpm build` exited 0 after fixes.
+  - `git diff --check` exited 0 after fixes.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `08698c0` (`fix: resolve governance review blockers`).
