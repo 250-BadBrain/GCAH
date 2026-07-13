@@ -425,3 +425,26 @@
 - Current continuation point: PR-02 `core-domain`.
 - Main baseline: `b21607aea7310b961f427a727fd2f97faa2c02f6`.
 - Commit: pending follow-up hash record.
+
+## 2026-07-13 - T03a
+
+- Scope: PR-02 `core-domain`, T03a core repository, UnitOfWork, and clock ports.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `ed20681`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- ports` exited 1 because `packages/core/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/core` package, port interfaces for repositories, clock, tool gateway, validation runner, workspace fence, and LLM client.
+  - Added `SystemClock`.
+  - `pnpm --filter @gcah/core test -- ports` exited 0.
+- Refactor/verification evidence:
+  - Added core tsconfig/build config and included core in root build/typecheck scripts.
+  - Added shared package exports for workspace type resolution.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 9 files and 21 tests.
+  - `pnpm build` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- Commit: pending follow-up hash record.

@@ -25,6 +25,12 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(vite@8.1.4)
 
+  packages/core:
+    dependencies:
+      '@gcah/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/shared: {}
 
 packages:

@@ -5,10 +5,10 @@
   "type": "module",
   "packageManager": "pnpm@11.5.0",
   "scripts": {
-    "build": "tsc -p packages/shared/tsconfig.build.json --pretty false",
+    "build": "tsc -p packages/shared/tsconfig.build.json --pretty false && tsc -p packages/core/tsconfig.build.json --pretty false",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json --pretty false",
+    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json --pretty false && tsc --noEmit -p packages/core/tsconfig.json --pretty false",
     "verify": "pnpm lint && pnpm typecheck && pnpm test"
   },
   "devDependencies": {

@@ -1,16 +1,13 @@
 {
-  "name": "@gcah/shared",
+  "name": "@gcah/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    }
-  },
   "scripts": {
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@gcah/shared": "workspace:*"
   },
   "devDependencies": {}
 }
