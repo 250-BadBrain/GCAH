@@ -206,4 +206,4 @@
   - `pnpm verify` exited 0.
   - `pnpm install --frozen-lockfile` exited 0.
 - External operations: npm metadata was checked for TypeScript/ESLint package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
-- Commit: pending follow-up hash record.
+- Commit: `3f6b2c8` (`chore: add shared smoke quality checks`).
