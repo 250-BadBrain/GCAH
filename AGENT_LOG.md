@@ -409,4 +409,19 @@
 - Verification:
   - Both reviewers directly inspected code/tests and confirmed the prior High finding is resolved.
   - No reviewer edits were performed.
+- Commit: `aae97da` (`docs: record PR-01 final review pass`).
+
+## 2026-07-13 - Rolling Authorization PR-02 through PR-10
+
+- Approval time: 2026-07-13 17:16:10 +08:00.
+- Human decision:
+  - PR-01 `foundation-contracts` is complete and merged.
+  - Continuous rolling execution is approved for PR-02 through PR-10.
+  - Approved task scope is PLAN T03 through T27.
+  - Each PR must still be independently implemented, tested, reviewed, merged, and cleaned up.
+  - After one PR completes successfully, the next PR may start automatically without a separate per-PR approval.
+  - External deployment, real credentials, remote push/release, Cloudflare login/resources, DNS/domain/HTTPS changes, paid operations, and other explicitly restricted external actions remain outside this authorization.
+  - Mandatory pause conditions still apply.
+- Current continuation point: PR-02 `core-domain`.
+- Main baseline: `b21607aea7310b961f427a727fd2f97faa2c02f6`.
 - Commit: pending follow-up hash record.

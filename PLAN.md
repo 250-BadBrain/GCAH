@@ -1292,6 +1292,6 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 - **Cross-platform paths:** T05 must pass Windows-native and Linux `amd64` matrices before governed mutation tools are accepted.
 - **Scope growth:** Multi-agent orchestration, vector memory, full event sourcing, Anthropic, multi-user collaboration, and cloud repository execution remain excluded.
 
-Plan status: **Approved for execution: PR-01 foundation-contracts**
+Plan status: **Rolling execution approved: PR-02 through PR-10**
 
-Approval scope: PR-01 only, covering the T01-T02 child tasks assigned to PR-01 in this plan. Later PR groups remain unauthorized until a separate human approval is recorded.
+Approval scope: PR-01 is complete and merged. Human rolling authorization now covers PR-02 through PR-10, corresponding to T03 through T27 in this plan. Each PR must still be implemented, tested, reviewed, merged, and cleaned up independently. After one PR completes successfully, the next PR may begin without separate per-PR approval. External deployment, real credentials, remote push/release, Cloudflare login/resources, DNS/domain/HTTPS changes, paid operations, and other explicitly restricted external actions remain outside this authorization. Mandatory pause conditions still apply. Current continuation point: PR-02 `core-domain`.
