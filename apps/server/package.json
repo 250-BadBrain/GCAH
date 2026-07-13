@@ -1,5 +1,5 @@
 {
-  "name": "@gcah/persistence",
+  "name": "@gcah/server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@gcah/core": "workspace:*",
-    "@gcah/shared": "workspace:*"
+    "@gcah/persistence": "workspace:*",
+    "@gcah/shared": "workspace:*",
+    "fastify": "5.10.0"
   },
   "devDependencies": {}
 }

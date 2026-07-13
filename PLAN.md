@@ -263,14 +263,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Expose schema-validated run, status, cancel, clone, approval, config, credential-status, and health routes. **Dependencies:** T09, T12, T14, T16c, and T17. **Files:** server manifests, `app.ts`, `composition.ts`, run/approval/config/credential/health routes and tests listed by T18. **First red:** Fastify injection returns missing routes. **Expected implementation:** Thin handlers calling server-side services only; composition injects governance/tools/persistence adapters into core ports.
 
-- [ ] Add health and create/status Run injection tests.
-- [ ] Run `pnpm --filter @gcah/server test -- runs`; confirm route-not-found red.
-- [ ] Add app/composition and minimal routes.
-- [ ] Add approval/cancel/clone/schema-error tests and handlers.
-- [ ] Refactor common error envelopes; rerun server tests/typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add health and create/status Run injection tests.
+- [x] Run `pnpm --filter @gcah/server test -- runs`; confirm route-not-found red.
+- [x] Add app/composition and minimal routes.
+- [x] Add approval/cancel/clone/schema-error tests and handlers.
+- [x] Refactor common error envelopes; rerun server tests/typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** REST authority remains in core. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** REST authority remains in core. **Parallel:** No. **Status:** Complete. **Commit:** pending.
 
 #### T18b — Local/self-hosted cookie auth and CSRF/Origin checks
 

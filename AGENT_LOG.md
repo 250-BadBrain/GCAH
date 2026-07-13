@@ -1020,3 +1020,25 @@
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
 - Commit: `7a84c99` (`feat: add sqlite persistence adapter`).
+
+## 2026-07-13 - T18a
+
+- Scope: PR-07 `persistence-server`, T18a Fastify composition and REST run APIs.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `d1c835e`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- runs` exited 1 because `createServerApp` and the server package entry did not exist.
+- Green evidence:
+  - Added `apps/server` workspace package with Fastify 5.10.0, TS config, and root build/typecheck inclusion.
+  - Added health, create run, get run, cancel run, and clone interrupted run routes using injected `UnitOfWork` and core state transitions.
+  - Added schema-error handling that rejects invalid create-run requests without creating a Run.
+  - Focused server run tests exited 0 with 1 file and 2 tests.
+- Refactor/verification evidence:
+  - Added `apps/*` to pnpm workspace and locked Fastify without adding build-script allowlist entries.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: pending.
