@@ -23,6 +23,12 @@ export class FeedbackQueue {
     }
   }
 
+  enqueueManual(feedback: QueuedFeedback): void {
+    if (!this.queued.has(feedback.sourceId)) {
+      this.queued.set(feedback.sourceId, feedback);
+    }
+  }
+
   consumeOnce(): QueuedFeedback[] {
     const entries = [...this.queued.values()];
     this.queued.clear();

@@ -943,3 +943,25 @@
   - Spec compliance reviewer `019f5c08-6744-7471-88e6-f48cbe5c4d20`: FAIL with approval, elapsed-budget, and finish-action persistence findings.
   - Code quality/security reviewer `019f5c08-9f0e-7070-a5c0-109a9d7a8f9b`: FAIL with elapsed-budget, port-exception, and tool-output redaction findings.
 - Commit: `0d81c9d` (`fix: close harness loop review gaps`).
+
+## 2026-07-13 - PR-06 Re-review Fixes
+
+- Scope: PR-06 `harness-loop`, second review fixes for T16.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/harness-loop` at `E:/Desktop/GCAH-harness-loop`.
+- Baseline commit: `52f444f`.
+- Re-review findings addressed:
+  - Added elapsed-budget checks after LLM, tool, and validation work.
+  - Added approval rejection feedback-once path so the LLM can choose a safe alternative.
+  - Preserved paused validation state across approval continuation.
+  - Failed runs terminally when injected ports throw during approval resume.
+- Regression evidence:
+  - Red tests reproduced post-work elapsed bypass, immediate approval-rejection stop, approval resume validation bypass, and resume-time port exception active-run leak.
+  - Focused loop tests exited 0 with 5 files and 19 tests.
+  - `pnpm verify` exited 0 with 38 files and 93 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Re-review evidence before this fix:
+  - Spec compliance re-reviewer `019f5c11-a2e7-7180-92ca-e7eba0d22f22`: FAIL with post-work elapsed and approval rejection feedback findings.
+  - Code quality/security re-reviewer `019f5c11-eb32-7a61-95a1-671969455c15`: FAIL with post-work elapsed, approval validation state, and resume exception findings.
+- Commit: pending.

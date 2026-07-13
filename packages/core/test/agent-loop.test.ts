@@ -158,7 +158,7 @@ describe("AgentLoop", () => {
       ...config(),
       nonSensitiveConfig: {
         ...config().nonSensitiveConfig,
-        budgets: { maxRounds: 8, maxTokens: 1, maxElapsedMs: 10000 }
+        budgets: { maxRounds: 8, maxTokens: 1, maxElapsedMs: 60000 }
       }
     };
     const client = new ScriptedClient([
@@ -205,6 +205,39 @@ describe("AgentLoop", () => {
     await loop.start({ runId: "run-5", workspaceId: "workspace-1", taskSummary: "elapsed", configSnapshot: lowElapsedConfig, maxSteps: 2 });
 
     await expect(unitOfWork.repositories.runs.getById("run-5")).resolves.toMatchObject({
+      status: "STOPPED",
+      stopReason: "BUDGET_EXHAUSTED",
+      stopDetail: { kind: "elapsedMs" }
+    });
+  });
+
+  it("stops when elapsed budget is exhausted after LLM work", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const lowElapsedConfig = {
+      ...config(),
+      nonSensitiveConfig: {
+        ...config().nonSensitiveConfig,
+        budgets: { maxRounds: 8, maxTokens: 1000, maxElapsedMs: 1000 }
+      }
+    };
+    const client: LlmClientPort = {
+      complete: async () => {
+        clock.advance(60000);
+        return { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null };
+      }
+    };
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await loop.start({ runId: "run-5b", workspaceId: "workspace-1", taskSummary: "elapsed after", configSnapshot: lowElapsedConfig, maxSteps: 2 });
+
+    await expect(unitOfWork.repositories.runs.getById("run-5b")).resolves.toMatchObject({
       status: "STOPPED",
       stopReason: "BUDGET_EXHAUSTED",
       stopDetail: { kind: "elapsedMs" }
@@ -260,6 +293,100 @@ describe("AgentLoop", () => {
 
     await loop.continueAfterApproval("run-7");
     await expect(unitOfWork.repositories.runs.getById("run-7")).resolves.toMatchObject({ status: "COMPLETED" });
+  });
+
+  it("feeds approval rejection back once instead of stopping immediately", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "finish", summary: "needs approval", rationale: "complete" }, usage: null },
+      { response: { kind: "finish", summary: "safe alternative", rationale: "complete" }, usage: null }
+    ]);
+    let pauses = 0;
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([]),
+      approval: {
+        shouldPauseForFinish: () => {
+          pauses += 1;
+          return pauses === 1;
+        },
+        consumeApproval: async () => "rejected"
+      }
+    });
+
+    await loop.start({ runId: "run-7b", workspaceId: "workspace-1", taskSummary: "approval reject", configSnapshot: config(), maxSteps: 3 });
+    await loop.continueAfterApproval("run-7b");
+
+    await expect(unitOfWork.repositories.runs.getById("run-7b")).resolves.toMatchObject({ status: "COMPLETED" });
+    expect(String(client.messages[1]?.[0])).toContain("Approval rejected");
+  });
+
+  it("does not allow approval continuation to bypass failed validation", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "tool", tool: "write", args: { path: "src/app.ts", content: "bad" }, rationale: "write" }, usage: null },
+      { response: { kind: "finish", summary: "needs approval", rationale: "complete" }, usage: null },
+      { response: { kind: "tool", tool: "patch", args: { path: "src/app.ts", baseSha256: "0".repeat(64), unifiedDiff: "--- a/src/app.ts\n+++ b/src/app.ts\n@@\n-bad\n+good\n" }, rationale: "fix" }, usage: null },
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+    const approvalValidationConfig = {
+      ...config(),
+      nonSensitiveConfig: {
+        ...config().nonSensitiveConfig,
+        budgets: { maxRounds: 12, maxTokens: 1000, maxElapsedMs: 120000 }
+      }
+    };
+    let pauses = 0;
+    const validationRunner = new SequencedValidationRunner([validation("FAIL", "validation-10"), validation("PASS", "validation-11")]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "ok" }) },
+      validationRunner,
+      approval: {
+        shouldPauseForFinish: () => {
+          pauses += 1;
+          return pauses === 1;
+        },
+        consumeApproval: async () => "approved"
+      }
+    });
+
+    await loop.start({ runId: "run-7c", workspaceId: "workspace-1", taskSummary: "approval validation", configSnapshot: approvalValidationConfig, maxSteps: 5 });
+    await loop.continueAfterApproval("run-7c");
+
+    await expect(unitOfWork.repositories.runs.getById("run-7c")).resolves.toMatchObject({ status: "COMPLETED" });
+    expect(String(client.messages[1]?.[0])).toContain("Validation failed");
+    expect(validationRunner.calls).toBe(2);
+  });
+
+  it("fails runs on injected port exceptions during approval resume", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "finish", summary: "needs approval", rationale: "complete" }, usage: null }
+    ]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([]),
+      approval: {
+        shouldPauseForFinish: () => true,
+        consumeApproval: async () => "approved"
+      }
+    });
+    await loop.start({ runId: "run-7d", workspaceId: "workspace-1", taskSummary: "resume throw", configSnapshot: config(), maxSteps: 2 });
+
+    await expect(loop.continueAfterApproval("run-7d")).rejects.toThrow(/script exhausted/);
+    await expect(unitOfWork.repositories.runs.getById("run-7d")).resolves.toMatchObject({ status: "FAILED", stopReason: "UNFIXABLE_FAILURE" });
   });
 
   it("fails runs and records an event when injected ports throw", async () => {

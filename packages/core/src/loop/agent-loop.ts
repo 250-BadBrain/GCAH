@@ -38,6 +38,12 @@ const MUTATION_TOOLS = new Set<ToolRequest["tool"]>(["write", "patch", "delete",
 export class AgentLoop {
   private readonly feedback = new FeedbackQueue();
   private readonly validation: ValidationService;
+  private readonly paused = new Map<string, {
+    input: AgentLoopStartInput;
+    tracker: BudgetTracker;
+    mutationValidation: MutationValidationState;
+    nextSequence: number;
+  }>();
 
   constructor(private readonly deps: AgentLoopDependencies) {
     this.validation = new ValidationService(deps.validationRunner);
@@ -85,6 +91,8 @@ export class AgentLoop {
       const llmResult = await this.deps.llm.complete(context.messages);
       const usageResult = tracker.recordUsage(llmResult.usage, sequence);
       run = await this.updateBudgetUsage(run, tracker);
+      const postLlmElapsedStop = tracker.checkElapsed(sequence);
+      if (postLlmElapsedStop !== null) return this.stop(run, postLlmElapsedStop.reason, postLlmElapsedStop.detail);
       if (usageResult?.reason === "USAGE_UNAVAILABLE") {
         await this.appendEvent(run.id, step.id, usageResult.event.type, usageResult.event.summary);
       } else if (usageResult?.reason === "BUDGET_EXHAUSTED") {
@@ -103,6 +111,7 @@ export class AgentLoop {
         if (this.deps.approval?.shouldPauseForFinish?.({ runId: run.id, summary: parsed.response.summary }) === true) {
           run = transitionRun(run, { id: `approval:${sequence}`, type: "wait_for_approval", at: this.deps.clock.nowIso() });
           await this.deps.unitOfWork.repositories.runs.update(run);
+          this.paused.set(run.id, { input, tracker, mutationValidation, nextSequence: sequence + 1 });
           await this.appendEvent(run.id, step.id, "approval.required", "approval required", finishAction.id);
           return run;
         }
@@ -124,6 +133,8 @@ export class AgentLoop {
 
       const action = await this.persistToolAction(run.id, step.id, sequence, parsed.response);
       const toolResult = await this.deps.toolGateway.execute({ tool: parsed.response.tool, args: parsed.response.args });
+      const postToolElapsedStop = tracker.checkElapsed(sequence);
+      if (postToolElapsedStop !== null) return this.stop(run, postToolElapsedStop.reason, postToolElapsedStop.detail);
       await this.appendEvent(run.id, step.id, "tool.result", safeEventSummary(toolResult.summary, "tool output redacted"), action.id);
       if (toolResult.status === "ERROR") return this.stop(run, "POLICY_DENIED");
 
@@ -136,6 +147,8 @@ export class AgentLoop {
           args: parsed.response.args
         } as ToolRequest;
         const validation = await this.validation.validate(request, input.configSnapshot);
+        const postValidationElapsedStop = tracker.checkElapsed(sequence);
+        if (postValidationElapsedStop !== null) return this.stop(run, postValidationElapsedStop.reason, postValidationElapsedStop.detail);
         mutationValidation = validation.readyToComplete ? "passed" : "failed";
         for (const result of validation.results) {
           this.feedback.enqueueValidation(result);
@@ -163,26 +176,32 @@ export class AgentLoop {
     if (run === null) return null;
     const decision = await this.deps.approval?.consumeApproval?.(runId);
     if (decision === "rejected") {
-      const next = transitionRun(run, { id: `approval-rejected:${this.deps.clock.nowIso()}`, type: "stop", reason: "APPROVAL_REJECTED", at: this.deps.clock.nowIso() });
-      await this.deps.unitOfWork.repositories.runs.update(next);
-      await this.appendEvent(next.id, null, "approval.rejected", "approval rejected");
-      return next;
+      const paused = this.paused.get(runId);
+      const resumed = { ...run, status: "RUNNING" as const, stopReason: null, stopDetail: null, updatedAt: this.deps.clock.nowIso() };
+      await this.deps.unitOfWork.repositories.runs.update(resumed);
+      await this.appendEvent(resumed.id, null, "approval.rejected", "approval rejected");
+      this.feedback.enqueueManual({ sourceId: `approval:${runId}`, category: "approval_rejected", summary: "Approval rejected; choose a safe alternative." });
+      if (paused === undefined) return resumed;
+      try {
+        return await this.runUntilPauseOrTerminal(paused.input, resumed, paused.tracker, paused.mutationValidation, paused.nextSequence);
+      } catch (error) {
+        await this.failRun(resumed, "Injected port failed");
+        throw error;
+      }
     }
     if (decision !== "approved") return run;
     const next = transitionRun(run, { id: `approval-accepted:${this.deps.clock.nowIso()}`, type: "interrupt", at: this.deps.clock.nowIso() });
     const resumed = { ...next, status: "RUNNING" as const, stopReason: null, stopDetail: null, updatedAt: this.deps.clock.nowIso() };
     await this.deps.unitOfWork.repositories.runs.update(resumed);
     await this.appendEvent(resumed.id, null, "approval.approved", "approval approved");
-    const snapshot = await this.deps.unitOfWork.repositories.config.getSnapshot(resumed.configSnapshotId);
-    if (snapshot === null) return resumed;
-    const tracker = new BudgetTracker(readBudgetLimits(snapshot), this.deps.clock);
-    return this.runUntilPauseOrTerminal({
-      runId: resumed.id,
-      workspaceId: resumed.workspaceId,
-      taskSummary: resumed.taskSummary,
-      configSnapshot: snapshot,
-      maxSteps: 10
-    }, resumed, tracker, "none", 1);
+    const paused = this.paused.get(runId);
+    if (paused === undefined) return resumed;
+    try {
+      return await this.runUntilPauseOrTerminal(paused.input, resumed, paused.tracker, paused.mutationValidation, paused.nextSequence);
+    } catch (error) {
+      await this.failRun(resumed, "Injected port failed");
+      throw error;
+    }
   }
 
   async cancel(runId: string): Promise<Run | null> {
