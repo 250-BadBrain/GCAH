@@ -9,6 +9,7 @@ export * from "./memory/memory-service.js";
 export * from "./memory/memory-tool.js";
 export * from "./memory/retrieval.js";
 export * from "./loop/completion-gate.js";
+export * from "./loop/agent-loop.js";
 export * from "./loop/context-builder.js";
 export * from "./ports/clock.js";
 export * from "./ports/llm-client.js";

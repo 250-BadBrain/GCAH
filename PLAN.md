@@ -250,14 +250,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Integrate only injected core ports into one serial, persisted-before-effect loop. **Dependencies:** T03a and T16b. **Files:** `packages/core/src/loop/agent-loop.ts`, `packages/core/test/agent-loop.test.ts`. **First red:** Scripted end-to-end loop scenario has no orchestrator. **Expected implementation:** One Step/action at a time through injected `LlmClientPort`, `ToolGatewayPort`, `ValidationRunner`, repositories, and clock; core imports no governance or adapter package.
 
-- [ ] Add dangerous-action and feedback-correction loop tests.
-- [ ] Run focused test; confirm missing-loop red.
-- [ ] Implement one ToolAction iteration by calling injected `ToolGatewayPort`; preserve persist-before-effect ordering.
-- [ ] Add approval pause/reject and FinishAction branches.
-- [ ] Refactor pure planning from effects; run core/LLM tests and verify.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add dangerous-action and feedback-correction loop tests.
+- [x] Run focused test; confirm missing-loop red.
+- [x] Implement one ToolAction iteration by calling injected `ToolGatewayPort`; preserve persist-before-effect ordering.
+- [x] Add approval pause/reject and FinishAction branches.
+- [x] Refactor pure planning from effects; run core/LLM tests and verify.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** T16 acceptance holds offline. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T16 acceptance holds offline. **Parallel:** No. **Status:** Complete. **Commit:** pending.
 
 #### T18a — Fastify composition and REST run/approval APIs
 

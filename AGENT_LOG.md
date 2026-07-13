@@ -883,3 +883,22 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
 - Commit: `1529c59` (`feat: add loop context and completion gates`).
+
+## 2026-07-13 - T16c
+
+- Scope: PR-06 `harness-loop`, T16c serial agent-loop orchestration.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/harness-loop` at `E:/Desktop/GCAH-harness-loop`.
+- Baseline commit: `0224a73`.
+- Red evidence:
+  - Initial focused test failed for an invalid test-only persistence import; after replacing it with an injected fake `UnitOfWork`, `pnpm --filter @gcah/core test -- agent-loop` exited 1 because `AgentLoop` was not exported.
+- Green evidence:
+  - Added `AgentLoop.start/continueAfterApproval/cancel` using only injected core ports and repositories.
+  - Loop creates serial steps, parses every LLM response, persists proposed actions before tool effects, routes tools through `ToolGatewayPort`, runs validation for mutations, feeds validation failures back once, blocks FinishAction until validation passes, and stops on injected tool-gateway denial.
+  - Focused core loop tests exited 0 with 3 files and 6 tests.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 37 files and 82 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: pending.
