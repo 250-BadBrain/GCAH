@@ -919,4 +919,4 @@
   - `pnpm verify` exited 0 with 38 files and 84 tests.
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
-- Commit: pending.
+- Commit: `9cd2582` (`fix: enforce loop token budget`).
