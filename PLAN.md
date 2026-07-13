@@ -270,7 +270,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [x] Refactor common error envelopes; rerun server tests/typecheck.
 - [x] Update logs/status; commit and record hash.
 
-**Done:** REST authority remains in core. **Parallel:** No. **Status:** Complete. **Commit:** pending.
+**Done:** REST authority remains in core. **Parallel:** No. **Status:** Complete. **Commit:** `a0088a3` (`feat: add local server run routes`).
 
 #### T18b — Local/self-hosted cookie auth and CSRF/Origin checks
 
