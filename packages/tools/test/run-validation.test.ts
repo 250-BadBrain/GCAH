@@ -48,6 +48,13 @@ describe("run_validation tool", () => {
 
     await expect(new CommandValidationRunner(runner, {
       test: { executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 1000 }
-    }).runRequired()).resolves.toMatchObject([{ result: "PASS", commandSnapshot: "pnpm test" }]);
+    }).runValidator("test", {
+      id: "config-1",
+      schemaVersion: 1,
+      allowedWorkspaceRoots: ["E:/workspace"],
+      nonSensitiveConfig: { validation: { required: ["test"] }, commands: { test: "pnpm test" } },
+      contentHash: "hash",
+      createdAt: "2026-01-01T00:00:00.000Z"
+    })).resolves.toMatchObject({ result: "PASS", commandSnapshot: "pnpm test" });
   });
 });

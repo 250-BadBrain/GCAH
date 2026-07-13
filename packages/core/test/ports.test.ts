@@ -58,7 +58,18 @@ describe("core ports", () => {
       execute: async () => ({ status: "OK", summary: "executed" })
     };
     const validationRunner: ValidationRunner = {
-      runRequired: async () => []
+      runValidator: async (validatorId) => ({
+        id: `validation:${validatorId}`,
+        actionId: "action-1",
+        type: "custom",
+        commandSnapshot: validatorId,
+        result: "PASS",
+        failureCategory: null,
+        failureFingerprint: null,
+        diagnosticSummary: null,
+        durationMs: 0,
+        createdAt: "2026-01-01T00:00:00.000Z"
+      })
     };
     const workspaceFence: WorkspaceFencePort = {
       validateWorkspace: async () => ({ ok: true }),
@@ -77,7 +88,14 @@ describe("core ports", () => {
       status: "OK",
       summary: "executed"
     });
-    await expect(validationRunner.runRequired()).resolves.toEqual([]);
+    await expect(validationRunner.runValidator("test", {
+      id: "config-1",
+      schemaVersion: 1,
+      allowedWorkspaceRoots: [],
+      nonSensitiveConfig: {},
+      contentHash: "hash",
+      createdAt: "2026-01-01T00:00:00.000Z"
+    })).resolves.toMatchObject({ result: "PASS" });
     await expect(workspaceFence.validateWorkspace()).resolves.toEqual({ ok: true });
     await expect(llm.complete([])).resolves.toMatchObject({ response: { kind: "finish" } });
   });
