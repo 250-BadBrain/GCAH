@@ -268,4 +268,4 @@
   - `pnpm install --frozen-lockfile` exited 0.
   - `git diff --check` exited 0.
 - External operations: none beyond local test/typecheck/lint/install verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
-- Commit: pending follow-up hash record.
+- Commit: `7397339` (`feat: add agent response tool contracts`).
