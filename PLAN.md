@@ -4,9 +4,9 @@
 
 **Goal:** Build a lightweight, self-authored coding-agent harness whose deterministic governance and validation feedback loop controls every model-proposed action.
 
-**Architecture:** A pnpm TypeScript workspace separates shared runtime schemas, the dependency-injected harness core, LLM adapters, governed tools, persistence, Fastify server, CLI, and React WebUI. The server owns all authority and state transitions; CLI and WebUI are clients. Default tests and demonstrations use scripted mocks, in-memory repositories, fake clocks, and fake executors without network or credentials.
+**Architecture:** A pnpm TypeScript workspace separates shared runtime schemas, the dependency-injected harness core, LLM adapters, governed tools, persistence, HTTP adapters, CLI, and React WebUI. Fastify is the local/Docker/self-hosted composition root; Cloudflare production uses Pages plus an independent Worker composition root backed by D1 and optionally Durable Objects. The core owns framework-neutral behavior through ports; CLI and WebUI are clients.
 
-**Tech Stack:** Node.js LTS, TypeScript, pnpm workspace, Zod 4, Vitest, Fastify, SQLite, React, Vite, Docker/OCI, GitLab CI, GitHub Actions.
+**Tech Stack:** Node.js LTS, TypeScript, pnpm workspace, Zod 4, Vitest, Fastify, Cloudflare Workers/D1/Durable Objects, SQLite, React, Vite, Cloudflare Pages/Wrangler, Docker/OCI, GitLab CI, GitHub Actions.
 
 ## Global Constraints
 
@@ -17,8 +17,12 @@
 - Default `pnpm test`, `pnpm verify`, and `pnpm demo:mechanisms` must not access the network, require an API key, or call a real LLM.
 - The core must not use LangChain AgentExecutor, AutoGen, CrewAI, LlamaIndex agent, or another SDK-provided agent runner.
 - All authority, tool dispatch, state transitions, and approval checks remain server-side. WebUI is only an observation and approval client.
-- Primary validation platforms are Windows native and Linux `amd64` Docker; macOS, native Linux desktop, Linux Secret Service, and `arm64` are best-effort.
+- S01 credential evidence covers Windows `native-windows` only. macOS, Linux, and Docker credential backends are untested and must not be described as verified support.
 - `LocalExecutor` is not an OS sandbox. Public demo denies command execution, network, dependency installation, real LLM calls, and user credentials.
+- Public demo has no API-key input, transport, or storage path and binds only Mock LLM; it contains no real LLM adapter.
+- Core depends only on repository and service ports and never imports SQLite, D1, Fastify, Worker, or Cloudflare bindings.
+- Events are persisted before SSE publication; both Fastify and Worker adapters support cursor replay and client disconnect recovery.
+- Cloudflare login, authorization, token configuration, deployment, custom-domain binding, DNS, and HTTPS activation are manual human-authorized steps.
 - Secret plaintext may exist only briefly at three explicit boundaries: CLI hidden input → `CredentialStore`, `CredentialStore`/`AdminTokenStore` authentication operations, and `CredentialResolver` → LLM adapter call. It must never enter a domain object, config/config snapshot, repository, SQLite, event, audit/log record, workspace, browser state, or serialized error. JavaScript cannot guarantee memory zeroization; the enforceable promise is to minimize lifetime/scope, avoid copies, and prevent persistence/serialization/logging.
 - Commit the pnpm lockfile; CI installs with a frozen lockfile. Record material security-dependency changes in `AGENT_LOG.md`.
 - Package-manager build scripts must be controlled by an explicit allowlist committed in workspace configuration. Interactive build-script approval is not part of CI or formal task execution.
@@ -38,13 +42,14 @@
 | Governance | `packages/governance/src/**` | Workspace/path fence, three-level governance rules, approval state machine and hashes; depends only on `packages/shared` |
 | Tools | `packages/tools/src/**` | Implements core `ToolGatewayPort`; tool registry, file tools, Local/Demo/Fake executors, structured commands; may depend on core ports, shared, and governance |
 | Validation/memory | `packages/core/src/validation/**`, `packages/core/src/memory/**` | Immutable validation plans, classification, fingerprints, bounded retrieval |
-| Persistence | `packages/persistence/src/**` | In-memory and SQLite repositories, transactions, audit append |
-| Server | `apps/server/src/**` | Fastify REST/SSE, auth, rate limits, startup interruption handling |
+| Persistence | `packages/persistence/src/**`, `apps/worker/src/persistence/**` | In-memory/SQLite and D1 repository adapters, migrations, transactions, audit append, shared contract tests |
+| Local server | `apps/server/src/**` | Fastify REST/SSE composition root for local/Docker/self-hosted, auth, rate limits, startup interruption handling |
+| Cloudflare API | `apps/worker/src/**` | Worker HTTP/SSE composition root, D1 bindings and migration, cursor replay, optional Durable Object coordination/fan-out |
 | CLI | `apps/cli/src/**` | Server client, run/config/approval/credential commands, hidden secret input |
 | WebUI | `apps/webui/src/**` | Timeline, validation and approval UI; no policy logic |
-| Demo/deployment | `examples/demo-workspace/**`, `scripts/**`, `.github/workflows/**`, `.gitlab-ci.yml`, `Dockerfile` | Deterministic demo, CI, image, public-demo deployment |
+| Demo/deployment | `examples/demo-workspace/**`, `scripts/**`, `.github/workflows/**`, `.gitlab-ci.yml`, `Dockerfile`, `wrangler.jsonc`, `apps/webui/**` | Deterministic demo, CI, independent Docker and Cloudflare Pages/Workers delivery paths |
 
-Interfaces flow inward: `shared` has no internal dependency; `governance` depends only on `shared`; `core` depends on `shared` and its own injected ports and never imports `tools`, `persistence`, `credentials`, `llm`, or `server`; `tools` implements `ToolGatewayPort` and may depend on core ports, shared, and governance; persistence/LLM/credentials adapters implement ports; server is the composition root; CLI/WebUI consume HTTP contracts only.
+Interfaces flow inward: `shared` has no internal dependency; `governance` depends only on `shared`; `core` depends on `shared` and its own injected ports and never imports `tools`, `persistence`, `credentials`, `llm`, `server`, SQLite, D1, Fastify, Worker, or Cloudflare bindings; adapters implement ports. Fastify and Worker are separate composition roots; CLI/WebUI consume HTTP contracts only. KV/R2 are separate capability-specific ports and never substitute for relational run/audit/event repositories.
 
 ```text
 shared
@@ -358,9 +363,9 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Done:** Browser remains a client, not an authority. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
 
-#### T22c — Fastify static hosting, SPA fallback, and production integration
+#### T22c — Fastify static hosting for local/Docker/self-hosted
 
-**Goal:** Serve the built React app from the single Node server and preserve API/SSE routing. **Dependencies:** T18c and T22b. **Files:** `apps/server/src/static-webui.ts`, `apps/server/src/app.ts`, `apps/server/test/static-webui.integration.test.ts`, `apps/webui/vite.config.ts`. **First red:** Production server returns 404 for `/` and client-side routes or incorrectly intercepts `/api`/SSE. **Expected implementation:** Static asset plugin, non-API HTML fallback, cache policy, built-asset integration fixture.
+**Goal:** Serve the built React app from one Fastify process only for local/Docker/self-hosted and preserve API/SSE routing; Cloudflare production uses Pages + Workers. **Dependencies:** T18c and T22b. **Files:** `apps/server/src/static-webui.ts`, `apps/server/src/app.ts`, `apps/server/test/static-webui.integration.test.ts`, `apps/webui/vite.config.ts`. **First red:** Local production-mode server returns 404 or intercepts `/api`/SSE. **Expected implementation:** Static asset plugin, non-API HTML fallback, cache policy, built-asset integration fixture.
 
 - [ ] Build WebUI test fixture and add `/`, asset, SPA-route, API, and SSE assertions.
 - [ ] Run `pnpm --filter @gcah/server test -- static-webui`; confirm 404/interception red.
@@ -369,11 +374,11 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor route predicates; run WebUI build and server integration test.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** One Fastify process serves production UI/API/SSE correctly. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** One Fastify process serves local/Docker/self-hosted UI/API/SSE correctly; no claim is made for Cloudflare production. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
 
 #### T26a — Reproducible Linux amd64 runtime image
 
-**Goal:** Build and smoke-test the single-container runtime locally. **Dependencies:** T17, T18c, T22c, T23, T25, and S02. **Files:** `Dockerfile`, `.dockerignore`, `scripts/test-container-contract.test.ts`, root scripts project config. **First red:** Container-contract test cannot find image metadata/health/static app. **Expected implementation:** Multi-stage non-root runtime with `/data`, workspace mount, fixed demo, and no secrets.
+**Goal:** Build and smoke-test the self-hosted/course single-container runtime locally. **Dependencies:** T17, T18c, T22c, T23, and T25. **Files:** `Dockerfile`, `.dockerignore`, `scripts/test-container-contract.test.ts`, root scripts project config. **First red:** Container-contract test cannot find image metadata/health/static app. **Expected implementation:** Multi-stage non-root runtime with `/data`, workspace mount, fixed demo, no secrets, and explicit credential-backend-unavailable behavior in headless environments.
 
 - [ ] Add container metadata/health/sentinel contract test in root `scripts` Vitest project.
 - [ ] Run `pnpm test -- --project scripts`; confirm missing-image-contract red.
@@ -404,11 +409,11 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Add a documentation contract checklist for required commands/sections.
 - [ ] Run checklist; confirm missing-section red.
 - [ ] Write minimal README build/run and deployment guide.
-- [ ] Deploy T26 image in public-demo mode and record non-secret evidence.
+- [ ] Validate Pages/Workers/Wrangler configuration and D1 migration locally; reserve actual deployment for a separately authorized human step.
 - [ ] Refactor commands to match executed commands; rerun clean-room smoke.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** Public fixed WebUI is reachable and docs reproduce it. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Cloudflare artifacts and manual deployment/domain/HTTPS instructions are reproducible; reachability is accepted only after separately authorized deployment. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
 
 #### T27b — Final security and acceptance evidence
 
@@ -462,25 +467,25 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Validation:** Run only the disposable probe's isolated command documented in its README; search its output and filesystem for the sentinel; delete the disposable worktree afterward.
 
-**Completion:** `docs/spikes/credential-store.md` names the selected library/API, supported platforms, packaging constraints, explicit failure behavior, and the exact adapter design used by T19; `AGENT_LOG.md` contains the required decision, evidence, rejected options, and responsible agent.
+**Completion:** `docs/spikes/credential-store.md` selects `cross-keychain`, records Windows-only runtime evidence, untested macOS/Linux/Docker status, allowed/rejected backends, packaging constraints, and fail-closed adapter design used by T19. Disposable code is deleted; only the report remains.
 
-**Parallel:** Yes, with S02. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with S02. **Status:** Findings complete; conclusion written back, no formal implementation started. **Commit:** —.
 
 ### Spike S02: Select the public hosting platform
 
 **Dependencies:** Gate CS complete and documentation revisions approved.
 
-**PR/worktree:** Disposable `spike/public-hosting`; findings-only commit on documentation branch.
+**PR/worktree:** Disposable `spike/hosting`; findings-only worktree.
 
-**Exact paths:** Disposable manifests under `.spikes/public-hosting/**`; permanent report `docs/spikes/public-hosting.md`; required decision entry in `AGENT_LOG.md`.
+**Exact paths:** Disposable evidence under `.spikes/hosting/**`; permanent report `docs/spikes/hosting.md`; required decision entry in `AGENT_LOG.md`.
 
-**Procedure:** Evaluate a course-permitted platform such as Render or Railway for Linux OCI deployment, stable URL, server-side Secret, persistent data directory, health checks, and public-registry pulls. Use only a harmless placeholder image during the spike.
+**Procedure:** Validate Cloudflare Pages for React + Vite, Workers for Fetch API/SSE, D1 for relational persistence, and optional Durable Objects for per-run coordination/fan-out. Do not log in, authorize, create tokens, deploy, or change domains/DNS during the spike.
 
 **Validation:** Deploy and remove the placeholder service; verify HTTPS URL, Secret non-exposure, persistent mount semantics, and documented teardown.
 
-**Completion:** `docs/spikes/public-hosting.md` records the selected platform, required manifest fields, registry choice, deployment/rollback commands, persistence path, and Secret handling used by T26–T27; `AGENT_LOG.md` contains the required decision, evidence, rejected options, and responsible agent.
+**Completion:** `docs/spikes/hosting.md` records the Pages + Workers + D1 topology, optional Durable Objects, persistence/SSE boundaries, Docker's separate role, and manual authorization steps used by T26–T27. S02 performs no Cloudflare login, authorization, token creation, deployment, domain, DNS, or HTTPS operation and does not claim a real remote deployment. Disposable code is deleted; only the report remains.
 
-**Parallel:** Yes, with S01. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with S01. **Status:** Architecture findings complete; no remote deployment performed. **Commit:** —.
 
 ---
 
@@ -942,7 +947,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Interfaces:** Implements all T03 repositories and `UnitOfWork`; exposes `openSqliteRepositories({dataDir,clock})` and append-only structured audit sink.
 
-**First failing test:** Run the same contract suite against in-memory and temporary SQLite adapters; force event write failure and assert transaction rollback plus no subsequent side-effect authorization; inspect schema/rows/log for a secret sentinel and expect no match.
+**First failing test:** Run the same repository contract suite against in-memory and temporary SQLite adapters; define the suite so T18d also runs it unchanged against D1. Force event write failure and assert transaction rollback plus no subsequent side-effect authorization; inspect schema/rows/log for a secret sentinel and expect no match.
 
 **Expected red:** SQLite adapter/migration is missing.
 
@@ -952,7 +957,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Verification:** `pnpm --filter @gcah/persistence test`; `pnpm typecheck`; `pnpm lint`.
 
-**Done:** Both adapters pass one contract suite; database failure prevents side effects; no plaintext credential column/value exists.
+**Done:** In-memory and SQLite pass the shared contract suite, which is exported for D1 parity in T18d; database failure prevents side effects; no plaintext credential column/value exists.
 
 **Parallel:** No within PR-07; T19 may proceed separately after S01. **Status:** Not started. **Commit:** — (record after execution).
 
@@ -982,9 +987,15 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Parallel:** After T17, can overlap T19/T22 preparation. **Status:** Not started. **Commit:** — (record after execution).
 
+#### T18d — Cloudflare Worker HTTP/SSE composition root and D1 adapter
+
+**Goal:** Add the independent Cloudflare production composition root without importing Fastify or SQLite. **Dependencies:** T17 and T18 shared HTTP/event contracts. **Files:** create `apps/worker/src/**`, D1 repository adapter and migration files, Worker HTTP/SSE tests, optional Durable Object coordination module, and Wrangler test configuration. **First red:** Worker REST/SSE contract and the shared repository suite fail because the Worker/D1 adapters do not exist. **Expected implementation:** Fetch-based Worker routes, D1 repository adapter plus migration, event-persist-before-publish, cursor/`Last-Event-ID` replay, disconnect recovery, and an optional Durable Object per-run coordination/fan-out layer enabled only when required. KV/R2 remain outside the relational repository contract.
+
+**Verification:** Run the same repository contract against SQLite and D1; run Worker HTTP/SSE tests including reconnect after disconnect and replay from a persisted cursor; import-boundary test proves core has no D1/Worker/Fastify/SQLite imports. **Done:** D1 and SQLite satisfy one repository contract and Worker API/SSE behavior matches shared contracts. **Status:** Not started.
+
 ### Task T19: Implement the standalone credentials package and secret-isolation contract
 
-**Goal:** Provide secure credential lifecycle with OS store priority and explicit environment/`.env` fallbacks without plaintext persistence.
+**Goal:** Provide a fail-closed credential lifecycle using only validated OS credential-store backends.
 
 **Dependencies:** S01 completed and T02 contracts available.
 
@@ -994,11 +1005,11 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Interfaces:** `CredentialStore.status/set/update/clear`, `CredentialResolver.withCredential(provider, callback)`, and the server's `AdminTokenStore`; core sees only `CredentialStatus`; precedence OS store → explicitly enabled environment → explicitly enabled `.env`.
 
-**First failing test:** Use fake stores with three sentinels and assert priority, disabled fallbacks, explicit unavailable-backend error, callback-scoped plaintext, and absence of sentinels from domain objects, config, repositories/SQLite, events, audit/log output, workspace files, browser-shaped DTOs, and serialized errors.
+**First failing test:** Fake each backend and assert only `native-windows`, `windows`, `native-macos`, `macos`, `native-linux`, and `secret-service` are accepted on their platforms; `file`, `null`, unknown, locked, and unavailable backends fail closed. Assert callback-scoped plaintext and sentinel absence from all persistence, logs, DTOs, browser state, and serialized errors.
 
 **Expected red:** Credential ports and resolver are absent.
 
-**Minimum implementation:** Wrap the S01-selected backend in `@gcah/credentials`; never return secret from status; implement `AdminTokenStore` in this package; accept CLI hidden-input plaintext only at the store write boundary; expose retrieved plaintext only inside the authentication or resolver callback; minimize references/copies and release them after callback return; never claim JavaScript memory is zeroized; never create a plaintext file; parse `.env` only when explicitly enabled and warn. `@gcah/llm` may import only the credential port/callback API, never an OS-store implementation.
+**Minimum implementation:** Add `cross-keychain` with its actual version locked by `pnpm-lock.yaml`; validate current backend before operations; allow only the platform-specific OS backend list and map unavailable/headless/Docker cases to `backend unavailable`; reject `file`, `null`, and unknown without fallback. Never return secrets from status or create plaintext/environment/`.env` fallback storage. `@gcah/llm` imports only the credential port/callback API.
 
 **Refactor:** Share source result/error types; inject redactor without using logs as primary protection.
 
@@ -1098,7 +1109,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Interfaces:** Anonymous routes allow listing fixed examples, starting allowlisted `MockLlmClient` tasks, observing their events, and submitting demo approvals only; `DemoExecutor` implements the executor behavior without spawning a process; deterministic `DemoValidationRunner` implements core `ValidationRunner` from preset results; reset service copies the read-only template to a disposable workspace before each Run and discards it afterward.
 
-**First failing test:** Reject uploads, arbitrary tasks/workspaces, credentials, real LLM, command execution, network and dependency actions; spy on process-spawn and network APIs and assert zero calls; prove the browser response contains no deployment Secret; rate-limit starts; feed preset validation failures through the real classifier/fingerprint/feedback/event/state-machine path; mutate one temporary demo copy and assert the next Run starts from pristine template bytes.
+**First failing test:** Reject uploads, arbitrary tasks/workspaces, credentials, real LLM, command execution, network and dependency actions; assert the public Worker composition contains no real LLM adapter and exposes no API-key field or transport route. Seed an API-key sentinel and prove it is absent from requests, responses, browser state/storage, logs, errors, D1, KV, and R2; spy on process-spawn/network APIs and assert zero calls.
 
 **Expected red:** Public-demo composition, limiter, and reset service do not exist.
 
@@ -1108,7 +1119,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Verification:** `pnpm --filter @gcah/server test -- public-demo demo-workspace`; `pnpm --filter @gcah/webui test`; `pnpm typecheck`; `pnpm lint`.
 
-**Done:** Capability and isolation tests prove anonymous users cannot reach real workspace/LLM/credentials/commands or start a real subprocess/network call, while preset outcomes still traverse real classification, fingerprint, event, feedback, budget, and state-machine code and cannot contaminate later visitors.
+**Done:** Capability and isolation tests prove anonymous users cannot reach real workspace/LLM/credentials/commands or start a real subprocess/network call; no API key exists in request, browser, log, error, D1, KV, or R2 boundaries; preset outcomes still traverse the real state path without cross-visitor contamination.
 
 **Parallel:** No after T22; completes PR-09. **Status:** Not started. **Commit:** — (record after execution).
 
@@ -1164,23 +1175,23 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Parallel:** No after T24. **Status:** Not started. **Commit:** — (record after execution).
 
-### Task T26: Build and publish the Linux amd64 OCI image
+### Task T26: Build the Docker/self-hosted delivery path
 
-**Goal:** Package the server, built React UI, CLI/runtime assets, fixed demo template, and non-sensitive data layout as a reproducible public image.
+**Goal:** Package the Fastify + SQLite composition as a reproducible Linux `amd64` image for local development, testing, course distribution, and self-hosted fallback; this is not the Cloudflare production runtime.
 
-**Dependencies:** S02, T17, T18, T22, T23, and T25.
+**Dependencies:** T17, T18, T22, T23, and T25.
 
 **PR/worktree:** PR-10 / `feat/release-evidence`.
 
 **Files:** Create `Dockerfile`, `.dockerignore`, `.github/workflows/image.yml`, `scripts/container-contract.test.ts`; modify `.gitlab-ci.yml` to add image build/publish and root scripts only for container-contract testing.
 
-**Expected implementation:** Multi-stage Linux `amd64` image, non-root runtime where feasible, healthcheck, one Node server serving API/SSE/built React, `/data` for SQLite/audit/non-sensitive state, explicit workspace mount, and no baked credential or `.env`.
+**Expected implementation:** Multi-stage Linux `amd64` image, non-root runtime where feasible, healthcheck, one Fastify server serving UI/API/SSE only for this local/Docker/self-hosted path, `/data` for SQLite/audit/non-sensitive state, explicit workspace mount, and no baked credential or `.env`. A headless container without an OS credential store returns `backend unavailable` and never creates file storage.
 
 **First failing test:** Parse/build the image and assert `linux/amd64`, health endpoint, configured port, mount paths, public-demo startup, absence of `.env`/secret sentinel, and that CI pushes a versioned tag plus immutable digest to a public registry.
 
 **Expected red:** Dockerfile, image workflow, and container contract do not exist.
 
-**Minimum implementation:** Add multi-stage build; copy only production artifacts and fixed template; set non-root user/healthcheck; add GitLab/GitHub buildx jobs; authenticate only at CI boundary; publish to the chosen public registry.
+**Minimum implementation:** Add the self-hosted image and contract tests; copy only required artifacts and fixed templates; set non-root user/healthcheck; keep image publishing independent from Pages/Workers deployment.
 
 **Refactor:** Minimize context/layers and remove build tooling from runtime image; align healthcheck with server route.
 
@@ -1190,29 +1201,29 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Parallel:** No after T25. **Status:** Not started. **Commit:** — (record after execution).
 
-### Task T27: Deploy, document, and pass the final security/acceptance review
+### Task T27: Prepare Cloudflare delivery, document manual deployment, and pass final review
 
-**Goal:** Provide a reproducible operator guide, reachable fixed public demo, and objective evidence for every SPEC acceptance criterion.
+**Goal:** Produce the separate Cloudflare Pages/Workers/D1 delivery configuration and objective pre-deployment evidence, while leaving login, tokens, real deployment, domain binding, DNS, and HTTPS to an explicitly authorized human step.
 
-**Dependencies:** S02, T17, T23, and T26.
+**Dependencies:** S02, T18d, T22, T23, T25, and T26.
 
 **PR/worktree:** PR-10 / `feat/release-evidence`.
 
-**Files:** Create `deploy/public-demo.env.example`, `docs/security-review.md`, `docs/deployment.md`, `scripts/scan-secrets.ts`, `scripts/scan-secrets.test.ts`; modify `README.md` and `AGENT_LOG.md`. If S02 proves the selected platform mandates a repository manifest, revise this PLAN during the documented spike decision gate before creating that manifest; do not invent its path during T27.
+**Files:** Create Pages/Workers/Wrangler deployment configuration, D1 migration/deployment scripts, `docs/security-review.md`, `docs/deployment.md`, and secret/security contract tests; modify `README.md` and `AGENT_LOG.md`. No Cloudflare credential or token is committed.
 
-**Expected implementation:** Document Windows native and Linux `amd64` Docker use, exact build/run commands with port/workspace/data mounts, data contents/backups, credentials and `.env` risk, LocalExecutor limitation, authentication, interruption/clone semantics, manual DeepSeek/Qwen integration, public registry/deploy/rollback, and CI/demo evidence.
+**Expected implementation:** Configure React + Vite Pages build, Worker routes/bindings, D1 migration, optional Durable Object binding, environment separation, preview checks, and rollback guidance. Document custom domain and HTTPS as manual Cloudflare/DNS steps, including least-privilege token setup performed only by an authorized human. Also document the independent Windows/Fastify and Docker/self-hosted path.
 
-**First failing test:** Seed a disposable sentinel and confirm secret scanner catches it; run documented commands in a clean environment and record any mismatch; execute a checklist test for path/symlink, command injection, approval replay, CSRF/SSE, rate limit, secret flow, audit/database/browser bundle, interruption, and lockfile controls.
+**First failing test:** Validate Pages/Workers/Wrangler config and D1 migration locally; seed a disposable API-key sentinel and prove it cannot appear in requests, browser state, logs, D1, KV, R2, or errors; assert public composition has Mock LLM only and no upload/shell/install/network capability.
 
 **Expected red:** Deployment manifest, complete documentation, evidence, and final scanner/review do not exist.
 
-**Minimum implementation:** Deploy the T26 image in public-demo mode using S02 findings; mount only the allowed persistent data path; configure server-side Secret without browser exposure; write exact copy-paste README commands; run and record every security/acceptance check; remediate any critical/high issue before completion.
+**Minimum implementation:** Add deployable Pages/Workers/Wrangler configuration, D1 migrations, local/preview validation commands, rollback documentation, and a clearly marked human checklist for login, authorization, token configuration, deployment, custom domain, DNS, and HTTPS. Do not perform those external operations without separate authorization.
 
 **Refactor:** Make README commands identical to tested commands; consolidate evidence links without exposing credentials or full prompts.
 
-**Verification:** `pnpm install --frozen-lockfile`; `pnpm verify`; `pnpm demo:mechanisms`; secret/security scripts; README Docker build/run smoke test; both CI suites pass; image pulls publicly; public URL serves fixed WebUI and rejects restricted capabilities.
+**Verification:** `pnpm install --frozen-lockfile`; `pnpm verify`; `pnpm demo:mechanisms`; SQLite/D1 contract parity; Worker SSE cursor replay/disconnect recovery; local Wrangler/Pages configuration validation; public-demo API-key absence tests; README Docker smoke test. Real deployment and URL checks remain pending until human authorization.
 
-**Done:** Every SPEC §10 criterion has evidence; CI pass URLs, image digest, and public demo URL are recorded; no unresolved critical/high finding or secret leakage remains.
+**Done:** All locally/CI-verifiable SPEC §10 criteria have evidence, Docker and Cloudflare artifacts are distinct, and no unresolved critical/high finding or secret leakage remains. A public URL/domain/HTTPS is recorded only after the separate human deployment step; S02 itself is not evidence of remote deployment.
 
 **Parallel:** Final serial gate. **Status:** Not started. **Commit:** — (record after execution).
 
@@ -1259,7 +1270,7 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 | Memory sources and bounded retrieval | T15 |
 | Mock LLM adapter, injected-port-only core loop, completion gate | T16 |
 | SQLite and audit consistency | T17 |
-| Fastify, authentication, SSE, interruption | T18 |
+| Fastify local/self-hosted API and Worker/D1 production API, SSE replay, interruption | T18, T18d |
 | CredentialStore and source precedence | S01, T19 |
 | OpenAI-compatible adapter/manual integration | T20 |
 | CLI | T21 |
@@ -1267,14 +1278,14 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 | Public demo MockLlmClient, Demo/FakeExecutor, DemoValidationRunner, real feedback/state paths, and workspace reset | T23 |
 | One-command mechanism demo | T24 |
 | GitLab/GitHub CI | T25 |
-| Docker and public registry | T26 |
-| Hosting, README, deployment, final security | S02, T27 |
+| Docker/self-hosted/course delivery | T26 |
+| Cloudflare Pages/Workers/Wrangler, D1 migration, manual domain/HTTPS steps, final security | S02, T18d, T27 |
 
 ## 7. Principal execution risks and gates
 
 - **Hidden-context risk:** Gate CS must complete before spikes or formal code; its code is disposable and must not be reused.
 - **Credential backend risk:** S01 selects the backend before T19. Failure must produce an explicit unavailable error, never plaintext downgrade.
-- **Hosting uncertainty:** S02 fixes platform-specific image/deployment inputs before T26–T27 without changing core semantics.
+- **Hosting boundary:** S02 selected Pages + Workers + D1 but performed no remote deployment. T26 is Docker/self-hosted; T27 is Cloudflare configuration and human-authorized deployment guidance.
 - **LocalExecutor containment:** It is explicitly not an OS sandbox. Governance/approval and public-demo hard denial are mandatory controls, with optional Docker executor deferred unless required by acceptance evidence.
 - **Persistence-before-effect:** T09/T17/T18 must preserve the invariant that failed persistence prevents tool execution and SSE publishes only committed events.
 - **Secret propagation:** T02, T17, T19–T23, T26, and T27 contain sentinel or non-exposure tests at distinct boundaries.

@@ -116,3 +116,22 @@
   - Recommend Cloudflare Pages + Workers as the public demo topology, with D1 primary persistence, Durable Objects for coordination where needed, KV/R2 for narrower supporting roles.
   - Docker should remain for local development, tests, course distribution, and self-hosted fallback, not Cloudflare production deployment.
   - SPEC.md and PLAN.md should be revised before formal implementation proceeds.
+
+## 2026-07-13 - Spike 结论回写
+
+- Scope: write S01/S02 findings into architecture and implementation planning documents only; no T01–T27 implementation started.
+- Files changed: `SPEC.md`, `PLAN.md`, `SPEC_PROCESS.md`, `AGENT_LOG.md` only.
+- Credential decision:
+  - Formal implementation uses `cross-keychain`, with the actual version locked by `pnpm-lock.yaml`.
+  - `CredentialStore` validates the current backend, accepts only platform OS-store backend IDs, and rejects `file`, `null`, unknown, and unavailable backends without fallback.
+  - Windows `native-windows` is the only runtime-tested credential backend; macOS, Linux, and Docker remain untested.
+- Cloudflare decision:
+  - Public production target is React + Vite on Pages, API/SSE on Workers, and relational persistence in D1, with optional Durable Objects for coordination/fan-out.
+  - Fastify + SQLite and Docker remain a separate local/test/course/self-hosted path.
+  - Core depends only on repository/service ports; KV/R2 cannot replace relational run/audit/event repositories.
+- Plan decision:
+  - Added Worker HTTP/SSE composition, D1 adapter/migration and SQLite/D1 contract parity, optional Durable Object coordination, Pages/Workers/Wrangler configuration, cursor replay, and public-demo API-key absence tests.
+  - Split T26 Docker delivery from T27 Cloudflare delivery and retained Cloudflare login, tokens, deployment, custom domain, DNS, and HTTPS as manual human-authorized steps.
+- External operations: no Cloudflare login, authorization, token creation, deployment, domain binding, DNS, or HTTPS operation was performed; S02 is not recorded as a real remote deployment.
+- Spike artifacts: disposable spike code was deleted; original reports were not modified.
+- Commit: none; awaiting human review.

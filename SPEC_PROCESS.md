@@ -44,3 +44,19 @@ Evidence source: `docs/evidence/cold-start/`.
 - `SPEC.md`: added `Step.status`, supported tool-name enum requirement, untrusted plain-text rationale handling, entity required/optional/nullable constraints, and Zod 4 lockfile expectation.
 - `PLAN.md`: clarified Gate CS precedence, cold-start no-doc-update/no-commit rule, T01a/T01b boundaries, pnpm build-script allowlist, T02 parent acceptance audit, and schema ownership.
 - `AGENT_LOG.md`: recorded the invalid first cold-start and the valid second cold-start.
+
+## 2026-07-13 - Spike Conclusion Writeback
+
+### S01 Windows credential-store evidence
+
+- `docs/spikes/credential-store.md` records the disposable `cross-keychain` probe.
+- Windows `native-windows` was exercised for set/get/status/update/clear and cleanup; the formal adapter must validate the active backend and allow only OS credential-store backends.
+- macOS Keychain, Linux Secret Service, and Docker/headless behavior were not runtime-tested. They remain unverified and must not be described as validated support.
+- Formal behavior is fail closed: reject `file`, `null`, unknown, and unavailable backends; never downgrade to file storage.
+
+### S02 Cloudflare architecture validation
+
+- `docs/spikes/hosting.md` supports the architecture decision: React + Vite on Pages; API/SSE on Workers; relational persistence in D1; optional Durable Objects for per-run coordination and SSE fan-out.
+- Fastify + SQLite remains the local/Docker/self-hosted composition; Cloudflare uses independent Worker HTTP and D1 repository adapters behind core ports.
+- No Cloudflare login, account/project authorization, API-token creation, deployment, custom-domain binding, DNS change, or HTTPS activation was performed. S02 does not prove a real remote deployment.
+- Disposable S01/S02 spike code was deleted; only the two reports under `docs/spikes/` remain as permanent evidence.
