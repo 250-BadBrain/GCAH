@@ -881,7 +881,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Snapshot cannot mutate after Run creation and no accepted config field can contain a secret.
 
-**Parallel:** Yes, with T03/T09 after T02. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T03/T09 after T02. **Status:** Complete. **Commit:** `ddfd7ff` (`feat: add core configuration snapshots`).
 
 ### Task T15: Implement bounded memory writes and keyword/tag retrieval
 

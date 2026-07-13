@@ -769,3 +769,24 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `71f1efc` (`feat: add validation feedback services`).
+
+## 2026-07-13 - T14
+
+- Scope: PR-05 `feedback-memory`, T14 configuration loading, validation, merge order, and immutable snapshots.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/feedback-memory` at `E:/Desktop/GCAH-feedback-memory`.
+- Baseline commit: `fdd61a4`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- config` exited 1 because `loadConfig` and `createConfigSnapshot` were not exported.
+- Green evidence:
+  - Added strict config schema, defaults, data-only project config parser, explicit merge order, injected workspace fence validation, immutable non-sensitive snapshots, and stable content hash.
+  - Config parsing rejects unknown fields, secret fields, invalid budgets, bad workspaces, and missing required validation commands.
+  - Focused config tests exited 0 with 1 file and 2 tests.
+- Refactor/verification evidence:
+  - Core config loader consumes config text as data and does not import concrete filesystem/fence adapters.
+  - `pnpm typecheck` exited 0.
+  - `pnpm verify` exited 0 with 32 files and 70 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `ddfd7ff` (`feat: add core configuration snapshots`).
