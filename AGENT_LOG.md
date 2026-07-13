@@ -172,4 +172,4 @@
   - `pnpm --filter @gcah/shared test -- --passWithNoTests` exited 0 with no test files found.
   - `rg -n "workspaceReady" .` found no source or test implementation, only existing planning/evidence text.
 - External operations: npm metadata was checked for package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
-- Commit: pending follow-up hash record.
+- Commit: `91ac7ea` (`chore: bootstrap shared test runner`).

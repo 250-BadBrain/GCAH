@@ -139,7 +139,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Run `pnpm --filter @gcah/shared test -- --passWithNoTests`; expect exit 0.
 - [ ] Update `PLAN.md`/`AGENT_LOG.md`, commit, and record hash.
 
-**Refactor/verification:** Remove unused config; run frozen install. **Done:** Runner starts; no `workspaceReady` source/test exists. **Parallel:** No. **Status:** Complete. **Commit:** pending follow-up hash record.
+**Refactor/verification:** Remove unused config; run frozen install. **Done:** Runner starts; no `workspaceReady` source/test exists. **Parallel:** No. **Status:** Complete. **Commit:** `91ac7ea` (`chore: bootstrap shared test runner`).
 
 #### T01b — Behavioral workspace smoke export
 
