@@ -146,6 +146,36 @@ describe("AgentLoop", () => {
       stopReason: "POLICY_DENIED"
     });
   });
+
+  it("stops when LLM usage exceeds configured token budget", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const lowBudgetConfig = {
+      ...config(),
+      nonSensitiveConfig: {
+        ...config().nonSensitiveConfig,
+        budgets: { maxRounds: 8, maxTokens: 1, maxElapsedMs: 10000 }
+      }
+    };
+    const client = new ScriptedClient([
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }
+    ]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await loop.start({ runId: "run-4", workspaceId: "workspace-1", taskSummary: "budget", configSnapshot: lowBudgetConfig, maxSteps: 2 });
+
+    await expect(unitOfWork.repositories.runs.getById("run-4")).resolves.toMatchObject({
+      status: "STOPPED",
+      stopReason: "BUDGET_EXHAUSTED",
+      stopDetail: { kind: "tokens", used: 2, remaining: 0 }
+    });
+  });
 });
 
 function createTestUnitOfWork(): UnitOfWork {

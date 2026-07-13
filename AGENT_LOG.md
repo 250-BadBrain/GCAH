@@ -903,3 +903,20 @@
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
 - Commit: `4207e6a` (`feat: add serial agent loop`), plus boundary test `e697991` (`test: add core loop import boundary`).
+
+## 2026-07-13 - T16c Budget Regression Fix
+
+- Scope: PR-06 `harness-loop`, T16c budget stop handling.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/harness-loop` at `E:/Desktop/GCAH-harness-loop`.
+- Baseline commit: `1514e15`.
+- Red evidence:
+  - Added token-budget regression test; `pnpm --filter @gcah/core test -- agent-loop` exited 1 because the loop completed after usage exceeded `maxTokens`.
+- Green evidence:
+  - `AgentLoop` now applies `BudgetTracker.recordUsage` results, persists budget usage to the Run, emits usage-unavailable events, and stops immediately on token exhaustion.
+  - Focused loop tests exited 0 with 4 files and 8 tests.
+- Verification evidence:
+  - `pnpm verify` exited 0 with 38 files and 84 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Commit: pending.

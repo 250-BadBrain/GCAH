@@ -60,7 +60,13 @@ export class AgentLoop {
       });
       const step = await this.createStep(run.id, sequence, context.summary);
       const llmResult = await this.deps.llm.complete(context.messages);
-      tracker.recordUsage(llmResult.usage, sequence);
+      const usageResult = tracker.recordUsage(llmResult.usage, sequence);
+      run = await this.updateBudgetUsage(run, tracker);
+      if (usageResult?.reason === "USAGE_UNAVAILABLE") {
+        await this.appendEvent(run.id, step.id, usageResult.event.type, usageResult.event.summary);
+      } else if (usageResult?.reason === "BUDGET_EXHAUSTED") {
+        return this.stop(run, usageResult.reason, usageResult.detail);
+      }
 
       const parsed = parseAgentResponse(llmResult.response, tracker, sequence);
       if (parsed.kind === "retry") {
@@ -169,6 +175,21 @@ export class AgentLoop {
       createdAt: at,
       updatedAt: at
     });
+  }
+
+  private async updateBudgetUsage(run: Run, tracker: BudgetTracker): Promise<Run> {
+    const snapshot = tracker.snapshot();
+    const next = {
+      ...run,
+      budgetUsage: {
+        rounds: snapshot.rounds,
+        tokens: snapshot.tokens,
+        elapsedMs: snapshot.elapsedMs,
+        repeatedFailures: snapshot.repeatedFailures
+      },
+      updatedAt: this.deps.clock.nowIso()
+    };
+    return this.deps.unitOfWork.repositories.runs.update(next);
   }
 
   private async persistToolAction(runId: string, stepId: string, sequence: number, response: Extract<import("@gcah/shared").AgentResponse, { kind: "tool" }>): Promise<Action> {
