@@ -865,3 +865,21 @@
   - `pnpm build` exited 0.
   - Removed package `dist` directories after build validation.
 - Commit: `1248ec6` (`feat: add scripted mock llm client`).
+
+## 2026-07-13 - T16b
+
+- Scope: PR-06 `harness-loop`, T16b context builder, protocol retry, and completion gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/harness-loop` at `E:/Desktop/GCAH-harness-loop`.
+- Baseline commit: `eafa751`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- context-builder completion-gate` exited 1 because `buildLoopContext`, `evaluateCompletion`, and `parseAgentResponse` were not exported.
+- Green evidence:
+  - Added bounded loop context construction from task, immutable config snapshot, budget state, latest feedback, and non-authoritative memory.
+  - Added pure completion gate blocking FinishAction on pending approval, missing/failed validation, or budget stop.
+  - Added protocol parsing through `AgentResponseSchema` with bounded retry/stop decisions via `BudgetTracker`.
+  - Focused core tests exited 0 with 2 files and 3 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: pending.

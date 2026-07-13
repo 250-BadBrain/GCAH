@@ -237,14 +237,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Build bounded context and decide whether a response may proceed or complete. **Dependencies:** T04, T06, T13–T15, T16a. **Files:** `packages/core/src/loop/context-builder.ts`, `completion-gate.ts`; tests `context-builder.test.ts`, `completion-gate.test.ts`. **First red:** Over-budget memory/protocol errors/unvalidated FinishAction are not handled. **Expected implementation:** Pure context and completion decisions.
 
-- [ ] Add bounded-context and FinishAction rejection tests.
-- [ ] Run focused core tests; confirm missing-function red.
-- [ ] Implement minimal context selection and completion gate.
-- [ ] Add protocol retry/missing-usage warning assertions.
-- [ ] Refactor pure decision types; rerun tests/typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add bounded-context and FinishAction rejection tests.
+- [x] Run focused core tests; confirm missing-function red.
+- [x] Implement minimal context selection and completion gate.
+- [x] Add protocol retry/missing-usage warning assertions.
+- [x] Refactor pure decision types; rerun tests/typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** FinishAction cannot bypass approval/failure/validation/budget gates. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** FinishAction cannot bypass approval/failure/validation/budget gates. **Parallel:** No. **Status:** Complete. **Commit:** pending.
 
 #### T16c — Serial agent-loop orchestration
 
