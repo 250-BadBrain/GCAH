@@ -469,6 +469,25 @@
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `415782b` (`feat: add core state machines`).
 
+## 2026-07-13 - T06
+
+- Scope: PR-02 `core-domain`, T06 budgets, usage accounting, and deterministic stop details.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `116a67c`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- budget failure-window` exited 1 because `BudgetTracker` and `FailureWindow` were not implemented.
+- Green evidence:
+  - Added `BudgetTracker`, `FailureWindow`, and `ProtocolRetries`.
+  - Covered round, token, elapsed-time, repeated-failure, protocol-retry, and missing-usage behavior.
+  - Focused core tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 14 files and 30 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: pending follow-up hash record.
+
 ## 2026-07-13 - T03a
 
 - Scope: PR-02 `core-domain`, T03a core repository, UnitOfWork, and clock ports.

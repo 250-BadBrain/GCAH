@@ -1,3 +1,6 @@
+export * from "./budget/budget.js";
+export * from "./budget/failure-window.js";
+export * from "./budget/protocol-retries.js";
 export * from "./ports/clock.js";
 export * from "./ports/llm-client.js";
 export * from "./ports/repositories.js";

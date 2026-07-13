@@ -673,7 +673,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Each budget stops with the specified reason/detail; missing usage is visibly marked, never counted as zero, and can continue only while both finite iteration and wall-clock hard limits remain.
 
-**Parallel:** Yes, with T13 after T04. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T13 after T04. **Status:** Complete. **Commit:** pending follow-up hash record.
 
 ### Task T07: Implement deterministic three-level governance
 
