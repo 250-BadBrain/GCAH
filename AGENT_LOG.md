@@ -964,4 +964,4 @@
 - Re-review evidence before this fix:
   - Spec compliance re-reviewer `019f5c11-a2e7-7180-92ca-e7eba0d22f22`: FAIL with post-work elapsed and approval rejection feedback findings.
   - Code quality/security re-reviewer `019f5c11-eb32-7a61-95a1-671969455c15`: FAIL with post-work elapsed, approval validation state, and resume exception findings.
-- Commit: pending.
+- Commit: `8a8ec51` (`fix: handle approval resume edge cases`).

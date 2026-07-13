@@ -933,7 +933,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** A scripted mock deterministically exercises every main-loop branch offline; code changes cannot complete without all required validation.
 
-**Parallel:** No, integration point. **Status:** Complete. **Commit:** `4207e6a` (`feat: add serial agent loop`), boundary test `e697991` (`test: add core loop import boundary`), budget fix `9cd2582` (`fix: enforce loop token budget`), review fix `0d81c9d` (`fix: close harness loop review gaps`).
+**Parallel:** No, integration point. **Status:** Complete. **Commit:** `4207e6a` (`feat: add serial agent loop`), boundary test `e697991` (`test: add core loop import boundary`), budget fix `9cd2582` (`fix: enforce loop token budget`), review fix `0d81c9d` (`fix: close harness loop review gaps`), re-review fix `8a8ec51` (`fix: handle approval resume edge cases`).
 
 ### Task T17: Implement SQLite repositories and append-only audit persistence
 
