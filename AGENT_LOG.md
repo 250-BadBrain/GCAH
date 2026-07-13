@@ -847,3 +847,21 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Final commit under review: `e1d0252` (`fix: address feedback memory review findings`).
+
+## 2026-07-13 - T16a
+
+- Scope: PR-06 `harness-loop`, T16a LlmClient and scripted MockLlmClient.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/harness-loop` at `E:/Desktop/GCAH-harness-loop`.
+- Baseline commit: `e39e861`.
+- Red evidence:
+  - `pnpm --filter @gcah/llm test` exited 1 because `packages/llm/src/index.ts` and `MockLlmClient` did not exist.
+- Green evidence:
+  - Added `@gcah/llm` package with `MockLlmClient` implementing core `LlmClientPort`, deterministic script sequencing, request capture, and explicit script-exhaustion error.
+  - Added package TS/build config and included `packages/llm` in root `typecheck` and `build` scripts.
+  - Focused LLM test exited 0 with 1 file and 1 test.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm build` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: pending.
