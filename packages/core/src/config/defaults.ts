@@ -10,6 +10,10 @@ export const DEFAULT_CONFIG: GcahConfig = {
   validation: {
     required: []
   },
+  riskThresholds: {
+    requireApproval: "medium",
+    deny: "high"
+  },
   commands: {},
   allowedWorkspaceRoots: [],
   executorBackend: "local",

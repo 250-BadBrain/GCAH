@@ -10,6 +10,10 @@ export const ConfigSchema = z.object({
   validation: z.object({
     required: z.array(z.string().min(1)).default([])
   }).strict().default({ required: [] }),
+  riskThresholds: z.object({
+    requireApproval: z.string().min(1).default("medium"),
+    deny: z.string().min(1).default("high")
+  }).strict().default({ requireApproval: "medium", deny: "high" }),
   commands: z.record(z.string(), z.string().min(1)).default({}),
   allowedWorkspaceRoots: z.array(z.string().min(1)).default([]),
   executorBackend: z.string().default("local"),

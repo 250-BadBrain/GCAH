@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { FeedbackQueue, ValidationService } from "../src/index.js";
+import { createConfigSnapshot, FeedbackQueue, ValidationService } from "../src/index.js";
 import type { ValidationRunner } from "../src/index.js";
-import type { ToolRequest, ValidationResult } from "@gcah/shared";
+import type { ConfigSnapshot, ToolRequest, ValidationResult } from "@gcah/shared";
 
 const failedResult: ValidationResult = {
   id: "validation-1",
@@ -19,10 +19,13 @@ const failedResult: ValidationResult = {
 
 class FakeRunner implements ValidationRunner {
   calls = 0;
+  validatorIds: string[] = [];
   constructor(private readonly results: ValidationResult[]) {}
-  async runRequired(): Promise<ValidationResult[]> {
+  async runValidator(validatorId: string, configSnapshot: ConfigSnapshot): Promise<ValidationResult> {
     this.calls += 1;
-    return this.results;
+    this.validatorIds.push(validatorId);
+    expect(configSnapshot.id).toMatch(/^config:/u);
+    return this.results[this.calls - 1] ?? { ...failedResult, id: `validation-${this.calls}`, type: "custom" };
   }
 }
 
@@ -39,17 +42,28 @@ describe("ValidationService", () => {
   it("runs validators for mutations and skips read-only tools", async () => {
     const runner = new FakeRunner([failedResult]);
     const service = new ValidationService(runner);
+    const configSnapshot = createConfigSnapshot({
+      mode: "local",
+      budgets: { maxRounds: 10, maxTokens: 100000, maxElapsedMs: 3600000 },
+      validation: { required: ["test"] },
+      riskThresholds: { requireApproval: "medium", deny: "high" },
+      commands: { test: "pnpm test" },
+      allowedWorkspaceRoots: ["E:/workspace"],
+      executorBackend: "local",
+      llm: { provider: "mock" }
+    });
 
-    await expect(service.validate(request("read"))).resolves.toMatchObject({ required: false, readyToComplete: true });
-    await expect(service.validate(request("memory_search"))).resolves.toMatchObject({ required: false, readyToComplete: true });
+    await expect(service.validate(request("read"), configSnapshot)).resolves.toMatchObject({ required: false, readyToComplete: true });
+    await expect(service.validate(request("memory_search"), configSnapshot)).resolves.toMatchObject({ required: false, readyToComplete: true });
     expect(runner.calls).toBe(0);
 
-    await expect(service.validate(request("write"))).resolves.toMatchObject({
+    await expect(service.validate(request("write"), configSnapshot)).resolves.toMatchObject({
       required: true,
       readyToComplete: false,
       results: [{ failureCategory: "test_assertion" }]
     });
     expect(runner.calls).toBe(1);
+    expect(runner.validatorIds).toEqual(["test"]);
   });
 
   it("queues objective feedback once", () => {

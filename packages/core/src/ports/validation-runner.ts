@@ -1,5 +1,5 @@
-import type { ValidationResult } from "@gcah/shared";
+import type { ConfigSnapshot, ValidationResult } from "@gcah/shared";
 
 export interface ValidationRunner {
-  runRequired(): Promise<ValidationResult[]>;
+  runValidator(validatorId: string, configSnapshot: ConfigSnapshot): Promise<ValidationResult>;
 }

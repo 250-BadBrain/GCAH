@@ -49,6 +49,25 @@ function parseProjectYaml(text: string): Record<string, unknown> {
   return output;
 }
 
+const SECRET_PATTERN = /\b(api[_-]?key|secret|token|bearer|sk-[a-z0-9_-]+)/iu;
+
+function assertNoSecrets(value: unknown, path = "config"): void {
+  if (typeof value === "string") {
+    if (SECRET_PATTERN.test(value)) throw new Error(`secret-like value is not allowed in ${path}`);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertNoSecrets(item, `${path}[${index}]`));
+    return;
+  }
+  if (value !== null && typeof value === "object") {
+    for (const [key, child] of Object.entries(value)) {
+      if (SECRET_PATTERN.test(key)) throw new Error(`secret-like key is not allowed in ${path}.${key}`);
+      assertNoSecrets(child, `${path}.${key}`);
+    }
+  }
+}
+
 function mergeConfig(base: GcahConfig, ...overrides: Array<Record<string, unknown>>): Record<string, unknown> {
   const merged: Record<string, unknown> = structuredClone(base);
   for (const override of overrides) {
@@ -69,10 +88,11 @@ export async function loadConfig(input: LoadConfigInput): Promise<GcahConfig> {
 
   const project = input.projectConfigText === undefined ? {} : parseProjectYaml(input.projectConfigText);
 
-  const config = ConfigSchema.parse(mergeConfig(DEFAULT_CONFIG, project, input.cliOverrides, {
-    llm: { provider: typeof input.environmentMetadata.llmProvider === "string" ? input.environmentMetadata.llmProvider : DEFAULT_CONFIG.llm.provider },
-    allowedWorkspaceRoots: [input.workspaceRoot]
+  const parsed = ConfigSchema.parse(mergeConfig(DEFAULT_CONFIG, project, input.cliOverrides, {
+    llm: { provider: typeof input.environmentMetadata.llmProvider === "string" ? input.environmentMetadata.llmProvider : DEFAULT_CONFIG.llm.provider }
   }));
+  const config = parsed.allowedWorkspaceRoots.length === 0 ? { ...parsed, allowedWorkspaceRoots: [input.workspaceRoot] } : parsed;
+  assertNoSecrets(config);
 
   for (const validator of config.validation.required) {
     if (!(validator in config.commands)) throw new Error(`missing validation command for ${validator}`);

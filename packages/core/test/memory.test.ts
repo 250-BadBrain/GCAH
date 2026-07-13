@@ -49,4 +49,14 @@ describe("MemoryService", () => {
       }
     ]);
   });
+
+  it("applies character budget across all retrieved memory", async () => {
+    const repo = new FakeMemoryRepository();
+    const service = new MemoryService(repo, () => "2026-07-13T00:00:00.000Z");
+    await service.recordApprovalSummary({ workspaceId: "w1", runId: "r1", summary: "alpha beta gamma", tags: ["approval"] });
+    await service.recordApprovalSummary({ workspaceId: "w1", runId: "r2", summary: "alpha delta epsilon", tags: ["approval"] });
+
+    const results = await service.search({ workspaceId: "w1", tags: ["approval"], keywords: ["alpha"], limit: 5, charBudget: 20 });
+    expect(results.map((result) => result.text).join("").length).toBeLessThanOrEqual(20);
+  });
 });

@@ -24,6 +24,9 @@ describe("configuration", () => {
       "  maxRounds: 4",
       "validation:",
       "  required: [test]",
+      "riskThresholds:",
+      "  requireApproval: medium",
+      "  deny: high",
       "commands:",
       "  test: pnpm test"
     ].join("\n");
@@ -39,9 +42,22 @@ describe("configuration", () => {
 
     const snapshot = createConfigSnapshot(config);
     expect(snapshot.contentHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(snapshot.nonSensitiveConfig.riskThresholds).toEqual({ requireApproval: "medium", deny: "high" });
     expect(() => {
       snapshot.nonSensitiveConfig.mode = "other";
     }).toThrow();
+  });
+
+  it("preserves configured allowed roots according to project and CLI precedence", async () => {
+    await expect(loadConfig({
+      workspaceRoot: "E:/workspace",
+      cliOverrides: { allowedWorkspaceRoots: ["E:/cli"] },
+      environmentMetadata: {},
+      workspaceFence: new FakeFence(true),
+      projectConfigText: "allowedWorkspaceRoots: [E:/project]\n"
+    })).resolves.toMatchObject({
+      allowedWorkspaceRoots: ["E:/cli"]
+    });
   });
 
   it("rejects unknown fields, secret fields, invalid budgets, bad roots, and missing validators", async () => {
@@ -51,6 +67,22 @@ describe("configuration", () => {
       environmentMetadata: {},
       workspaceFence: new FakeFence(true),
       projectConfigText: "apiKey: secret\n"
+    })).rejects.toThrow(/secret/i);
+
+    await expect(loadConfig({
+      workspaceRoot: "E:/workspace",
+      cliOverrides: {},
+      environmentMetadata: {},
+      workspaceFence: new FakeFence(true),
+      projectConfigText: "commands:\n  test: OPENAI_API_KEY=sk-test pnpm test\n"
+    })).rejects.toThrow(/secret/i);
+
+    await expect(loadConfig({
+      workspaceRoot: "E:/workspace",
+      cliOverrides: { commands: { test: "pnpm test --token sk-test" } },
+      environmentMetadata: {},
+      workspaceFence: new FakeFence(true),
+      projectConfigText: ""
     })).rejects.toThrow(/secret/i);
 
     await expect(loadConfig({
@@ -84,5 +116,25 @@ describe("configuration", () => {
       workspaceFence: new FakeFence(false),
       projectConfigText: "mode: local\n"
     })).rejects.toThrow(/workspace/i);
+  });
+
+  it("creates deterministic SHA-256 snapshots for distinct non-secret config", async () => {
+    const first = await loadConfig({
+      workspaceRoot: "E:/workspace",
+      cliOverrides: {},
+      environmentMetadata: {},
+      workspaceFence: new FakeFence(true),
+      projectConfigText: "mode: local\n"
+    });
+    const second = await loadConfig({
+      workspaceRoot: "E:/workspace",
+      cliOverrides: { budgets: { maxRounds: 11 } },
+      environmentMetadata: {},
+      workspaceFence: new FakeFence(true),
+      projectConfigText: "mode: local\n"
+    });
+    expect(createConfigSnapshot(first).contentHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(createConfigSnapshot(first).contentHash).toBe(createConfigSnapshot(first).contentHash);
+    expect(createConfigSnapshot(first).contentHash).not.toBe(createConfigSnapshot(second).contentHash);
   });
 });
