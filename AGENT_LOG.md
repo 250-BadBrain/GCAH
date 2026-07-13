@@ -998,3 +998,25 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Final commit under review: `0e9c215` (`docs: record final harness quality fix`).
+
+## 2026-07-13 - T17
+
+- Scope: PR-07 `persistence-server`, T17 SQLite repositories and append-only audit persistence.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `a51e0de`.
+- Red evidence:
+  - `pnpm --filter @gcah/persistence test` exited 1 because `openSqliteRepositories` and `openAuditLog` were not exported.
+- Green evidence:
+  - Added shared repository contract and ran it against in-memory and SQLite adapters.
+  - Added Node built-in `node:sqlite` repository adapter with schema migration, active-run and step-sequence constraints, transactional rollback, monotonic event cursors, config and memory storage, and close support.
+  - Added append-only JSONL audit log with secret/path redaction.
+  - Focused persistence tests exited 0 with 3 files and 11 tests.
+- Refactor/verification evidence:
+  - Persistence package explicitly enables Node types because SQLite/audit are Node adapters.
+  - No new package dependency or build-script allowlist entry was added.
+  - `pnpm verify` exited 0 with 40 files and 101 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: pending.
