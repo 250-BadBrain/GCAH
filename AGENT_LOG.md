@@ -790,3 +790,23 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `ddfd7ff` (`feat: add core configuration snapshots`).
+
+## 2026-07-13 - T15
+
+- Scope: PR-05 `feedback-memory`, T15 bounded memory writes and keyword/tag retrieval.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/feedback-memory` at `E:/Desktop/GCAH-feedback-memory`.
+- Baseline commit: `d98cb8b`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- memory` exited 1 because `MemoryService` was not exported.
+- Green evidence:
+  - Added authorized memory constructors for project conventions, approval summaries, and failure summaries; LLM-origin writes are rejected.
+  - Added deterministic keyword/tag retrieval with workspace isolation, count/character budgets, and non-authoritative approval text.
+  - Focused memory tests exited 0 with 1 file and 2 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm verify` exited 0 with 33 files and 72 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `4b209b5` (`feat: add bounded memory service`).

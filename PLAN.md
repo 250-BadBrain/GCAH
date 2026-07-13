@@ -907,7 +907,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Only three authorized sources can persist memory and retrieval is bounded, deterministic, and non-authoritative.
 
-**Parallel:** Yes after T13; may proceed independently of server. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes after T13; may proceed independently of server. **Status:** Complete. **Commit:** `4b209b5` (`feat: add bounded memory service`).
 
 ### Task T16: Implement MockLlmClient and the complete harness loop
 
