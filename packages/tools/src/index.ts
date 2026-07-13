@@ -7,3 +7,7 @@ export { boundOutput, type BoundedOutput } from "./tools/output-limit.js";
 export { registerReadTools } from "./tools/read-tools.js";
 export { registerMutationTools } from "./tools/mutation-tools.js";
 export { sha256File } from "./tools/file-hash.js";
+export { matchCommandTemplate, type CommandMatch, type CommandTemplate } from "./command/template.js";
+export { CommandRunner, type SpawnRequest } from "./command/command-runner.js";
+export { registerCommandTools, type RegisterCommandToolsOptions } from "./tools/run-command.js";
+export { registerValidationTool, type RegisterValidationToolOptions } from "./tools/run-validation.js";
