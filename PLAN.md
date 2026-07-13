@@ -647,7 +647,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** All path attacks and directory-overlap cases fail closed before tool execution.
 
-**Parallel:** Yes, with T03/T09/T14 after T02. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T03/T09/T14 after T02. **Status:** Complete. **Commit:** `22e70ed` (`feat: add workspace fence`).
 
 ### Task T06: Implement budgets, usage accounting, and deterministic stop details
 

@@ -543,3 +543,25 @@
   - `pnpm install --frozen-lockfile` exited 0.
   - `git diff --check` exited 0.
 - Commit: `adc7ad3` (`feat: add core port contracts`).
+
+## 2026-07-13 - T05
+
+- Scope: PR-03 `safety-governance`, T05 workspace roots, real paths, overlap, traversal, and symlink safety.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/safety-governance` at `E:/Desktop/GCAH-safety-governance`.
+- Baseline commit: `ae4f7d7`.
+- Red evidence:
+  - `pnpm --filter @gcah/governance test -- workspace-fence` exited 1 because `packages/governance/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/governance` package and `createWorkspaceFence` with injected filesystem support.
+  - Covered allowed workspace resolution, disallowed roots, protected-root parent/child/equal overlap, traversal, absolute external paths, symlink-like realpath escape, and nearest-existing-parent checks for new targets.
+  - `pnpm --filter @gcah/governance test -- workspace-fence` exited 0 with 1 file and 5 tests.
+- Refactor/verification evidence:
+  - Added `@types/node` as a normal dev dependency for Node fs/path type coverage.
+  - Added governance to root build/typecheck scripts and TypeScript references.
+  - `pnpm lint` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `22e70ed` (`feat: add workspace fence`).
