@@ -13,12 +13,16 @@ import type { LlmClientPort, LlmClientResult } from "../src/index.js";
 
 class FakeClock implements Clock {
   private ticks = 0;
+  private extraMs = 0;
   now(): Date {
     this.ticks += 1;
-    return new Date(Date.UTC(2026, 0, 1, 0, 0, this.ticks));
+    return new Date(Date.UTC(2026, 0, 1, 0, 0, this.ticks) + this.extraMs);
   }
   nowIso(): string {
     return this.now().toISOString();
+  }
+  advance(ms: number): void {
+    this.extraMs += ms;
   }
 }
 
@@ -50,7 +54,7 @@ class SequencedValidationRunner implements ValidationRunner {
 function config(): ConfigSnapshot {
   return createConfigSnapshot({
     mode: "local",
-    budgets: { maxRounds: 8, maxTokens: 1000, maxElapsedMs: 10000 },
+    budgets: { maxRounds: 8, maxTokens: 1000, maxElapsedMs: 60000 },
     validation: { required: ["test"] },
     riskThresholds: { requireApproval: "medium", deny: "high" },
     commands: { test: "pnpm test" },
@@ -175,6 +179,125 @@ describe("AgentLoop", () => {
       stopReason: "BUDGET_EXHAUSTED",
       stopDetail: { kind: "tokens", used: 2, remaining: 0 }
     });
+  });
+
+  it("stops when elapsed budget is exhausted before completion", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const lowElapsedConfig = {
+      ...config(),
+      nonSensitiveConfig: {
+        ...config().nonSensitiveConfig,
+        budgets: { maxRounds: 8, maxTokens: 1000, maxElapsedMs: 1 }
+      }
+    };
+    const client = new ScriptedClient([
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await loop.start({ runId: "run-5", workspaceId: "workspace-1", taskSummary: "elapsed", configSnapshot: lowElapsedConfig, maxSteps: 2 });
+
+    await expect(unitOfWork.repositories.runs.getById("run-5")).resolves.toMatchObject({
+      status: "STOPPED",
+      stopReason: "BUDGET_EXHAUSTED",
+      stopDetail: { kind: "elapsedMs" }
+    });
+  });
+
+  it("persists FinishAction before completing the run", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await loop.start({ runId: "run-6", workspaceId: "workspace-1", taskSummary: "finish", configSnapshot: config(), maxSteps: 2 });
+    const steps = await unitOfWork.repositories.steps.listByRun("run-6");
+    const actions = await unitOfWork.repositories.actions.listByStep(steps[0]?.id ?? "");
+
+    expect(actions).toEqual([expect.objectContaining({ kind: "finish", finishSummary: "done", status: "EXECUTED" })]);
+  });
+
+  it("pauses for injected approval and can continue after approval", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "finish", summary: "needs approval", rationale: "complete" }, usage: null },
+      { response: { kind: "finish", summary: "approved done", rationale: "complete" }, usage: null }
+    ]);
+    let pauses = 0;
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([]),
+      approval: {
+        shouldPauseForFinish: () => {
+          pauses += 1;
+          return pauses === 1;
+        },
+        consumeApproval: async () => "approved"
+      }
+    });
+
+    await loop.start({ runId: "run-7", workspaceId: "workspace-1", taskSummary: "approval", configSnapshot: config(), maxSteps: 2 });
+    await expect(unitOfWork.repositories.runs.getById("run-7")).resolves.toMatchObject({ status: "WAITING_APPROVAL" });
+
+    await loop.continueAfterApproval("run-7");
+    await expect(unitOfWork.repositories.runs.getById("run-7")).resolves.toMatchObject({ status: "COMPLETED" });
+  });
+
+  it("fails runs and records an event when injected ports throw", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: { complete: async () => { throw new Error("network secret sk-abc"); } },
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await expect(loop.start({ runId: "run-8", workspaceId: "workspace-1", taskSummary: "port throw", configSnapshot: config(), maxSteps: 2 })).rejects.toThrow(/network/);
+    await expect(unitOfWork.repositories.runs.getById("run-8")).resolves.toMatchObject({ status: "FAILED", stopReason: "UNFIXABLE_FAILURE" });
+    const events = await unitOfWork.repositories.events.listAfterCursor("run-8", 0);
+    expect(events.at(-1)).toMatchObject({ type: "run.failed", summary: "Injected port failed" });
+  });
+
+  it("redacts tool output before persisting events", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "tool", tool: "read", args: { path: "README.md" }, rationale: "read" }, usage: null },
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "secret sk-test E:/Users/AAA/file" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await loop.start({ runId: "run-9", workspaceId: "workspace-1", taskSummary: "redact", configSnapshot: config(), maxSteps: 3 });
+
+    const events = await unitOfWork.repositories.events.listAfterCursor("run-9", 0);
+    expect(events.find((event) => event.type === "tool.result")?.summary).toBe("tool output redacted");
   });
 });
 

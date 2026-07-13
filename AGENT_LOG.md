@@ -920,3 +920,26 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Commit: `9cd2582` (`fix: enforce loop token budget`).
+
+## 2026-07-13 - PR-06 Review Fixes
+
+- Scope: PR-06 `harness-loop`, review fixes for T16.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/harness-loop` at `E:/Desktop/GCAH-harness-loop`.
+- Baseline commit: `500a582`.
+- Review findings addressed:
+  - Added elapsed budget enforcement in the loop.
+  - Persisted FinishAction before run completion.
+  - Added injected approval pause/continue/reject path without importing governance adapters.
+  - Converted injected port exceptions into terminal failed runs with safe failure events.
+  - Redacted sensitive tool/validation output before event persistence.
+- Regression evidence:
+  - Red tests reproduced elapsed-budget bypass, missing finish action persistence, unreachable approval pause/continue, active runs after port exceptions, and unredacted tool output events.
+  - Focused loop tests exited 0 with 4 files and 13 tests.
+  - `pnpm verify` exited 0 with 38 files and 89 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Initial review evidence:
+  - Spec compliance reviewer `019f5c08-6744-7471-88e6-f48cbe5c4d20`: FAIL with approval, elapsed-budget, and finish-action persistence findings.
+  - Code quality/security reviewer `019f5c08-9f0e-7070-a5c0-109a9d7a8f9b`: FAIL with elapsed-budget, port-exception, and tool-output redaction findings.
+- Commit: pending.

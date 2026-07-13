@@ -19,6 +19,10 @@ export interface AgentLoopDependencies {
   llm: LlmClientPort;
   toolGateway: ToolGatewayPort;
   validationRunner: ValidationRunner;
+  approval?: {
+    shouldPauseForFinish?(input: { runId: string; summary: string }): boolean;
+    consumeApproval?(runId: string): Promise<"approved" | "rejected" | "pending">;
+  };
 }
 
 export interface AgentLoopStartInput {
@@ -42,12 +46,31 @@ export class AgentLoop {
   async start(input: AgentLoopStartInput): Promise<Run> {
     const budgets = readBudgetLimits(input.configSnapshot);
     const tracker = new BudgetTracker(budgets, this.deps.clock);
-    let mutationValidation: MutationValidationState = "none";
-    let run = await this.createRun(input);
+    const mutationValidation: MutationValidationState = "none";
+    const run = await this.createRun(input);
+    try {
+      return await this.runUntilPauseOrTerminal(input, run, tracker, mutationValidation, 1);
+    } catch (error) {
+      await this.failRun(run, "Injected port failed");
+      throw error;
+    }
+  }
 
-    for (let sequence = 1; sequence <= input.maxSteps; sequence += 1) {
+  private async runUntilPauseOrTerminal(
+    input: AgentLoopStartInput,
+    initialRun: Run,
+    tracker: BudgetTracker,
+    initialValidation: MutationValidationState,
+    startSequence: number
+  ): Promise<Run> {
+    let run = initialRun;
+    let mutationValidation = initialValidation;
+
+    for (let sequence = startSequence; sequence <= input.maxSteps; sequence += 1) {
       const roundStop = tracker.recordRound(sequence);
       if (roundStop !== null) return this.stop(run, roundStop.reason, roundStop.detail);
+      const elapsedStop = tracker.checkElapsed(sequence);
+      if (elapsedStop !== null) return this.stop(run, elapsedStop.reason, elapsedStop.detail);
 
       const feedback = this.feedback.consumeOnce();
       const context = buildLoopContext({
@@ -76,6 +99,13 @@ export class AgentLoop {
       if (parsed.kind === "stop") return this.stop(run, parsed.reason);
 
       if (parsed.response.kind === "finish") {
+        const finishAction = await this.persistFinishAction(run.id, step.id, sequence, parsed.response.summary, parsed.response.rationale);
+        if (this.deps.approval?.shouldPauseForFinish?.({ runId: run.id, summary: parsed.response.summary }) === true) {
+          run = transitionRun(run, { id: `approval:${sequence}`, type: "wait_for_approval", at: this.deps.clock.nowIso() });
+          await this.deps.unitOfWork.repositories.runs.update(run);
+          await this.appendEvent(run.id, step.id, "approval.required", "approval required", finishAction.id);
+          return run;
+        }
         const decision = evaluateCompletion({
           finish: parsed.response,
           pendingApproval: false,
@@ -85,7 +115,7 @@ export class AgentLoop {
         if (decision.allowed) {
           run = transitionRun(run, { id: `complete:${sequence}`, type: "complete", at: this.deps.clock.nowIso() });
           await this.deps.unitOfWork.repositories.runs.update(run);
-          await this.appendEvent(run.id, step.id, "run.completed", parsed.response.summary);
+          await this.appendEvent(run.id, step.id, "run.completed", parsed.response.summary, finishAction.id);
           return run;
         }
         await this.appendEvent(run.id, step.id, "finish.blocked", decision.reason);
@@ -94,7 +124,7 @@ export class AgentLoop {
 
       const action = await this.persistToolAction(run.id, step.id, sequence, parsed.response);
       const toolResult = await this.deps.toolGateway.execute({ tool: parsed.response.tool, args: parsed.response.args });
-      await this.appendEvent(run.id, step.id, "tool.result", toolResult.summary, action.id);
+      await this.appendEvent(run.id, step.id, "tool.result", safeEventSummary(toolResult.summary, "tool output redacted"), action.id);
       if (toolResult.status === "ERROR") return this.stop(run, "POLICY_DENIED");
 
       if (MUTATION_TOOLS.has(parsed.response.tool)) {
@@ -109,7 +139,7 @@ export class AgentLoop {
         mutationValidation = validation.readyToComplete ? "passed" : "failed";
         for (const result of validation.results) {
           this.feedback.enqueueValidation(result);
-          await this.appendEvent(run.id, step.id, `validation.${result.result.toLowerCase()}`, result.diagnosticSummary ?? result.result, result.id);
+          await this.appendEvent(run.id, step.id, `validation.${result.result.toLowerCase()}`, safeEventSummary(result.diagnosticSummary ?? result.result, "validation output redacted"), result.id);
           if (result.failureFingerprint !== null) {
             const repeated = tracker.recordFailureFingerprint(result.failureFingerprint, sequence);
             if (repeated !== null) return this.stop(run, repeated.reason);
@@ -129,7 +159,30 @@ export class AgentLoop {
   }
 
   async continueAfterApproval(runId: string): Promise<Run | null> {
-    return this.deps.unitOfWork.repositories.runs.getById(runId);
+    const run = await this.deps.unitOfWork.repositories.runs.getById(runId);
+    if (run === null) return null;
+    const decision = await this.deps.approval?.consumeApproval?.(runId);
+    if (decision === "rejected") {
+      const next = transitionRun(run, { id: `approval-rejected:${this.deps.clock.nowIso()}`, type: "stop", reason: "APPROVAL_REJECTED", at: this.deps.clock.nowIso() });
+      await this.deps.unitOfWork.repositories.runs.update(next);
+      await this.appendEvent(next.id, null, "approval.rejected", "approval rejected");
+      return next;
+    }
+    if (decision !== "approved") return run;
+    const next = transitionRun(run, { id: `approval-accepted:${this.deps.clock.nowIso()}`, type: "interrupt", at: this.deps.clock.nowIso() });
+    const resumed = { ...next, status: "RUNNING" as const, stopReason: null, stopDetail: null, updatedAt: this.deps.clock.nowIso() };
+    await this.deps.unitOfWork.repositories.runs.update(resumed);
+    await this.appendEvent(resumed.id, null, "approval.approved", "approval approved");
+    const snapshot = await this.deps.unitOfWork.repositories.config.getSnapshot(resumed.configSnapshotId);
+    if (snapshot === null) return resumed;
+    const tracker = new BudgetTracker(readBudgetLimits(snapshot), this.deps.clock);
+    return this.runUntilPauseOrTerminal({
+      runId: resumed.id,
+      workspaceId: resumed.workspaceId,
+      taskSummary: resumed.taskSummary,
+      configSnapshot: snapshot,
+      maxSteps: 10
+    }, resumed, tracker, "none", 1);
   }
 
   async cancel(runId: string): Promise<Run | null> {
@@ -214,6 +267,35 @@ export class AgentLoop {
     return persisted;
   }
 
+  private async persistFinishAction(runId: string, stepId: string, sequence: number, summary: string, rationale: string): Promise<Action> {
+    const at = this.deps.clock.nowIso();
+    const action: Action = {
+      id: `action:${runId}:${sequence}`,
+      stepId,
+      kind: "finish",
+      toolName: null,
+      args: {},
+      finishSummary: summary,
+      displayRationale: rationale.slice(0, 2048),
+      normalizedSummary: "finish action",
+      riskCategory: "completion",
+      status: "EXECUTED",
+      transitionIds: [],
+      createdAt: at,
+      updatedAt: at
+    };
+    const persisted = await this.deps.unitOfWork.repositories.actions.create(action);
+    await this.appendEvent(runId, stepId, "action.proposed", persisted.normalizedSummary, persisted.id);
+    return persisted;
+  }
+
+  private async failRun(run: Run, summary: string): Promise<Run> {
+    const next = transitionRun(run, { id: `fail:${this.deps.clock.nowIso()}`, type: "fail", at: this.deps.clock.nowIso() });
+    await this.deps.unitOfWork.repositories.runs.update(next);
+    await this.appendEvent(next.id, null, "run.failed", summary);
+    return next;
+  }
+
   private async stop(run: Run, reason: "BUDGET_EXHAUSTED" | "POLICY_DENIED" | "REPEATED_FAILURE" | "PROTOCOL_ERROR", detail?: BudgetStopDetail): Promise<Run> {
     const transition = reason === "BUDGET_EXHAUSTED"
       ? { id: `stop:${reason}:${this.deps.clock.nowIso()}`, type: "stop" as const, reason, detail: detail ?? { kind: "rounds" as const, limit: 0, used: 0, remaining: 0, observedAtStep: 0 }, at: this.deps.clock.nowIso() }
@@ -246,4 +328,10 @@ function readBudgetLimits(configSnapshot: ConfigSnapshot): BudgetLimits {
     repeatedFailureLimit: 3,
     maxProtocolRetries: 3
   };
+}
+
+function safeEventSummary(value: string, replacement: string): string {
+  return /(sk-[A-Za-z0-9_-]+|api[_-]?key\s*=|authorization:\s*bearer\s+|[A-Za-z]:[\\/]+Users[\\/]+|\/home\/)/iu.test(value)
+    ? replacement
+    : value.slice(0, 4096);
 }
