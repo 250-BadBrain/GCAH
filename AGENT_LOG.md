@@ -718,3 +718,24 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `4c8185a` (`feat: add structured command tools`).
+
+## 2026-07-13 - PR-04 Review Fixes
+
+- Scope: PR-04 independent review findings for T09-T12.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5bb7-f9d8-7241-ad5c-540dee1ad29b`.
+  - Code quality/security reviewer: `019f5bb8-3eb0-7670-9335-7884b7c7753b`.
+- Findings addressed:
+  - Removed raw `LocalExecutor`, command runner, and tool registration exports from the public package index to avoid public bypass paths.
+  - Added execution context so mutation and command tools reject calls that do not come through `ToolGateway`.
+  - Updated tests to execute tools via `createToolGateway`, preserving governance/persistence-before-effect ordering.
+  - Added `CommandValidationRunner` implementing the core `ValidationRunner` port.
+  - ToolGateway now maps thrown tool errors to stable summaries without stack output.
+- Regression evidence:
+  - Focused PR-04 tests exited 0 with 8 files and 14 tests after fixes.
+  - `pnpm verify` exited 0 with 28 files and 64 tests after fixes.
+  - `pnpm build` exited 0 after fixes.
+  - `git diff --check` exited 0 after fixes.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `4ad1e16` (`fix: close tool execution bypasses`).
