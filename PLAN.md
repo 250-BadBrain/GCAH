@@ -205,7 +205,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor port method names for one responsibility; typecheck.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** Adapters can be built without core importing persistence. **Parallel:** No. **Status:** Complete. **Commit:** pending follow-up hash record.
+**Done:** Adapters can be built without core importing persistence. **Parallel:** No. **Status:** Complete. **Commit:** `adc7ad3` (`feat: add core port contracts`).
 
 #### T03b — Deterministic in-memory repositories
 

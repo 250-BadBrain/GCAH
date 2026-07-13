@@ -424,7 +424,7 @@
   - Mandatory pause conditions still apply.
 - Current continuation point: PR-02 `core-domain`.
 - Main baseline: `b21607aea7310b961f427a727fd2f97faa2c02f6`.
-- Commit: pending follow-up hash record.
+- Commit: `adc7ad3` (`feat: add core port contracts`).
 
 ## 2026-07-13 - T03a
 
