@@ -1062,3 +1062,23 @@
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
 - Commit: `ac22440` (`feat: add server cookie auth`).
+
+## 2026-07-13 - T18c
+
+- Scope: PR-07 `persistence-server`, T18c persisted SSE replay and interruption startup handling.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `8cf1be7`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- sse restart` exited 1 because event replay routes and startup interruption helper were missing.
+- Green evidence:
+  - Added committed event JSON replay with cursor and SSE replay honoring `Last-Event-ID`.
+  - Added startup helper that marks active runs interrupted without resuming execution.
+  - Focused server tests exited 0 with 4 files and 6 tests.
+- Refactor/verification evidence:
+  - SSE publishes only events already persisted in the repository.
+  - `pnpm verify` exited 0 with 44 files and 107 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: pending.

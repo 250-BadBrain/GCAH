@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { CreateRunRequestSchema, type RunDto } from "@gcah/shared";
+import { CreateRunRequestSchema, type EventDto, type RunDto } from "@gcah/shared";
 import type { Clock, UnitOfWork } from "@gcah/core";
 import { cloneInterruptedRunAsPending, transitionRun } from "@gcah/core";
 
@@ -107,6 +107,29 @@ export function createServerApp(options: CreateServerAppOptions): FastifyInstanc
     return reply.code(201).send(toRunDto(clone));
   });
 
+  app.get("/api/runs/:id/events", async (request) => {
+    const id = (request.params as { id: string }).id;
+    const cursor = Number((request.query as { cursor?: string }).cursor ?? 0);
+    const events = await options.unitOfWork.repositories.events.listAfterCursor(id, cursor);
+    return {
+      events: events.map(toEventDto),
+      nextCursor: events.at(-1)?.cursor ?? null
+    };
+  });
+
+  app.get("/api/runs/:id/events/stream", async (request, reply) => {
+    const id = (request.params as { id: string }).id;
+    const cursor = Number(request.headers["last-event-id"] ?? 0);
+    const events = await options.unitOfWork.repositories.events.listAfterCursor(id, cursor);
+    const body = events.map((event) => [
+      `id: ${event.cursor}`,
+      `event: ${event.type}`,
+      `data: ${JSON.stringify(toEventDto(event))}`,
+      ""
+    ].join("\n")).join("\n");
+    return reply.header("content-type", "text/event-stream; charset=utf-8").send(body);
+  });
+
   return app;
 }
 
@@ -117,6 +140,16 @@ function parseCookie(header: string): Map<string, string> {
     if (rawKey !== undefined && rawKey.length > 0) cookies.set(rawKey, rawValue.join("="));
   }
   return cookies;
+}
+
+function toEventDto(event: Awaited<ReturnType<UnitOfWork["repositories"]["events"]["append"]>>): EventDto {
+  return {
+    id: event.id,
+    type: event.type,
+    summary: event.summary,
+    cursor: event.cursor,
+    createdAt: event.createdAt
+  };
 }
 
 function toRunDto(run: Awaited<ReturnType<UnitOfWork["repositories"]["runs"]["create"]>>): RunDto {
