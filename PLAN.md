@@ -218,7 +218,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor clone/index helpers and add deterministic reset.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** T03 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** pending follow-up hash record.
+**Done:** T03 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** `de920fe` (`feat: add in-memory repositories`).
 
 #### T16a — LlmClient and scripted MockLlmClient
 
