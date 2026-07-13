@@ -314,4 +314,4 @@
   - `pnpm build` exited 0.
   - `pnpm verify` exited 0.
 - Generated output: removed `packages/shared/dist` after validation; it remains ignored build output.
-- Commit: pending follow-up hash record.
+- Commit: `5440937` (`chore: add shared build script`).
