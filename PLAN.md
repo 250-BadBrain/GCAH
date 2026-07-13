@@ -595,7 +595,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** In-memory repositories satisfy every invariant above and are the default test adapters.
 
-**Parallel:** Yes, with T05/T09/T14 after T02. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T05/T09/T14 after T02. **Status:** Complete. **Commit:** `de920fe` (`feat: add in-memory repositories`), with review fix `ac05506` (`fix: resolve core domain review blockers`).
 
 ### Task T04: Implement Run/Action state machines and interruption policy
 

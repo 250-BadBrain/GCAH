@@ -503,6 +503,7 @@
   - Budget missing usage now returns a cost-accounting warning event request and does not increment token usage.
   - Repeated failure and protocol retry stops now carry deterministic details; budget snapshots track repeated failures.
   - `BUDGET_EXHAUSTED` run transitions now require and carry `BudgetStopDetail`.
+  - Follow-up fix `ac05506` adds a real `RunRepository.listActive()` contract/adapter for repository-backed interruption, treats `null` LLM usage as unavailable, and persists run/action transition IDs through shared entity state so idempotency survives clone-safe repository reads.
 - Regression evidence:
   - Added focused failing tests before implementation for repositories, transaction rollback, interruption/clone, missing usage warning, repeated/protocol details, and budget stop detail.
   - After fixes, `pnpm --filter @gcah/persistence test` exited 0.
@@ -510,10 +511,15 @@
   - `pnpm verify` exited 0 with 14 files and 34 tests.
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
-- Note:
-  - Transition idempotency remains in-memory for PR-02 because no shared persisted transition-id field exists yet; repository/audit persistence tasks will add durable transition records.
+- Final re-verification evidence:
+  - `pnpm verify` exited 0 with 14 files and 35 tests after `ac05506`.
+  - `pnpm build` exited 0 after `ac05506`.
+  - `git diff --check` exited 0 after `ac05506`.
+- Final independent review evidence:
+  - Spec compliance re-reviewer `019f5b43-dfa1-77c0-820b-beaa68f1c638`: PASS.
+  - Code quality/security re-reviewer `019f5b44-0dfd-7cb1-af16-ee2d97c24ddf`: PASS.
 - Generated output: removed package `dist` directories after build validation.
-- Commit: `5ccf1cf` (`fix: complete core domain review gaps`).
+- Commits: `5ccf1cf` (`fix: complete core domain review gaps`), `ac05506` (`fix: resolve core domain review blockers`).
 
 ## 2026-07-13 - T03a
 
@@ -536,4 +542,4 @@
   - `pnpm build` exited 0.
   - `pnpm install --frozen-lockfile` exited 0.
   - `git diff --check` exited 0.
-- Commit: pending follow-up hash record.
+- Commit: `adc7ad3` (`feat: add core port contracts`).
