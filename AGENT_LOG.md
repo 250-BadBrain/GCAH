@@ -965,3 +965,22 @@
   - Spec compliance re-reviewer `019f5c11-a2e7-7180-92ca-e7eba0d22f22`: FAIL with post-work elapsed and approval rejection feedback findings.
   - Code quality/security re-reviewer `019f5c11-eb32-7a61-95a1-671969455c15`: FAIL with post-work elapsed, approval validation state, and resume exception findings.
 - Commit: `8a8ec51` (`fix: handle approval resume edge cases`).
+
+## 2026-07-13 - PR-06 Final Quality Fix
+
+- Scope: PR-06 `harness-loop`, final quality re-review fix.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/harness-loop` at `E:/Desktop/GCAH-harness-loop`.
+- Baseline commit: `575e076`.
+- Finding addressed:
+  - Approval `consumeApproval` port exceptions now terminally fail the waiting run.
+- Regression evidence:
+  - Red test reproduced `WAITING_APPROVAL` run left active when approval consumption threw.
+  - Focused loop tests exited 0 with 5 files and 20 tests.
+  - `pnpm verify` exited 0 with 38 files and 94 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Review evidence before this fix:
+  - Spec compliance final re-reviewer `019f5c1b-4174-7da1-aad5-d228b9dd6013`: PASS.
+  - Code quality/security final re-reviewer `019f5c1b-8b6a-7030-b834-918028d63409`: FAIL with approval consumption exception finding.
+- Commit: pending.

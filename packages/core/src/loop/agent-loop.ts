@@ -174,7 +174,13 @@ export class AgentLoop {
   async continueAfterApproval(runId: string): Promise<Run | null> {
     const run = await this.deps.unitOfWork.repositories.runs.getById(runId);
     if (run === null) return null;
-    const decision = await this.deps.approval?.consumeApproval?.(runId);
+    let decision: "approved" | "rejected" | "pending" | undefined;
+    try {
+      decision = await this.deps.approval?.consumeApproval?.(runId);
+    } catch (error) {
+      await this.failRun(run, "Injected port failed");
+      throw error;
+    }
     if (decision === "rejected") {
       const paused = this.paused.get(runId);
       const resumed = { ...run, status: "RUNNING" as const, stopReason: null, stopDetail: null, updatedAt: this.deps.clock.nowIso() };

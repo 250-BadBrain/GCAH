@@ -389,6 +389,29 @@ describe("AgentLoop", () => {
     await expect(unitOfWork.repositories.runs.getById("run-7d")).resolves.toMatchObject({ status: "FAILED", stopReason: "UNFIXABLE_FAILURE" });
   });
 
+  it("fails runs when approval consumption throws", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "finish", summary: "needs approval", rationale: "complete" }, usage: null }
+    ]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "unused" }) },
+      validationRunner: new SequencedValidationRunner([]),
+      approval: {
+        shouldPauseForFinish: () => true,
+        consumeApproval: async () => { throw new Error("approval backend down"); }
+      }
+    });
+    await loop.start({ runId: "run-7e", workspaceId: "workspace-1", taskSummary: "approval throw", configSnapshot: config(), maxSteps: 2 });
+
+    await expect(loop.continueAfterApproval("run-7e")).rejects.toThrow(/approval backend/);
+    await expect(unitOfWork.repositories.runs.getById("run-7e")).resolves.toMatchObject({ status: "FAILED", stopReason: "UNFIXABLE_FAILURE" });
+  });
+
   it("fails runs and records an event when injected ports throw", async () => {
     const clock = new FakeClock();
     const unitOfWork = createTestUnitOfWork();
