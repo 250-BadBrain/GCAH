@@ -658,3 +658,24 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `e046b0f` (`feat: add governed tool gateway`).
+
+## 2026-07-13 - T10
+
+- Scope: PR-04 `governed-tools`, T10 list/read, bounded output, and safe LocalExecutor file access.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `62d17d8`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- read-tools local-executor` exited 1 because `LocalExecutor`, `registerReadTools`, and `boundOutput` were not exported.
+- Green evidence:
+  - Added `LocalExecutor`, bounded output helper, and list/read tool registration.
+  - Read-only tools resolve targets through the workspace fence, sort list output deterministically, cap output, return stable boundary errors, and never mark validation required.
+  - Focused read/local-executor tests exited 0 with 2 files and 3 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 23 files and 56 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `260ae6b` (`feat: add read-only local tools`).

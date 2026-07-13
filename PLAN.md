@@ -777,7 +777,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Read-only tools are bounded, fenced, audit-ready, and never request validation.
 
-**Parallel:** No within PR-04. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No within PR-04. **Status:** Complete. **Commit:** `260ae6b` (`feat: add read-only local tools`).
 
 ### Task T11: Implement patch, write, and delete with stale-base and mutation semantics
 
