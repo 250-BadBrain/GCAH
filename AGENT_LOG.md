@@ -895,9 +895,10 @@
 - Green evidence:
   - Added `AgentLoop.start/continueAfterApproval/cancel` using only injected core ports and repositories.
   - Loop creates serial steps, parses every LLM response, persists proposed actions before tool effects, routes tools through `ToolGatewayPort`, runs validation for mutations, feeds validation failures back once, blocks FinishAction until validation passes, and stops on injected tool-gateway denial.
-  - Focused core loop tests exited 0 with 3 files and 6 tests.
+  - Added import-boundary test proving core loop files do not import `@gcah/tools`, `@gcah/persistence`, `@gcah/credentials`, `@gcah/llm`, or server/worker paths.
+  - Focused core loop tests exited 0 with 4 files and 7 tests.
 - Refactor/verification evidence:
-  - `pnpm verify` exited 0 with 37 files and 82 tests.
+  - `pnpm verify` exited 0 with 38 files and 83 tests.
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
