@@ -179,7 +179,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Rerun to green; refactor bounded primitives and exports.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** Only one registered structured action can parse, and normalized tool requests/results are tested and exported. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Only one registered structured action can parse, and normalized tool requests/results are tested and exported. **Parallel:** No. **Status:** Complete. **Commit:** pending follow-up hash record.
 
 #### T02c — Safe display, event, and API schemas
 

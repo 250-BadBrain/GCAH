@@ -240,3 +240,32 @@
   - `git diff --check` exited 0.
 - External operations: npm metadata was checked for Zod version; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
 - Commit: `fe9553a` (`feat: add shared entity status schemas`).
+
+## 2026-07-13 - T02b
+
+- Scope: PR-01 `foundation-contracts`, T02b AgentResponse and tool argument schemas.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `536381bc0e0adf6d34614e7113b56ed791cedf07`.
+- Files added/modified:
+  - `packages/shared/src/agent-response.ts`
+  - `packages/shared/src/tool-contracts.ts`
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/agent-response.test.ts`
+  - `packages/shared/test/tool-contracts.test.ts`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - `pnpm --filter @gcah/shared test -- agent-response tool-contracts` exited 1 because `../src/agent-response.js` and `../src/tool-contracts.js` did not exist.
+- Green evidence:
+  - Added strict `ToolAction | FinishAction` parsing, supported tool enum, per-tool argument schemas, structured command args, `ToolRequestSchema`, and tool result export.
+  - `pnpm --filter @gcah/shared test -- agent-response tool-contracts` exited 0 with 2 files and 6 tests.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/shared test` exited 0 with 5 files and 11 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- External operations: none beyond local test/typecheck/lint/install verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: pending follow-up hash record.
