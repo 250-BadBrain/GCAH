@@ -749,3 +749,23 @@
   - Spec compliance re-reviewer `019f5bc0-a526-7c41-a328-4c2615959534`: PASS.
   - Code quality/security re-reviewer `019f5bc0-db1f-74a2-82d6-17cdbb99da92`: PASS.
 - Commit under review: `29ccefb` (`docs: record tool review fixes`).
+
+## 2026-07-13 - T13
+
+- Scope: PR-05 `feedback-memory`, T13 validation orchestration, failure classification, fingerprints, and feedback.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/feedback-memory` at `E:/Desktop/GCAH-feedback-memory`.
+- Baseline commit: `4ef1191`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- validation failure-classifier fingerprint` exited 1 because classifier, fingerprint, `ValidationService`, and `FeedbackQueue` were not exported.
+- Green evidence:
+  - Added deterministic failure classifier, stable fingerprint normalization, validation trigger service, and one-shot feedback queue.
+  - Covered mutation-triggered validation, read-only skip, equivalent failure fingerprinting, repairability categories, and objective feedback consumption.
+  - Focused validation tests exited 0 with 3 files and 4 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm verify` exited 0 with 31 files and 68 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `71f1efc` (`feat: add validation feedback services`).

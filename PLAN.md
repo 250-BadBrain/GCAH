@@ -855,7 +855,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Equivalent failures share a fingerprint, trigger rules match SPEC, and completion readiness is objectively derivable.
 
-**Parallel:** Yes, with T06 after T04. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T06 after T04. **Status:** Complete. **Commit:** `71f1efc` (`feat: add validation feedback services`).
 
 ### Task T14: Implement configuration loading, validation, merge order, and immutable snapshots
 
