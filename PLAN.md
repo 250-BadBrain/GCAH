@@ -283,7 +283,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [x] Refactor auth error paths; typecheck.
 - [x] Update logs/status; commit and record hash.
 
-**Done:** Browser-readable storage never receives bearer/admin token. **Parallel:** No. **Status:** Complete. **Commit:** pending.
+**Done:** Browser-readable storage never receives bearer/admin token. **Parallel:** No. **Status:** Complete. **Commit:** `ac22440` (`feat: add server cookie auth`).
 
 #### T18c — Persisted SSE replay and interruption startup handling
 
