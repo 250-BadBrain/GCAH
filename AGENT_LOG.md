@@ -58,3 +58,31 @@
   - The cold-start agent made assumptions after encountering ambiguity instead of strictly pausing, so the pause-on-ambiguity rule remains mandatory.
 - Decision:
   - Cold-start code was fully discarded and is not part of formal implementation.
+
+## 2026-07-12 - S01
+
+- Scope: Credential-store backend spike for Windows native validation and cross-platform assessment.
+- Agent: OpenAI Codex
+- Branch/worktree: `spike/credential-store` at `E:/Desktop/GCAH-spike-credential`
+- Base commit: `be52022e7d341a58d0986a161b19b3f9353c8826`
+- Evidence:
+  - `.spikes/credential-store/README.md`
+  - `.spikes/credential-store/package.json`
+  - `.spikes/credential-store/probe-cross-keychain.mjs`
+  - `.spikes/credential-store/pnpm-lock.yaml`
+  - `docs/spikes/credential-store.md`
+- Commands:
+  - `pnpm install`
+  - `pnpm probe`
+  - `cmdkey /list | Select-String -Pattern "GCAH-S01-spike"`
+  - `pnpm list --depth 1`
+  - `pnpm audit --audit-level moderate`
+- Result:
+  - Windows native probe passed for set, get, status-by-presence, update, clear, and sentinel cleanup.
+  - `cross-keychain` selected `native-windows` with Native DPAPI bindings.
+  - Probe found no sentinel plaintext in the disposable probe directory or keyring data/config roots.
+  - `cmdkey /list` showed no remaining `GCAH-S01-spike` item after cleanup.
+  - Docker was unavailable on this host; macOS Keychain and Linux Secret Service are documented as only documentation verification.
+- Decision:
+  - Recommend `cross-keychain@1.1.0` for T19, wrapped by a GCAH adapter that explicitly allows only OS-backed backends and rejects `file`, `null`, and unknown backends.
+  - Do not begin formal CredentialStore implementation in S01.
