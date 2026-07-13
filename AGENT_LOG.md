@@ -149,3 +149,27 @@
   - Baseline commit: `390c8da738431401086ea2205aada8cde3ab777d`
 - Implementation status: not started by this approval-record update.
 - Commit: none; awaiting human commit.
+
+## 2026-07-13 - T01a
+
+- Scope: PR-01 `foundation-contracts`, T01a minimal non-product workspace/test runner.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `f86c08d8570b7d048d6202dd8706f4c975a78e38`.
+- Files added:
+  - `package.json`
+  - `pnpm-workspace.yaml`
+  - `pnpm-lock.yaml`
+  - `.npmrc`
+  - `vitest.workspace.ts`
+  - `packages/shared/package.json`
+- Red/green/refactor evidence:
+  - T01a has no product red phase by plan; it is prerequisite scaffolding.
+  - `pnpm install` generated the lockfile.
+  - Initial pnpm warning showed `pnpm.onlyBuiltDependencies` in `package.json` is ignored by pnpm 11.
+  - Moved the explicit empty build-script allowlist to `pnpm-workspace.yaml`.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `pnpm --filter @gcah/shared test -- --passWithNoTests` exited 0 with no test files found.
+  - `rg -n "workspaceReady" .` found no source or test implementation, only existing planning/evidence text.
+- External operations: npm metadata was checked for package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: pending follow-up hash record.
