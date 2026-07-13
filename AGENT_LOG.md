@@ -543,3 +543,98 @@
   - `pnpm install --frozen-lockfile` exited 0.
   - `git diff --check` exited 0.
 - Commit: `adc7ad3` (`feat: add core port contracts`).
+
+## 2026-07-13 - T05
+
+- Scope: PR-03 `safety-governance`, T05 workspace roots, real paths, overlap, traversal, and symlink safety.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/safety-governance` at `E:/Desktop/GCAH-safety-governance`.
+- Baseline commit: `ae4f7d7`.
+- Red evidence:
+  - `pnpm --filter @gcah/governance test -- workspace-fence` exited 1 because `packages/governance/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/governance` package and `createWorkspaceFence` with injected filesystem support.
+  - Covered allowed workspace resolution, disallowed roots, protected-root parent/child/equal overlap, traversal, absolute external paths, symlink-like realpath escape, and nearest-existing-parent checks for new targets.
+  - `pnpm --filter @gcah/governance test -- workspace-fence` exited 0 with 1 file and 5 tests.
+- Refactor/verification evidence:
+  - Added `@types/node` as a normal dev dependency for Node fs/path type coverage.
+  - Added governance to root build/typecheck scripts and TypeScript references.
+  - `pnpm lint` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `22e70ed` (`feat: add workspace fence`).
+
+## 2026-07-13 - T07
+
+- Scope: PR-03 `safety-governance`, T07 deterministic three-level governance.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/safety-governance` at `E:/Desktop/GCAH-safety-governance`.
+- Baseline commit: `35ffe89`.
+- Red evidence:
+  - `pnpm --filter @gcah/governance test -- governance patch-risk public-demo-policy` exited 1 because `createGovernanceEngine` and `assessPatchRisk` were not exported.
+- Green evidence:
+  - Added governance decisions with stable `ALLOW`, `REQUIRE_APPROVAL`, and `DENY` rule IDs, risk categories, and explanations.
+  - Added patch-risk classification for small, large, lockfile, CI, and config paths.
+  - Added public-demo hard-deny rules for shell commands and workspace mutations.
+  - Focused governance tests exited 0 with 3 files and 5 tests.
+- Refactor/verification evidence:
+  - Governance remains dependent only on `@gcah/shared`.
+  - `pnpm verify` exited 0 with 18 files and 45 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `9ca6187` (`feat: add deterministic governance engine`).
+
+## 2026-07-13 - T08
+
+- Scope: PR-03 `safety-governance`, T08 approval requests, session grants, scope hashes, expiry, and rejection feedback.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/safety-governance` at `E:/Desktop/GCAH-safety-governance`.
+- Baseline commit: `2650c92`.
+- Red evidence:
+  - `pnpm --filter @gcah/governance test -- approval` exited 1 because approval hashing and `ApprovalService` were not exported.
+- Green evidence:
+  - Added canonical action normalization/hash and scope hash helpers that exclude rationale.
+  - Added pure `ApprovalService` request/approve/reject/authorize flow with run, action hash, scope hash, risk category, and round-expiry binding.
+  - Covered parameter drift, wrong run, expiry, duplicate rejection idempotency, one rejection feedback, and repeated denied-class `APPROVAL_REJECTED`.
+  - Focused approval tests exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - Approval logic remains pure in `@gcah/governance` and imports no core state machine.
+  - `pnpm verify` exited 0 with 20 files and 49 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `1c4814d` (`feat: add approval grants`).
+
+## 2026-07-13 - PR-03 Review Fixes
+
+- Scope: PR-03 independent review findings for T05, T07, and T08.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5b9c-408f-7e93-a7b6-7b52baa71398`.
+  - Code quality/security reviewer: `019f5b9c-7dc7-7823-997b-68603672fbd9`.
+- Findings addressed:
+  - Added guardrail-path DENY coverage and implementation.
+  - Added Windows root-relative and UNC path escape DENY coverage and implementation.
+  - Added path-qualified/suffixed elevation executable DENY coverage and implementation.
+  - Fixed approval grant lookup so an earlier stale/partial grant cannot block a later valid grant.
+- Regression evidence:
+  - Added focused failing tests before implementation for guardrail/path/elevation and later-valid-grant cases.
+  - `pnpm --filter @gcah/governance test -- governance approval-service` exited 0 with 2 files and 6 tests after fixes.
+  - `pnpm verify` exited 0 with 20 files and 50 tests after fixes.
+  - `pnpm build` exited 0 after fixes.
+  - `git diff --check` exited 0 after fixes.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `08698c0` (`fix: resolve governance review blockers`).
+
+## 2026-07-13 - PR-03 Final Review
+
+- Scope: PR-03 `safety-governance` final review after fixes.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/safety-governance` at `E:/Desktop/GCAH-safety-governance`.
+- Final review evidence:
+  - Spec compliance re-reviewer `019f5ba3-1164-7712-a720-2601e3f22d1c`: PASS.
+  - Code quality/security re-reviewer `019f5ba3-4a52-7a81-886d-2783439635d0`: PASS.
+- Commit under review: `5f6e94e` (`docs: record governance review fixes`).

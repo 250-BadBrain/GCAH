@@ -647,7 +647,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** All path attacks and directory-overlap cases fail closed before tool execution.
 
-**Parallel:** Yes, with T03/T09/T14 after T02. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T03/T09/T14 after T02. **Status:** Complete. **Commit:** `22e70ed` (`feat: add workspace fence`).
 
 ### Task T06: Implement budgets, usage accounting, and deterministic stop details
 
@@ -699,7 +699,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** The complete SPEC risk matrix is table-tested and rationale changes never alter a decision.
 
-**Parallel:** No; T08 depends on normalized decisions. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; T08 depends on normalized decisions. **Status:** Complete. **Commit:** `9ca6187` (`feat: add deterministic governance engine`).
 
 ### Task T08: Implement approval requests, SessionGrant scope, hashes, expiry, and rejection feedback
 
@@ -725,7 +725,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Parameter drift, expiry, wrong run, wrong scope, duplicate responses, and repeated denial are all deterministically covered.
 
-**Parallel:** No; unlocks T12/T16. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; unlocks T12/T16. **Status:** Complete. **Commit:** `1c4814d` (`feat: add approval grants`).
 
 ### Task T09: Define executor ports and the mandatory governance ToolGateway
 
