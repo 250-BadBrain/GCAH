@@ -10,3 +10,7 @@ export * from "./ports/workspace-fence.js";
 export * from "./state/action-machine.js";
 export * from "./state/run-machine.js";
 export * from "./state/transition-error.js";
+export * from "./validation/classifier.js";
+export * from "./validation/feedback.js";
+export * from "./validation/fingerprint.js";
+export * from "./validation/validator.js";
