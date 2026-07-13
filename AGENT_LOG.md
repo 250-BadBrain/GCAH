@@ -373,4 +373,4 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Generated output: removed `packages/shared/dist` after build validation.
-- Commit: pending follow-up hash record.
+- Commit: `b9c5fb7` (`fix: require strict persisted action args`).
