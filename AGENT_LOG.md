@@ -513,7 +513,7 @@
 - Note:
   - Transition idempotency remains in-memory for PR-02 because no shared persisted transition-id field exists yet; repository/audit persistence tasks will add durable transition records.
 - Generated output: removed package `dist` directories after build validation.
-- Commit: pending follow-up hash record.
+- Commit: `5ccf1cf` (`fix: complete core domain review gaps`).
 
 ## 2026-07-13 - T03a
 
