@@ -77,8 +77,8 @@ export class BudgetTracker {
     return null;
   }
 
-  recordUsage(usage: LlmUsage | undefined, step: number): BudgetStop | UsageUnavailable | null {
-    if (usage === undefined) {
+  recordUsage(usage: LlmUsage | null | undefined, step: number): BudgetStop | UsageUnavailable | null {
+    if (usage == null) {
       this.usageUnavailable = true;
       return {
         reason: "USAGE_UNAVAILABLE",

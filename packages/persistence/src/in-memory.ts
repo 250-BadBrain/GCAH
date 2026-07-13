@@ -63,6 +63,11 @@ export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
       }
       return null;
     },
+    async listActive() {
+      return [...runs.values()]
+        .filter((run) => isActive(run))
+        .map((run) => clone(run));
+    },
     async update(run) {
       if (!runs.has(run.id)) {
         throw new Error(`run ${run.id} does not exist`);

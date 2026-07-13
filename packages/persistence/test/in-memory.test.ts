@@ -77,6 +77,11 @@ describe("in-memory repositories", () => {
       stopReason: "COMPLETED"
     });
     await expect(store.repositories.runs.create(run("run-2"))).resolves.toMatchObject({ id: "run-2" });
+    await expect(store.repositories.runs.create(run("run-3", "workspace-2", "WAITING_APPROVAL"))).resolves.toMatchObject({ id: "run-3" });
+    await expect(store.repositories.runs.listActive()).resolves.toMatchObject([
+      { id: "run-2" },
+      { id: "run-3" }
+    ]);
 
     const firstEvent: Omit<RunEvent, "cursor"> = {
       id: "event-1",

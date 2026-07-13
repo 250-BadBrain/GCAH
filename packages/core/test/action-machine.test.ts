@@ -27,6 +27,8 @@ describe("action state machine", () => {
     const approved = transitionAction({ ...action, status: "WAITING_APPROVAL" }, { id: "approve", type: "approve", at: timestamp });
     expect(approved.status).toBe("APPROVED");
     expect(transitionAction(approved, { id: "approve", type: "approve", at: timestamp })).toEqual(approved);
+    const cloned = structuredClone(approved);
+    expect(transitionAction(cloned, { id: "approve", type: "approve", at: timestamp })).toEqual(cloned);
     expect(() => transitionAction({ ...action, status: "DENIED" }, { id: "execute", type: "execute", at: timestamp })).toThrow();
   });
 });

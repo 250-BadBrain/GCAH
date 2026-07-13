@@ -12,21 +12,17 @@ export type RunTransition =
   | { id: string; type: "cancel"; at: string }
   | { id: string; type: "interrupt"; at: string };
 
-const transitionIds = new WeakMap<Run, Set<string>>();
-
 function markTransition(run: Run, id: string): Run | null {
-  const seen = transitionIds.get(run);
-  if (seen?.has(id)) {
+  if (run.transitionIds?.includes(id) === true) {
     return run;
   }
   return null;
 }
 
 function withTransition(source: Run, id: string, next: Run): Run {
-  const seen = new Set(transitionIds.get(source) ?? []);
+  const seen = new Set(source.transitionIds ?? []);
   seen.add(id);
-  transitionIds.set(next, seen);
-  return next;
+  return { ...next, transitionIds: [...seen] };
 }
 
 export function transitionRun(run: Run, transition: RunTransition): Run {
@@ -93,6 +89,7 @@ function cloneInterruptedRunValue(run: Run, newRunId: string, at: string): Run {
     stopReason: null,
     stopDetail: null,
     budgetUsage: { rounds: 0, tokens: 0, elapsedMs: 0, repeatedFailures: 0 },
+    transitionIds: [],
     createdAt: at,
     updatedAt: at
   };
@@ -116,12 +113,10 @@ export async function interruptActiveRuns(
   clock: Clock
 ): Promise<Run[]> {
   const interrupted: Run[] = [];
-  let active = await repositories.runs.findActiveByWorkspace("*");
-  while (active !== null) {
+  const activeRuns = await repositories.runs.listActive();
+  for (const active of activeRuns) {
     const next = interruptRun(active, `interrupt:${active.id}:${clock.nowIso()}`, clock.nowIso());
     interrupted.push(await repositories.runs.update(next));
-    active = await repositories.runs.findActiveByWorkspace("*");
-    if (interrupted.some((run) => active?.id === run.id)) break;
   }
   return interrupted;
 }

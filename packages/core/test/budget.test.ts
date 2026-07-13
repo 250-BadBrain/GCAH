@@ -77,6 +77,10 @@ describe("BudgetTracker", () => {
       reason: "USAGE_UNAVAILABLE",
       event: { type: "budget.usage_unavailable" }
     });
+    expect(tracker.recordUsage(null, 2)).toMatchObject({
+      reason: "USAGE_UNAVAILABLE",
+      event: { type: "budget.usage_unavailable", observedAtStep: 2 }
+    });
     expect(tracker.snapshot()).toMatchObject({ tokens: 0, usageUnavailable: true });
   });
 

@@ -11,6 +11,7 @@ export interface RunRepository {
   create(run: Run): Promise<Run>;
   getById(id: string): Promise<Run | null>;
   findActiveByWorkspace(workspaceId: string): Promise<Run | null>;
+  listActive(): Promise<Run[]>;
   update(run: Run): Promise<Run>;
 }
 

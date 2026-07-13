@@ -26,6 +26,7 @@ describe("core ports", () => {
       create: async (run) => run,
       getById: async () => null,
       findActiveByWorkspace: async () => null,
+      listActive: async () => [],
       update: async (run) => run
     };
     const events: EventRepository = {

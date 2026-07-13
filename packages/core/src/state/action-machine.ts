@@ -10,10 +10,8 @@ export type ActionTransition =
   | { id: string; type: "fail"; at: string }
   | { id: string; type: "skip"; at: string };
 
-const transitionIds = new WeakMap<Action, Set<string>>();
-
 export function transitionAction(action: Action, transition: ActionTransition): Action {
-  if (transitionIds.get(action)?.has(transition.id)) {
+  if (action.transitionIds?.includes(transition.id) === true) {
     return action;
   }
   if (["DENIED", "EXECUTED", "FAILED", "SKIPPED"].includes(action.status)) {
@@ -41,8 +39,7 @@ export function transitionAction(action: Action, transition: ActionTransition): 
         return { ...base, status: "SKIPPED" as const };
     }
   })();
-  const seen = new Set(transitionIds.get(action) ?? []);
+  const seen = new Set(action.transitionIds ?? []);
   seen.add(transition.id);
-  transitionIds.set(next, seen);
-  return next;
+  return { ...next, transitionIds: [...seen] };
 }

@@ -42,6 +42,12 @@ describe("run state machine", () => {
     }).stopDetail).toEqual({ kind: "rounds", limit: 2, used: 2, remaining: 0, observedAtStep: 2 });
   });
 
+  it("keeps transition ids across repository clone boundaries", () => {
+    const completed = transitionRun(run(), { id: "persisted", type: "complete", at: timestamp });
+    const cloned = structuredClone(completed);
+    expect(transitionRun(cloned, { id: "persisted", type: "complete", at: timestamp })).toEqual(cloned);
+  });
+
   it("interrupts without allowing resume and clones only task/config references", () => {
     const interrupted = interruptRun(run(), "interrupt-1", timestamp);
     expect(interrupted.status).toBe("INTERRUPTED");
@@ -65,7 +71,9 @@ describe("run state machine", () => {
           return value;
         },
         getById: async (id: string) => runs.get(id) ?? null,
-        findActiveByWorkspace: async () => [...runs.values()].find((value) => value.status === "RUNNING") ?? null,
+        findActiveByWorkspace: async (workspaceId: string) =>
+          [...runs.values()].find((value) => value.workspaceId === workspaceId && value.status === "RUNNING") ?? null,
+        listActive: async () => [...runs.values()].filter((value) => ["PENDING", "RUNNING", "WAITING_APPROVAL"].includes(value.status)),
         update: async (value: Run) => {
           runs.set(value.id, value);
           return value;

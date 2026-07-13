@@ -50,6 +50,7 @@ const RunBaseSchema = z.object({
   status: RunStatus,
   configSnapshotId: EntityId,
   budgetUsage: BudgetUsageSchema,
+  transitionIds: z.array(EntityId).optional(),
   stopReason: StopReason.nullable(),
   stopDetail: JsonObject.or(BudgetStopDetailSchema).nullable(),
   createdAt: IsoTimestamp,
@@ -135,6 +136,7 @@ const ActionBaseSchema = z.object({
   normalizedSummary: z.string(),
   riskCategory: z.string().min(1),
   status: ActionStatus,
+  transitionIds: z.array(EntityId).optional(),
   createdAt: IsoTimestamp,
   updatedAt: IsoTimestamp
 });
