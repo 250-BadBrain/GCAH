@@ -205,7 +205,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor port method names for one responsibility; typecheck.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** Adapters can be built without core importing persistence. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Adapters can be built without core importing persistence. **Parallel:** No. **Status:** Complete. **Commit:** `adc7ad3` (`feat: add core port contracts`).
 
 #### T03b — Deterministic in-memory repositories
 
@@ -218,7 +218,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor clone/index helpers and add deterministic reset.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** T03 acceptance holds. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T03 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** `de920fe` (`feat: add in-memory repositories`).
 
 #### T16a — LlmClient and scripted MockLlmClient
 
@@ -595,7 +595,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** In-memory repositories satisfy every invariant above and are the default test adapters.
 
-**Parallel:** Yes, with T05/T09/T14 after T02. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T05/T09/T14 after T02. **Status:** Complete. **Commit:** `de920fe` (`feat: add in-memory repositories`), with review fix `ac05506` (`fix: resolve core domain review blockers`).
 
 ### Task T04: Implement Run/Action state machines and interruption policy
 
@@ -621,7 +621,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Every legal and illegal transition has a deterministic test; no code path resumes or replays an interrupted action.
 
-**Parallel:** No within PR-02; enables T13/T16. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No within PR-02; enables T13/T16. **Status:** Complete. **Commit:** `415782b` (`feat: add core state machines`).
 
 ### Task T05: Enforce workspace roots, real paths, overlap, traversal, and symlink safety
 
@@ -673,7 +673,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Each budget stops with the specified reason/detail; missing usage is visibly marked, never counted as zero, and can continue only while both finite iteration and wall-clock hard limits remain.
 
-**Parallel:** Yes, with T13 after T04. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, with T13 after T04. **Status:** Complete. **Commit:** `7e7b98e` (`feat: add budget tracking`).
 
 ### Task T07: Implement deterministic three-level governance
 

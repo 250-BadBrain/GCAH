@@ -1,5 +1,5 @@
 {
-  "name": "@gcah/shared",
+  "name": "@gcah/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,6 +11,9 @@
   },
   "scripts": {
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@gcah/shared": "workspace:*"
   },
   "devDependencies": {}
 }

@@ -424,4 +424,122 @@
   - Mandatory pause conditions still apply.
 - Current continuation point: PR-02 `core-domain`.
 - Main baseline: `b21607aea7310b961f427a727fd2f97faa2c02f6`.
-- Commit: pending follow-up hash record.
+- Commit: `adc7ad3` (`feat: add core port contracts`).
+
+## 2026-07-13 - T03b
+
+- Scope: PR-02 `core-domain`, T03b deterministic in-memory repositories.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `07b95d6`.
+- Red evidence:
+  - `pnpm --filter @gcah/persistence test` exited 1 because `packages/persistence/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/persistence` package and `createInMemoryRepositories(clock)`.
+  - Enforced one active run per workspace and monotonic per-run event cursors.
+  - Added clone-safe run/config/memory/event storage and `UnitOfWork` facade.
+  - `pnpm --filter @gcah/persistence test` exited 0.
+- Refactor/verification evidence:
+  - Added core package exports for workspace type resolution.
+  - Included persistence in root typecheck/build scripts.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 10 files and 23 tests.
+  - `pnpm build` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- Commit: `de920fe` (`feat: add in-memory repositories`).
+
+## 2026-07-13 - T04
+
+- Scope: PR-02 `core-domain`, T04 run/action state machines and interruption policy.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `144386c`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- run-machine action-machine` exited 1 because state transition functions were not implemented.
+- Green evidence:
+  - Added `transitionRun`, `transitionAction`, `interruptRun`, `cloneInterruptedRunAsPending`, and `TransitionError`.
+  - Added deterministic tests for terminal reason mapping, idempotent transition IDs, illegal transitions, and clone-only interruption.
+  - Focused core tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 12 files and 26 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `415782b` (`feat: add core state machines`).
+
+## 2026-07-13 - T06
+
+- Scope: PR-02 `core-domain`, T06 budgets, usage accounting, and deterministic stop details.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `116a67c`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- budget failure-window` exited 1 because `BudgetTracker` and `FailureWindow` were not implemented.
+- Green evidence:
+  - Added `BudgetTracker`, `FailureWindow`, and `ProtocolRetries`.
+  - Covered round, token, elapsed-time, repeated-failure, protocol-retry, and missing-usage behavior.
+  - Focused core tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 14 files and 30 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `7e7b98e` (`feat: add budget tracking`).
+
+## 2026-07-13 - PR-02 Review Fixes
+
+- Scope: PR-02 independent review findings for T03, T04, and T06.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5b2a-2c05-7e93-838d-16455cfc3e94`.
+  - Code quality/security reviewer: `019f5b2a-8dee-7672-a6dd-399ad4ed6b51`.
+- Findings addressed:
+  - Added `StepRepository` and `ActionRepository` to core repository ports and in-memory persistence.
+  - In-memory repositories now reject duplicate step sequence numbers per run and expose action persistence by step.
+  - `UnitOfWork.transaction()` now snapshots and rolls back in-memory state, including event cursor assignment, when work fails.
+  - Added repository-backed active-run interruption and run-id clone path.
+  - Budget missing usage now returns a cost-accounting warning event request and does not increment token usage.
+  - Repeated failure and protocol retry stops now carry deterministic details; budget snapshots track repeated failures.
+  - `BUDGET_EXHAUSTED` run transitions now require and carry `BudgetStopDetail`.
+  - Follow-up fix `ac05506` adds a real `RunRepository.listActive()` contract/adapter for repository-backed interruption, treats `null` LLM usage as unavailable, and persists run/action transition IDs through shared entity state so idempotency survives clone-safe repository reads.
+- Regression evidence:
+  - Added focused failing tests before implementation for repositories, transaction rollback, interruption/clone, missing usage warning, repeated/protocol details, and budget stop detail.
+  - After fixes, `pnpm --filter @gcah/persistence test` exited 0.
+  - After fixes, `pnpm --filter @gcah/core test -- run-machine budget` exited 0.
+  - `pnpm verify` exited 0 with 14 files and 34 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Final re-verification evidence:
+  - `pnpm verify` exited 0 with 14 files and 35 tests after `ac05506`.
+  - `pnpm build` exited 0 after `ac05506`.
+  - `git diff --check` exited 0 after `ac05506`.
+- Final independent review evidence:
+  - Spec compliance re-reviewer `019f5b43-dfa1-77c0-820b-beaa68f1c638`: PASS.
+  - Code quality/security re-reviewer `019f5b44-0dfd-7cb1-af16-ee2d97c24ddf`: PASS.
+- Generated output: removed package `dist` directories after build validation.
+- Commits: `5ccf1cf` (`fix: complete core domain review gaps`), `ac05506` (`fix: resolve core domain review blockers`).
+
+## 2026-07-13 - T03a
+
+- Scope: PR-02 `core-domain`, T03a core repository, UnitOfWork, and clock ports.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `ed20681`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- ports` exited 1 because `packages/core/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/core` package, port interfaces for repositories, clock, tool gateway, validation runner, workspace fence, and LLM client.
+  - Added `SystemClock`.
+  - `pnpm --filter @gcah/core test -- ports` exited 0.
+- Refactor/verification evidence:
+  - Added core tsconfig/build config and included core in root build/typecheck scripts.
+  - Added shared package exports for workspace type resolution.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 9 files and 21 tests.
+  - `pnpm build` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- Commit: `adc7ad3` (`feat: add core port contracts`).

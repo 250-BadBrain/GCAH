@@ -1,0 +1,91 @@
+import { describe, expect, it } from "vitest";
+
+import { cloneInterruptedRunAsPending, interruptActiveRuns, interruptRun, transitionRun } from "../src/index.js";
+import type { Run } from "@gcah/shared";
+
+const timestamp = "2026-07-13T00:00:00.000Z";
+
+function run(status: Run["status"] = "RUNNING"): Run {
+  return {
+    id: "run-1",
+    workspaceId: "workspace-1",
+    taskSummary: "task",
+    status,
+    configSnapshotId: "config-1",
+    budgetUsage: { rounds: 0, tokens: 0, elapsedMs: 0, repeatedFailures: 0 },
+    stopReason: null,
+    stopDetail: null,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+}
+
+describe("run state machine", () => {
+  it("enforces terminal reason mappings and idempotent transition ids", () => {
+    const completed = transitionRun(run(), {
+      id: "t1",
+      type: "complete",
+      at: timestamp
+    });
+    expect(completed.status).toBe("COMPLETED");
+    expect(completed.stopReason).toBe("COMPLETED");
+    expect(transitionRun(completed, { id: "t1", type: "complete", at: timestamp })).toEqual(completed);
+
+    expect(() => transitionRun(run(), { id: "bad", type: "stop", reason: "UNFIXABLE_FAILURE" as never, at: timestamp })).toThrow();
+    expect(transitionRun(run(), { id: "approval", type: "wait_for_approval", at: timestamp }).stopReason).toBeNull();
+    expect(transitionRun(run(), {
+      id: "budget",
+      type: "stop",
+      reason: "BUDGET_EXHAUSTED",
+      detail: { kind: "rounds", limit: 2, used: 2, remaining: 0, observedAtStep: 2 },
+      at: timestamp
+    }).stopDetail).toEqual({ kind: "rounds", limit: 2, used: 2, remaining: 0, observedAtStep: 2 });
+  });
+
+  it("keeps transition ids across repository clone boundaries", () => {
+    const completed = transitionRun(run(), { id: "persisted", type: "complete", at: timestamp });
+    const cloned = structuredClone(completed);
+    expect(transitionRun(cloned, { id: "persisted", type: "complete", at: timestamp })).toEqual(cloned);
+  });
+
+  it("interrupts without allowing resume and clones only task/config references", () => {
+    const interrupted = interruptRun(run(), "interrupt-1", timestamp);
+    expect(interrupted.status).toBe("INTERRUPTED");
+    expect(interrupted.stopReason).toBe("INTERRUPTED");
+    expect(() => transitionRun(interrupted, { id: "resume", type: "start", at: timestamp })).toThrow();
+    expect(cloneInterruptedRunAsPending(interrupted, "run-2", timestamp)).toMatchObject({
+      id: "run-2",
+      taskSummary: "task",
+      configSnapshotId: "config-1",
+      status: "PENDING",
+      stopReason: null
+    });
+  });
+
+  it("interrupts active runs through repositories and clones by run id", async () => {
+    const runs = new Map<string, Run>([["run-1", run()]]);
+    const repositories = {
+      runs: {
+        create: async (value: Run) => {
+          runs.set(value.id, value);
+          return value;
+        },
+        getById: async (id: string) => runs.get(id) ?? null,
+        findActiveByWorkspace: async (workspaceId: string) =>
+          [...runs.values()].find((value) => value.workspaceId === workspaceId && value.status === "RUNNING") ?? null,
+        listActive: async () => [...runs.values()].filter((value) => ["PENDING", "RUNNING", "WAITING_APPROVAL"].includes(value.status)),
+        update: async (value: Run) => {
+          runs.set(value.id, value);
+          return value;
+        }
+      }
+    };
+    const clock = { now: () => new Date(timestamp), nowIso: () => timestamp };
+
+    await expect(interruptActiveRuns(repositories, clock)).resolves.toHaveLength(1);
+    await expect(cloneInterruptedRunAsPending(repositories, "run-1", "run-2", clock)).resolves.toMatchObject({
+      id: "run-2",
+      status: "PENDING"
+    });
+  });
+});
