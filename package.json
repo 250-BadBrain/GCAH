@@ -1,0 +1,23 @@
+{
+  "name": "gcah",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.0",
+  "scripts": {
+    "build": "tsc -p packages/shared/tsconfig.build.json --pretty false",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json --pretty false",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "eslint": "10.7.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.63.0",
+    "vitest": "4.1.10"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}

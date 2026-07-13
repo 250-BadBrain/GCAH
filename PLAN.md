@@ -139,7 +139,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Run `pnpm --filter @gcah/shared test -- --passWithNoTests`; expect exit 0.
 - [ ] Update `PLAN.md`/`AGENT_LOG.md`, commit, and record hash.
 
-**Refactor/verification:** Remove unused config; run frozen install. **Done:** Runner starts; no `workspaceReady` source/test exists. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Refactor/verification:** Remove unused config; run frozen install. **Done:** Runner starts; no `workspaceReady` source/test exists. **Parallel:** No. **Status:** Complete. **Commit:** `91ac7ea` (`chore: bootstrap shared test runner`).
 
 #### T01b — Behavioral workspace smoke export
 
@@ -153,7 +153,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Add TS/ESLint/verify config and run lint/typecheck/verify.
 - [ ] Refactor duplicated config, update logs/status, commit, record hash.
 
-**Done:** T01 acceptance holds. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T01 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** `3f6b2c8` (`chore: add shared smoke quality checks`).
 
 #### T02a — Status, StopReason, and entity schemas
 
@@ -166,7 +166,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor shared IDs/timestamps and add no-API-key plus required/optional/nullable schema assertions.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** Exact entity/status contracts pass, including `StepStatus`, all SPEC §6 entities, and required/optional/nullable assertions. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Exact entity/status contracts pass, including `StepStatus`, all SPEC §6 entities, and required/optional/nullable assertions. **Parallel:** No. **Status:** Complete. **Commit:** `fe9553a` (`feat: add shared entity status schemas`).
 
 #### T02b — AgentResponse and tool argument schemas
 
@@ -179,7 +179,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Rerun to green; refactor bounded primitives and exports.
 - [ ] Run package test/typecheck; update logs/status; commit and record hash.
 
-**Done:** Only one registered structured action can parse, and normalized tool requests/results are tested and exported. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Only one registered structured action can parse, and normalized tool requests/results are tested and exported. **Parallel:** No. **Status:** Complete. **Commit:** `7397339` (`feat: add agent response tool contracts`).
 
 #### T02c — Safe display, event, and API schemas
 
@@ -192,7 +192,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor shared bounded-string helpers; rerun package tests.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** T02 acceptance holds and rationale is excluded from hashable data. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T02 acceptance holds and rationale is excluded from hashable data. **Parallel:** No. **Status:** Complete. **Commit:** `5107713` (`feat: add shared display api event contracts`).
 
 #### T03a — Core repository, UnitOfWork, and clock ports
 

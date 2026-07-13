@@ -149,3 +149,264 @@
   - Baseline commit: `390c8da738431401086ea2205aada8cde3ab777d`
 - Implementation status: not started by this approval-record update.
 - Commit: none; awaiting human commit.
+
+## 2026-07-13 - T01a
+
+- Scope: PR-01 `foundation-contracts`, T01a minimal non-product workspace/test runner.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `f86c08d8570b7d048d6202dd8706f4c975a78e38`.
+- Files added:
+  - `package.json`
+  - `pnpm-workspace.yaml`
+  - `pnpm-lock.yaml`
+  - `.npmrc`
+  - `vitest.workspace.ts`
+  - `packages/shared/package.json`
+- Red/green/refactor evidence:
+  - T01a has no product red phase by plan; it is prerequisite scaffolding.
+  - `pnpm install` generated the lockfile.
+  - Initial pnpm warning showed `pnpm.onlyBuiltDependencies` in `package.json` is ignored by pnpm 11.
+  - Moved the explicit empty build-script allowlist to `pnpm-workspace.yaml`.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `pnpm --filter @gcah/shared test -- --passWithNoTests` exited 0 with no test files found.
+  - `rg -n "workspaceReady" .` found no source or test implementation, only existing planning/evidence text.
+- External operations: npm metadata was checked for package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: `91ac7ea` (`chore: bootstrap shared test runner`).
+
+## 2026-07-13 - T01b
+
+- Scope: PR-01 `foundation-contracts`, T01b behavioral workspace smoke export and quality configuration.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `2e6f01ae3588f2204ddabb2aa49644d206349d98`.
+- Files added/modified:
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/smoke.test.ts`
+  - `packages/shared/tsconfig.json`
+  - `tsconfig.base.json`
+  - `tsconfig.json`
+  - `eslint.config.js`
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - With `packages/shared/src/index.ts` as an empty module, `pnpm --filter @gcah/shared test` exited 1 because `workspaceReady` was absent and the assertion received `undefined`.
+- Green evidence:
+  - Added only `export const workspaceReady = true as const;`.
+  - `pnpm --filter @gcah/shared test` exited 0.
+- Refactor/verification evidence:
+  - Added strict TypeScript, ESLint, package tsconfig, and root `lint`, `typecheck`, and `verify` scripts.
+  - `pnpm peers check` first rejected `typescript@7.0.2` for `typescript-eslint@8.63.0`; changed to compatible `typescript@6.0.3`.
+  - Prevented typecheck output from creating test artifacts by using `tsc --noEmit -p packages/shared/tsconfig.json --pretty false`.
+  - `pnpm lint` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm --filter @gcah/shared test` exited 0 with 1 test file and 1 test.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+- External operations: npm metadata was checked for TypeScript/ESLint package versions; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: `3f6b2c8` (`chore: add shared smoke quality checks`).
+
+## 2026-07-13 - T02a
+
+- Scope: PR-01 `foundation-contracts`, T02a status, StopReason, and entity schemas.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `7705b3a5b4ba1fbaf0cb32e6fd39bc78de4f6c01`.
+- Files added/modified:
+  - `packages/shared/src/status.ts`
+  - `packages/shared/src/entities.ts`
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/status.test.ts`
+  - `packages/shared/test/entities.test.ts`
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - `pnpm --filter @gcah/shared test -- status entities` exited 1 because `../src/status.js` and `../src/entities.js` did not exist.
+- Green evidence:
+  - Added Zod 4 schemas for SPEC status enums, stop mappings, budget usage/detail, and persisted entity contracts.
+  - Added no-secret-field assertions across exported entity schemas.
+  - `pnpm --filter @gcah/shared test -- status entities` exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - Added `zod@4.4.3` as a locked runtime dependency.
+  - `pnpm --filter @gcah/shared test` exited 0 with 3 files and 5 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- External operations: npm metadata was checked for Zod version; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: `fe9553a` (`feat: add shared entity status schemas`).
+
+## 2026-07-13 - T02b
+
+- Scope: PR-01 `foundation-contracts`, T02b AgentResponse and tool argument schemas.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `536381bc0e0adf6d34614e7113b56ed791cedf07`.
+- Files added/modified:
+  - `packages/shared/src/agent-response.ts`
+  - `packages/shared/src/tool-contracts.ts`
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/agent-response.test.ts`
+  - `packages/shared/test/tool-contracts.test.ts`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - `pnpm --filter @gcah/shared test -- agent-response tool-contracts` exited 1 because `../src/agent-response.js` and `../src/tool-contracts.js` did not exist.
+- Green evidence:
+  - Added strict `ToolAction | FinishAction` parsing, supported tool enum, per-tool argument schemas, structured command args, `ToolRequestSchema`, and tool result export.
+  - `pnpm --filter @gcah/shared test -- agent-response tool-contracts` exited 0 with 2 files and 6 tests.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/shared test` exited 0 with 5 files and 11 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- External operations: none beyond local test/typecheck/lint/install verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: `7397339` (`feat: add agent response tool contracts`).
+
+## 2026-07-13 - T02c
+
+- Scope: PR-01 `foundation-contracts`, T02c safe display, event, and API schemas.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `0356158090870ee2a0fc36165f6dfc3bf1f4e625`.
+- Files added/modified:
+  - `packages/shared/src/safe-display.ts`
+  - `packages/shared/src/events.ts`
+  - `packages/shared/src/api-contracts.ts`
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/safe-display.test.ts`
+  - `packages/shared/test/events.test.ts`
+  - `packages/shared/test/api-contracts.test.ts`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - `pnpm --filter @gcah/shared test -- safe-display events api-contracts` exited 1 because the three target modules did not exist.
+- Green evidence:
+  - Added deterministic rationale escaping/redaction/truncation.
+  - Added event cursor parsing and event schema export.
+  - Added strict run, approval, event-response API DTO schemas that reject unknown secret-shaped fields.
+  - `pnpm --filter @gcah/shared test -- safe-display events api-contracts` exited 0 with 3 files and 4 tests.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/shared test` exited 0 with 8 files and 15 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- External operations: none beyond local verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: `5107713` (`feat: add shared display api event contracts`).
+
+## 2026-07-13 - PR-01 Build Script Acceptance
+
+- Scope: PR-01 `foundation-contracts` build verification gap.
+- Agent: OpenAI Codex.
+- Red evidence:
+  - `pnpm build` exited 1 because no `build` script existed.
+- Green evidence:
+  - Added root `build` script and `packages/shared/tsconfig.build.json` for declaration-only shared package output.
+  - `pnpm build` exited 0.
+  - `pnpm verify` exited 0.
+- Generated output: removed `packages/shared/dist` after validation; it remains ignored build output.
+- Commit: `5440937` (`chore: add shared build script`).
+
+## 2026-07-13 - PR-01 Review Fixes
+
+- Scope: PR-01 independent review findings for T02 schemas.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5a58-7724-71d0-8b69-825ff049bd22`.
+  - Code quality/security reviewer: `019f5a58-b090-7311-96dc-639d67b40227`.
+- Findings addressed:
+  - `BudgetStopDetailSchema` now uses SPEC fields `kind`, `limit`, `used`, `remaining`, and `observedAtStep`.
+  - `RunSchema` now rejects terminal status/stopReason mismatches and requires `BudgetStopDetail` for `BUDGET_EXHAUSTED`.
+  - Persisted `ActionSchema` now uses `displayRationale` instead of raw `rationale`.
+  - `AgentResponseSchema` now validates `args` according to the selected supported tool.
+  - `ToolResultSchema` now enforces bounded stdout/stderr and rejects obvious unredacted `sk-` sentinels.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities agent-response tool-contracts` exited 1 with the expected review issues.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities agent-response tool-contracts` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 18 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: `d20a88c` (`fix: harden shared contracts after review`).
+
+## 2026-07-13 - PR-01 Re-review Fixes
+
+- Scope: PR-01 second quality/security review findings.
+- Agent: OpenAI Codex.
+- Reviewer:
+  - Code quality/security re-reviewer: `019f5a62-6051-7870-bf91-545f267f4fd3`.
+- Findings addressed:
+  - `ActionSchema` now enforces the `tool` vs `finish` discriminator shape: supported tool name and null finish summary for tool actions; null tool name, non-empty finish summary, and empty args for finish actions.
+  - `ToolResultSchema` now rejects additional obvious output leakage patterns including `api_key=`, `Authorization: Bearer`, Windows user-home paths, and POSIX `/home/` paths.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities` exited 1 for the expected action-shape and leakage gaps.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 19 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: `9f010eb` (`fix: enforce persisted action and output safety`).
+
+## 2026-07-13 - PR-01 Final Review Fixes
+
+- Scope: PR-01 final independent review findings.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance final reviewer: `019f5a6e-10c0-7c22-ae1c-6dd4a921d3f8`.
+  - Code quality/security final reviewer: `019f5a6e-4b4f-7c81-ae35-c7017e1ec636`.
+- Findings addressed:
+  - Persisted `ActionSchema` now validates tool `args` according to the selected `toolName`, matching the strict tool parameter schemas.
+  - `SessionGrantSchema.toolName` now uses the supported tool enum instead of an arbitrary string.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities` exited 1 for invalid persisted tool args and unknown grant tools.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 20 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: `b9c5fb7` (`fix: require strict persisted action args`).
+
+## 2026-07-13 - PR-01 Summary Leakage Review Fix
+
+- Scope: PR-01 final quality/security review finding for persisted/display summary leakage.
+- Agent: OpenAI Codex.
+- Reviewer:
+  - Code quality/security final reviewer: `019f5a9f-2545-7bc0-b91b-14482aacb328`.
+- Finding addressed:
+  - Persisted and API display summary fields now reject obvious credential/path leakage patterns, matching the existing stdout/stderr safety boundary.
+  - Covered fields include `ToolResultSchema.sideEffectSummary`, `ValidationResultSchema.diagnosticSummary`, persisted event/memory/feedback summaries, and `EventDtoSchema.summary`.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities api-contracts` exited 1 for summary leakage.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities api-contracts` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 20 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: `a172b3a` (`fix: reject summary leakage in shared schemas`).
+
+## 2026-07-13 - PR-01 Final Scoped Review Pass
+
+- Scope: final scoped verification of the persisted/display summary leakage High finding.
+- Reviewers:
+  - Spec compliance scoped verifier: `019f5ab3-38ae-7340-bea2-e8c6a6e0a5b2` (`PASS`).
+  - Code quality/security scoped verifier: `019f5ab3-70ee-7112-836a-b587b44adbc7` (`PASS`).
+- Verified surfaces:
+  - `ToolResultSchema.sideEffectSummary`
+  - `ValidationResultSchema.diagnosticSummary`
+  - `FeedbackSchema.summary`
+  - `MemoryEntrySchema.summary`
+  - `RunEventSchema.summary`
+  - `EventDtoSchema.summary`
+- Verification:
+  - Both reviewers directly inspected code/tests and confirmed the prior High finding is resolved.
+  - No reviewer edits were performed.
+- Commit: pending follow-up hash record.
