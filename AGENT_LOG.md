@@ -1042,3 +1042,23 @@
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
 - Commit: `a0088a3` (`feat: add local server run routes`).
+
+## 2026-07-13 - T18b
+
+- Scope: PR-07 `persistence-server`, T18b local/self-hosted cookie auth and CSRF/Origin checks.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `d095d25`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- auth` exited 1 because unauthenticated mutations were accepted and the auth session route did not set cookies.
+- Green evidence:
+  - Added injected `AdminTokenStore` boundary, no-body admin-token session route, HttpOnly/SameSite session cookie, CSRF token header, same-origin mutation enforcement, and optional Secure cookie flag.
+  - Focused server auth/run tests exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - Admin token plaintext is read only from request headers in the authentication comparison boundary and is not serialized in route responses.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: pending.

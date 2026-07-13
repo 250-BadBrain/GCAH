@@ -276,14 +276,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Protect REST with injected admin-token storage and same-origin cookies. **Dependencies:** T18a. **Files:** `apps/server/src/auth/admin-auth.ts`, `csrf.ts`, `apps/server/test/auth.test.ts`. **First red:** Missing/wrong token and cross-origin mutations are accepted. **Expected implementation:** HttpOnly/SameSite cookie, explicit Secret mode, CSRF/Origin enforcement; plaintext admin tokens exist only inside the `AdminTokenStore`/authentication comparison boundary and never in domain/events/logs/serialized errors.
 
-- [ ] Add unauthorized and cross-origin failing tests.
-- [ ] Run focused auth test; observe security red.
-- [ ] Add minimal auth hook and fake `AdminTokenStore` port.
-- [ ] Add secure-cookie/self-hosted Secret cases; rerun green.
-- [ ] Refactor auth error paths; typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add unauthorized and cross-origin failing tests.
+- [x] Run focused auth test; observe security red.
+- [x] Add minimal auth hook and fake `AdminTokenStore` port.
+- [x] Add secure-cookie/self-hosted Secret cases; rerun green.
+- [x] Refactor auth error paths; typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Browser-readable storage never receives bearer/admin token. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Browser-readable storage never receives bearer/admin token. **Parallel:** No. **Status:** Complete. **Commit:** pending.
 
 #### T18c — Persisted SSE replay and interruption startup handling
 
