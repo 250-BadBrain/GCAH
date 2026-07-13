@@ -699,7 +699,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** The complete SPEC risk matrix is table-tested and rationale changes never alter a decision.
 
-**Parallel:** No; T08 depends on normalized decisions. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; T08 depends on normalized decisions. **Status:** Complete. **Commit:** `9ca6187` (`feat: add deterministic governance engine`).
 
 ### Task T08: Implement approval requests, SessionGrant scope, hashes, expiry, and rejection feedback
 

@@ -565,3 +565,24 @@
   - `git diff --check` exited 0.
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `22e70ed` (`feat: add workspace fence`).
+
+## 2026-07-13 - T07
+
+- Scope: PR-03 `safety-governance`, T07 deterministic three-level governance.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/safety-governance` at `E:/Desktop/GCAH-safety-governance`.
+- Baseline commit: `35ffe89`.
+- Red evidence:
+  - `pnpm --filter @gcah/governance test -- governance patch-risk public-demo-policy` exited 1 because `createGovernanceEngine` and `assessPatchRisk` were not exported.
+- Green evidence:
+  - Added governance decisions with stable `ALLOW`, `REQUIRE_APPROVAL`, and `DENY` rule IDs, risk categories, and explanations.
+  - Added patch-risk classification for small, large, lockfile, CI, and config paths.
+  - Added public-demo hard-deny rules for shell commands and workspace mutations.
+  - Focused governance tests exited 0 with 3 files and 5 tests.
+- Refactor/verification evidence:
+  - Governance remains dependent only on `@gcah/shared`.
+  - `pnpm verify` exited 0 with 18 files and 45 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `9ca6187` (`feat: add deterministic governance engine`).
