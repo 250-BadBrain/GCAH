@@ -131,15 +131,23 @@ export class ApprovalService {
     const currentScopeHash = scopeHash(scope);
     const grant = this.grants.find((candidate) =>
       candidate.runId === input.runId
+      && candidate.normalizedActionHash === actionHash
+      && candidate.scopeHash === currentScopeHash
+      && input.currentRound <= candidate.expiresAtRound
+    );
+    if (grant !== undefined) return { authorized: true, grant };
+
+    const partialGrant = this.grants.find((candidate) =>
+      candidate.runId === input.runId
       || candidate.normalizedActionHash === actionHash
       || candidate.scopeHash === currentScopeHash
     );
-    if (grant === undefined) return { authorized: false, reason: "NO_GRANT" };
-    if (grant.runId !== input.runId) return { authorized: false, reason: "RUN_MISMATCH" };
-    if (grant.normalizedActionHash !== actionHash) return { authorized: false, reason: "ACTION_CHANGED" };
-    if (grant.scopeHash !== currentScopeHash) return { authorized: false, reason: "SCOPE_CHANGED" };
-    if (input.currentRound > grant.expiresAtRound) return { authorized: false, reason: "EXPIRED" };
-    return { authorized: true, grant };
+    if (partialGrant === undefined) return { authorized: false, reason: "NO_GRANT" };
+    if (partialGrant.runId !== input.runId) return { authorized: false, reason: "RUN_MISMATCH" };
+    if (partialGrant.normalizedActionHash !== actionHash) return { authorized: false, reason: "ACTION_CHANGED" };
+    if (partialGrant.scopeHash !== currentScopeHash) return { authorized: false, reason: "SCOPE_CHANGED" };
+    if (input.currentRound > partialGrant.expiresAtRound) return { authorized: false, reason: "EXPIRED" };
+    return { authorized: false, reason: "NO_GRANT" };
   }
 
   private requireRequest(requestId: string): ApprovalRequestRecord {

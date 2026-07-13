@@ -82,4 +82,38 @@ describe("ApprovalService", () => {
       feedback: null
     });
   });
+
+  it("uses a later valid grant when an earlier grant only partially matches", () => {
+    const service = new ApprovalService();
+    service.request({
+      requestId: "approval-1",
+      runId: "run-1",
+      actionId: "action-1",
+      action: writeAction,
+      riskCategory: "mutation",
+      currentRound: 1,
+      expiresAtRound: 3
+    });
+    service.approve("approval-1", { grantId: "grant-1", currentRound: 1, grantedBy: "human" });
+
+    const changedAction: NormalizedAction = {
+      ...writeAction,
+      args: { path: "src/other.ts", content: "new" }
+    };
+    service.request({
+      requestId: "approval-2",
+      runId: "run-1",
+      actionId: "action-2",
+      action: changedAction,
+      riskCategory: "mutation",
+      currentRound: 2,
+      expiresAtRound: 4
+    });
+    service.approve("approval-2", { grantId: "grant-2", currentRound: 2, grantedBy: "human" });
+
+    expect(service.authorize({ runId: "run-1", action: changedAction, riskCategory: "mutation", currentRound: 3 })).toMatchObject({
+      authorized: true,
+      grant: { id: "grant-2" }
+    });
+  });
 });

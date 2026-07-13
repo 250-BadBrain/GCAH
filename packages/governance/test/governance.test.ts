@@ -53,9 +53,14 @@ describe("GovernanceEngine", () => {
     const engine = createGovernanceEngine();
     for (const candidate of [
       action({ kind: "tool", tool: "read", args: { path: "../secret.txt" }, rationale: "ignored", normalizedSummary: "summary" }),
+      action({ kind: "tool", tool: "read", args: { path: "\\Windows\\System32\\config" }, rationale: "ignored", normalizedSummary: "summary" }),
+      action({ kind: "tool", tool: "read", args: { path: "\\\\server\\share\\secret.txt" }, rationale: "ignored", normalizedSummary: "summary" }),
       action({ kind: "tool", tool: "read", args: { path: ".env" }, rationale: "ignored", normalizedSummary: "summary" }),
       action({ kind: "tool", tool: "write", args: { path: ".gcah/audit/log.json", content: "x" }, rationale: "ignored", normalizedSummary: "summary" }),
-      action({ kind: "tool", tool: "run_command", args: { executable: "sudo", args: ["ls"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" })
+      action({ kind: "tool", tool: "write", args: { path: ".gcah/guardrails/policy.json", content: "x" }, rationale: "ignored", normalizedSummary: "summary" }),
+      action({ kind: "tool", tool: "run_command", args: { executable: "sudo", args: ["ls"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" }),
+      action({ kind: "tool", tool: "run_command", args: { executable: "/usr/bin/sudo", args: ["ls"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" }),
+      action({ kind: "tool", tool: "run_command", args: { executable: "C:\\Windows\\System32\\runas.exe", args: ["ls"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" })
     ]) {
       expect(engine.decide(candidate, { mode: "local" }).result).toBe("DENY");
     }

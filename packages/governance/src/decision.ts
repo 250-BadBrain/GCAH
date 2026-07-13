@@ -1,4 +1,5 @@
 import type { ToolAction } from "@gcah/shared";
+import path from "node:path";
 
 import { assessPatchRisk } from "./patch-risk.js";
 
@@ -28,16 +29,25 @@ function pathOf(action: NormalizedAction): string | null {
   return null;
 }
 
-function isPathEscape(path: string): boolean {
-  return path.includes("..") || /^[A-Za-z]:[\\/]/u.test(path) || path.startsWith("/");
+function isPathEscape(targetPath: string): boolean {
+  return targetPath.includes("..")
+    || targetPath.startsWith("/")
+    || targetPath.startsWith("\\")
+    || /^[A-Za-z]:[\\/]/u.test(targetPath)
+    || path.win32.isAbsolute(targetPath);
 }
 
-function isCredentialPath(path: string): boolean {
-  return /(^|[\\/])(\.env|id_rsa|credentials?|secrets?)([\\/.]|$)/iu.test(path);
+function isCredentialPath(targetPath: string): boolean {
+  return /(^|[\\/])(\.env|id_rsa|credentials?|secrets?)([\\/.]|$)/iu.test(targetPath);
 }
 
-function isAuditPath(path: string): boolean {
-  return /^\.gcah[\\/](audit|credentials?|secrets?)([\\/]|$)/iu.test(path);
+function isAuditPath(targetPath: string): boolean {
+  return /^\.gcah[\\/](audit|credentials?|secrets?)([\\/]|$)/iu.test(targetPath);
+}
+
+function isGuardrailPath(targetPath: string): boolean {
+  return /^\.gcah[\\/](guardrails?|policy)([\\/]|$)/iu.test(targetPath)
+    || /(^|[\\/])guardrails?([\\/]|$)/iu.test(targetPath);
 }
 
 function commandRequiresApproval(executable: string, args: readonly string[]): boolean {
@@ -48,7 +58,9 @@ function commandRequiresApproval(executable: string, args: readonly string[]): b
 }
 
 function commandDenied(executable: string): boolean {
-  return /^(sudo|su|runas)$/iu.test(executable);
+  const baseName = path.win32.basename(executable).replace(/\.exe$/iu, "");
+  const posixName = path.posix.basename(baseName).replace(/\.exe$/iu, "");
+  return /^(sudo|su|runas)$/iu.test(posixName);
 }
 
 function decision(result: GovernanceResult, ruleId: string, riskCategory: string, explanation: string): GovernanceDecision {
@@ -63,6 +75,7 @@ export function createGovernanceEngine(): GovernanceEngine {
         if (isPathEscape(targetPath)) return decision("DENY", "path.escape", "path", "path escapes workspace boundary");
         if (isCredentialPath(targetPath)) return decision("DENY", "path.credential", "credential", "credential path is denied");
         if (isAuditPath(targetPath)) return decision("DENY", "path.audit", "audit", "audit and credential storage paths are denied");
+        if (isGuardrailPath(targetPath)) return decision("DENY", "path.guardrail", "guardrail", "guardrail paths are denied");
       }
 
       if (action.tool === "run_command" && commandDenied(action.args.executable)) {
