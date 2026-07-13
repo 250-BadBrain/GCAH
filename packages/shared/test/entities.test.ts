@@ -337,6 +337,20 @@ describe("entity schemas", () => {
     })).toThrow();
     expect(() => ActionSchema.parse({
       ...baseAction,
+      kind: "tool",
+      toolName: "read",
+      finishSummary: null,
+      args: {}
+    })).toThrow();
+    expect(() => ActionSchema.parse({
+      ...baseAction,
+      kind: "tool",
+      toolName: "patch",
+      finishSummary: null,
+      args: { path: "README.md" }
+    })).toThrow();
+    expect(() => ActionSchema.parse({
+      ...baseAction,
       kind: "finish",
       toolName: "read",
       finishSummary: "done",
@@ -348,6 +362,21 @@ describe("entity schemas", () => {
       toolName: null,
       finishSummary: "done",
       args: { path: "README.md" }
+    })).toThrow();
+  });
+
+  it("rejects session grants for unknown tools", () => {
+    expect(() => SessionGrantSchema.parse({
+      id: "grant-bad",
+      runId: "run-1",
+      toolName: "network_fetch",
+      pathScope: null,
+      commandTemplate: null,
+      riskCategory: "high",
+      scopeHash: "scope-1",
+      expiresAtRound: 3,
+      grantedBy: "human",
+      createdAt: timestamp
     })).toThrow();
   });
 });

@@ -1,7 +1,17 @@
 import { z } from "zod";
 
 import { ActionStatus, RunStatus, StepStatus, StopReason } from "./status.js";
-import { SupportedToolName } from "./tool-contracts.js";
+import {
+  DeleteArgsSchema,
+  ListArgsSchema,
+  MemorySearchArgsSchema,
+  PatchArgsSchema,
+  ReadArgsSchema,
+  RunCommandArgsSchema,
+  RunValidationArgsSchema,
+  SupportedToolName,
+  WriteArgsSchema
+} from "./tool-contracts.js";
 
 const EntityId = z.string().min(1);
 const IsoTimestamp = z.string().datetime({ offset: true });
@@ -129,13 +139,59 @@ const ActionBaseSchema = z.object({
   updatedAt: IsoTimestamp
 });
 
-export const ActionSchema = z.discriminatedUnion("kind", [
+const ToolActionEntitySchema = z.discriminatedUnion("toolName", [
   ActionBaseSchema.extend({
     kind: z.literal("tool"),
-    toolName: SupportedToolName,
+    toolName: z.literal("list"),
     finishSummary: z.null(),
-    args: JsonObject
+    args: ListArgsSchema
   }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: z.literal("read"),
+    finishSummary: z.null(),
+    args: ReadArgsSchema
+  }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: z.literal("write"),
+    finishSummary: z.null(),
+    args: WriteArgsSchema
+  }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: z.literal("patch"),
+    finishSummary: z.null(),
+    args: PatchArgsSchema
+  }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: z.literal("delete"),
+    finishSummary: z.null(),
+    args: DeleteArgsSchema
+  }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: z.literal("run_command"),
+    finishSummary: z.null(),
+    args: RunCommandArgsSchema
+  }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: z.literal("run_validation"),
+    finishSummary: z.null(),
+    args: RunValidationArgsSchema
+  }).strict(),
+  ActionBaseSchema.extend({
+    kind: z.literal("tool"),
+    toolName: z.literal("memory_search"),
+    finishSummary: z.null(),
+    args: MemorySearchArgsSchema
+  }).strict()
+]);
+
+export const ActionSchema = z.discriminatedUnion("kind", [
+  ToolActionEntitySchema,
   ActionBaseSchema.extend({
     kind: z.literal("finish"),
     toolName: z.null(),
@@ -175,7 +231,7 @@ export const ApprovalRequestSchema = z.object({
 export const SessionGrantSchema = z.object({
   id: EntityId,
   runId: EntityId,
-  toolName: z.string().min(1),
+  toolName: SupportedToolName,
   pathScope: z.string().nullable(),
   commandTemplate: z.string().nullable(),
   riskCategory: z.string().min(1),

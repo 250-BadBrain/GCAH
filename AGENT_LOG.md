@@ -355,3 +355,22 @@
   - `git diff --check` exited 0.
 - Generated output: removed `packages/shared/dist` after build validation.
 - Commit: `9f010eb` (`fix: enforce persisted action and output safety`).
+
+## 2026-07-13 - PR-01 Final Review Fixes
+
+- Scope: PR-01 final independent review findings.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance final reviewer: `019f5a6e-10c0-7c22-ae1c-6dd4a921d3f8`.
+  - Code quality/security final reviewer: `019f5a6e-4b4f-7c81-ae35-c7017e1ec636`.
+- Findings addressed:
+  - Persisted `ActionSchema` now validates tool `args` according to the selected `toolName`, matching the strict tool parameter schemas.
+  - `SessionGrantSchema.toolName` now uses the supported tool enum instead of an arbitrary string.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities` exited 1 for invalid persisted tool args and unknown grant tools.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 20 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: pending follow-up hash record.
