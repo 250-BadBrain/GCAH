@@ -426,6 +426,30 @@
 - Main baseline: `b21607aea7310b961f427a727fd2f97faa2c02f6`.
 - Commit: `adc7ad3` (`feat: add core port contracts`).
 
+## 2026-07-13 - T03b
+
+- Scope: PR-02 `core-domain`, T03b deterministic in-memory repositories.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `07b95d6`.
+- Red evidence:
+  - `pnpm --filter @gcah/persistence test` exited 1 because `packages/persistence/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/persistence` package and `createInMemoryRepositories(clock)`.
+  - Enforced one active run per workspace and monotonic per-run event cursors.
+  - Added clone-safe run/config/memory/event storage and `UnitOfWork` facade.
+  - `pnpm --filter @gcah/persistence test` exited 0.
+- Refactor/verification evidence:
+  - Added core package exports for workspace type resolution.
+  - Included persistence in root typecheck/build scripts.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 10 files and 23 tests.
+  - `pnpm build` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- Commit: pending follow-up hash record.
+
 ## 2026-07-13 - T03a
 
 - Scope: PR-02 `core-domain`, T03a core repository, UnitOfWork, and clock ports.

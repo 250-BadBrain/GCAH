@@ -31,6 +31,15 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/persistence:
+    dependencies:
+      '@gcah/core':
+        specifier: workspace:*
+        version: link:../core
+      '@gcah/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/shared: {}
 
 packages:
