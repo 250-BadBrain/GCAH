@@ -942,4 +942,4 @@
 - Initial review evidence:
   - Spec compliance reviewer `019f5c08-6744-7471-88e6-f48cbe5c4d20`: FAIL with approval, elapsed-budget, and finish-action persistence findings.
   - Code quality/security reviewer `019f5c08-9f0e-7070-a5c0-109a9d7a8f9b`: FAIL with elapsed-budget, port-exception, and tool-output redaction findings.
-- Commit: pending.
+- Commit: `0d81c9d` (`fix: close harness loop review gaps`).
