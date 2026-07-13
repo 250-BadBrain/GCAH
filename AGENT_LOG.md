@@ -374,3 +374,21 @@
   - `git diff --check` exited 0.
 - Generated output: removed `packages/shared/dist` after build validation.
 - Commit: `b9c5fb7` (`fix: require strict persisted action args`).
+
+## 2026-07-13 - PR-01 Summary Leakage Review Fix
+
+- Scope: PR-01 final quality/security review finding for persisted/display summary leakage.
+- Agent: OpenAI Codex.
+- Reviewer:
+  - Code quality/security final reviewer: `019f5a9f-2545-7bc0-b91b-14482aacb328`.
+- Finding addressed:
+  - Persisted and API display summary fields now reject obvious credential/path leakage patterns, matching the existing stdout/stderr safety boundary.
+  - Covered fields include `ToolResultSchema.sideEffectSummary`, `ValidationResultSchema.diagnosticSummary`, persisted event/memory/feedback summaries, and `EventDtoSchema.summary`.
+- Regression evidence:
+  - Added focused failing tests before implementation; `pnpm --filter @gcah/shared test -- entities api-contracts` exited 1 for summary leakage.
+  - After fixes, `pnpm --filter @gcah/shared test -- entities api-contracts` exited 0.
+  - `pnpm verify` exited 0 with 8 files and 20 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed `packages/shared/dist` after build validation.
+- Commit: pending follow-up hash record.

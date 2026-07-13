@@ -40,5 +40,15 @@ describe("api contracts", () => {
       task: "fix tests",
       apiKey: "sk-test-secret"
     })).toThrow();
+    expect(() => RunEventsResponseSchema.parse({
+      events: [{
+        id: "event-secret",
+        type: "run.failed",
+        summary: "/home/alice/.ssh/id_rsa",
+        cursor: 1,
+        createdAt: "2026-07-13T00:00:00.000Z"
+      }],
+      nextCursor: null
+    })).toThrow();
   });
 });

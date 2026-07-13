@@ -250,7 +250,7 @@ export const ToolResultSchema = z.object({
   stdout: SensitiveOutputSchema,
   stderr: SensitiveOutputSchema,
   durationMs: z.number().int().nonnegative(),
-  sideEffectSummary: z.string(),
+  sideEffectSummary: SensitiveOutputSchema,
   createdAt: IsoTimestamp
 }).strict();
 
@@ -262,7 +262,7 @@ export const ValidationResultSchema = z.object({
   result: z.enum(["PASS", "FAIL", "ERROR", "SKIPPED"]),
   failureCategory: z.string().nullable(),
   failureFingerprint: z.string().nullable(),
-  diagnosticSummary: z.string().nullable(),
+  diagnosticSummary: SensitiveOutputSchema.nullable(),
   durationMs: z.number().int().nonnegative(),
   createdAt: IsoTimestamp
 }).strict();
@@ -272,7 +272,7 @@ export const FeedbackSchema = z.object({
   sourceId: EntityId,
   sourceType: z.enum(["decision", "validation"]),
   category: z.string().min(1),
-  summary: z.string(),
+  summary: SensitiveOutputSchema,
   injected: z.boolean(),
   createdAt: IsoTimestamp
 }).strict();
@@ -284,7 +284,7 @@ export const MemoryEntrySchema = z.object({
   tags: z.array(z.string()),
   keywords: z.array(z.string()),
   sourceRunId: EntityId,
-  summary: z.string(),
+  summary: SensitiveOutputSchema,
   createdAt: IsoTimestamp
 }).strict();
 
@@ -294,7 +294,7 @@ export const RunEventSchema = z.object({
   stepId: EntityId.nullable(),
   type: z.string().min(1),
   relatedEntityId: EntityId.nullable(),
-  summary: z.string(),
+  summary: SensitiveOutputSchema,
   cursor: z.number().int().positive(),
   createdAt: IsoTimestamp
 }).strict();

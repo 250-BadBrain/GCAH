@@ -3,6 +3,11 @@ import { z } from "zod";
 import { RunStatus, StopReason } from "./status.js";
 
 const IsoTimestamp = z.string().datetime({ offset: true });
+const SafeDisplayStringSchema = z.string().max(4096).refine((value) => {
+  return !/(sk-[A-Za-z0-9_-]+|api[_-]?key\s*=|authorization:\s*bearer\s+|[A-Za-z]:[\\/]+Users[\\/]+|\/home\/)/iu.test(value);
+}, {
+  message: "display string must be redacted before export"
+});
 
 export const CreateRunRequestSchema = z.object({
   workspacePath: z.string().min(1),
@@ -26,7 +31,7 @@ export const RunDtoSchema = z.object({
 export const EventDtoSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
-  summary: z.string(),
+  summary: SafeDisplayStringSchema,
   cursor: z.number().int().positive(),
   createdAt: IsoTimestamp
 }).strict();

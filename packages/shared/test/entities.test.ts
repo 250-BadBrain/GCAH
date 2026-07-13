@@ -300,6 +300,40 @@ describe("entity schemas", () => {
       sideEffectSummary: "read-only",
       createdAt: timestamp
     })).toThrow();
+    expect(() => ToolResultSchema.parse({
+      id: "tool-result-summary",
+      actionId: "action-1",
+      status: "OK",
+      exitCode: 0,
+      toolErrorCode: null,
+      stdout: "",
+      stderr: "",
+      durationMs: 12,
+      sideEffectSummary: "api_key=secret-value",
+      createdAt: timestamp
+    })).toThrow();
+    expect(() => ValidationResultSchema.parse({
+      id: "validation-secret",
+      actionId: "action-1",
+      type: "test",
+      commandSnapshot: "pnpm test",
+      result: "FAIL",
+      failureCategory: "test",
+      failureFingerprint: "fingerprint",
+      diagnosticSummary: "Authorization: Bearer token-value",
+      durationMs: 100,
+      createdAt: timestamp
+    })).toThrow();
+    expect(() => RunEventSchema.parse({
+      id: "event-secret",
+      runId: "run-1",
+      stepId: null,
+      type: "run.failed",
+      relatedEntityId: "run-1",
+      summary: "C:/Users/Alice/.ssh/id_rsa",
+      cursor: 2,
+      createdAt: timestamp
+    })).toThrow();
   });
 
   it("enforces action kind, tool name, finish summary, and strict params", () => {
