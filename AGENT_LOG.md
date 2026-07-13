@@ -882,4 +882,4 @@
 - Refactor/verification evidence:
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
-- Commit: pending.
+- Commit: `1529c59` (`feat: add loop context and completion gates`).

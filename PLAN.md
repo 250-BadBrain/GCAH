@@ -244,7 +244,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [x] Refactor pure decision types; rerun tests/typecheck.
 - [x] Update logs/status; commit and record hash.
 
-**Done:** FinishAction cannot bypass approval/failure/validation/budget gates. **Parallel:** No. **Status:** Complete. **Commit:** pending.
+**Done:** FinishAction cannot bypass approval/failure/validation/budget gates. **Parallel:** No. **Status:** Complete. **Commit:** `1529c59` (`feat: add loop context and completion gates`).
 
 #### T16c — Serial agent-loop orchestration
 
