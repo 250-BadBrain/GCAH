@@ -301,4 +301,4 @@
   - `pnpm install --frozen-lockfile` exited 0.
   - `git diff --check` exited 0.
 - External operations: none beyond local verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
-- Commit: pending follow-up hash record.
+- Commit: `5107713` (`feat: add shared display api event contracts`).
