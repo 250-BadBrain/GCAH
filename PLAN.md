@@ -224,40 +224,40 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Implement deterministic single-response scripts and request capture against the core-owned client port. **Dependencies:** T02c and T03a. **Files:** LLM manifests, `packages/llm/src/mock-client.ts`, `errors.ts`, `index.ts`, `packages/llm/test/mock-client.test.ts`. **First red:** Script sequencing/request capture imports are missing. **Expected implementation:** Offline `MockLlmClient` implementing core `LlmClientPort`; no duplicate client port in `packages/llm`.
 
-- [ ] Add response sequencing and exhaustion tests.
-- [ ] Run `pnpm --filter @gcah/llm test`; confirm missing-client red.
-- [ ] Import core `LlmClientPort` and add only the minimal scripted queue implementation.
-- [ ] Rerun tests; add usage/missing-usage case.
-- [ ] Refactor immutable request capture; typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add response sequencing and exhaustion tests.
+- [x] Run `pnpm --filter @gcah/llm test`; confirm missing-client red.
+- [x] Import core `LlmClientPort` and add only the minimal scripted queue implementation.
+- [x] Rerun tests; add usage/missing-usage case.
+- [x] Refactor immutable request capture; typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Mock is deterministic and makes no network call. **Parallel:** Yes after T02c. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Mock is deterministic and makes no network call. **Parallel:** Yes after T02c. **Status:** Complete. **Commit:** `1248ec6` (`feat: add scripted mock llm client`).
 
 #### T16b — Context builder, protocol retry, and completion gate
 
 **Goal:** Build bounded context and decide whether a response may proceed or complete. **Dependencies:** T04, T06, T13–T15, T16a. **Files:** `packages/core/src/loop/context-builder.ts`, `completion-gate.ts`; tests `context-builder.test.ts`, `completion-gate.test.ts`. **First red:** Over-budget memory/protocol errors/unvalidated FinishAction are not handled. **Expected implementation:** Pure context and completion decisions.
 
-- [ ] Add bounded-context and FinishAction rejection tests.
-- [ ] Run focused core tests; confirm missing-function red.
-- [ ] Implement minimal context selection and completion gate.
-- [ ] Add protocol retry/missing-usage warning assertions.
-- [ ] Refactor pure decision types; rerun tests/typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add bounded-context and FinishAction rejection tests.
+- [x] Run focused core tests; confirm missing-function red.
+- [x] Implement minimal context selection and completion gate.
+- [x] Add protocol retry/missing-usage warning assertions.
+- [x] Refactor pure decision types; rerun tests/typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** FinishAction cannot bypass approval/failure/validation/budget gates. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** FinishAction cannot bypass approval/failure/validation/budget gates. **Parallel:** No. **Status:** Complete. **Commit:** `1529c59` (`feat: add loop context and completion gates`).
 
 #### T16c — Serial agent-loop orchestration
 
 **Goal:** Integrate only injected core ports into one serial, persisted-before-effect loop. **Dependencies:** T03a and T16b. **Files:** `packages/core/src/loop/agent-loop.ts`, `packages/core/test/agent-loop.test.ts`. **First red:** Scripted end-to-end loop scenario has no orchestrator. **Expected implementation:** One Step/action at a time through injected `LlmClientPort`, `ToolGatewayPort`, `ValidationRunner`, repositories, and clock; core imports no governance or adapter package.
 
-- [ ] Add dangerous-action and feedback-correction loop tests.
-- [ ] Run focused test; confirm missing-loop red.
-- [ ] Implement one ToolAction iteration by calling injected `ToolGatewayPort`; preserve persist-before-effect ordering.
-- [ ] Add approval pause/reject and FinishAction branches.
-- [ ] Refactor pure planning from effects; run core/LLM tests and verify.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add dangerous-action and feedback-correction loop tests.
+- [x] Run focused test; confirm missing-loop red.
+- [x] Implement one ToolAction iteration by calling injected `ToolGatewayPort`; preserve persist-before-effect ordering.
+- [x] Add approval pause/reject and FinishAction branches.
+- [x] Refactor pure planning from effects; run core/LLM tests and verify.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** T16 acceptance holds offline. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T16 acceptance holds offline. **Parallel:** No. **Status:** Complete. **Commit:** `4207e6a` (`feat: add serial agent loop`), boundary test `e697991` (`test: add core loop import boundary`).
 
 #### T18a — Fastify composition and REST run/approval APIs
 
@@ -933,7 +933,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** A scripted mock deterministically exercises every main-loop branch offline; code changes cannot complete without all required validation.
 
-**Parallel:** No, integration point. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No, integration point. **Status:** Complete. **Commit:** `4207e6a` (`feat: add serial agent loop`), boundary test `e697991` (`test: add core loop import boundary`), budget fix `9cd2582` (`fix: enforce loop token budget`), review fix `0d81c9d` (`fix: close harness loop review gaps`), re-review fix `8a8ec51` (`fix: handle approval resume edge cases`), final quality fix `0cfec9b` (`fix: fail approval consumption errors`).
 
 ### Task T17: Implement SQLite repositories and append-only audit persistence
 
