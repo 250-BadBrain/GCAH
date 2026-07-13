@@ -1,12 +1,13 @@
-import type { Run, StopReason } from "@gcah/shared";
+import type { BudgetStopDetail, Run, StopReason } from "@gcah/shared";
 
 import { TransitionError } from "./transition-error.js";
+import type { Clock, RunRepository } from "../index.js";
 
 export type RunTransition =
   | { id: string; type: "start"; at: string }
   | { id: string; type: "wait_for_approval"; at: string }
   | { id: string; type: "complete"; at: string }
-  | { id: string; type: "stop"; reason: Exclude<StopReason, "COMPLETED" | "UNFIXABLE_FAILURE" | "USER_CANCELLED" | "INTERRUPTED">; at: string }
+  | { id: string; type: "stop"; reason: Exclude<StopReason, "COMPLETED" | "UNFIXABLE_FAILURE" | "USER_CANCELLED" | "INTERRUPTED">; detail?: BudgetStopDetail; at: string }
   | { id: string; type: "fail"; at: string }
   | { id: string; type: "cancel"; at: string }
   | { id: string; type: "interrupt"; at: string };
@@ -50,7 +51,10 @@ export function transitionRun(run: Run, transition: RunTransition): Run {
       if (!["BUDGET_EXHAUSTED", "POLICY_DENIED", "APPROVAL_REJECTED", "REPEATED_FAILURE", "PROTOCOL_ERROR"].includes(transition.reason)) {
         throw new TransitionError("invalid STOPPED reason");
       }
-      return withTransition(run, transition.id, { ...base, status: "STOPPED", stopReason: transition.reason, stopDetail: null });
+      if (transition.reason === "BUDGET_EXHAUSTED" && transition.detail === undefined) {
+        throw new TransitionError("budget stop requires detail");
+      }
+      return withTransition(run, transition.id, { ...base, status: "STOPPED", stopReason: transition.reason, stopDetail: transition.detail ?? null });
     case "fail":
       return withTransition(run, transition.id, { ...base, status: "FAILED", stopReason: "UNFIXABLE_FAILURE", stopDetail: null });
     case "cancel":
@@ -64,7 +68,21 @@ export function interruptRun(run: Run, transitionId: string, at: string): Run {
   return transitionRun(run, { id: transitionId, type: "interrupt", at });
 }
 
-export function cloneInterruptedRunAsPending(run: Run, newRunId: string, at: string): Run {
+export function cloneInterruptedRunAsPending(run: Run, newRunId: string, at: string): Run;
+export function cloneInterruptedRunAsPending(repositories: { runs: RunRepository }, runId: string, newRunId: string, clock: Clock): Promise<Run>;
+export function cloneInterruptedRunAsPending(
+  runOrRepositories: Run | { runs: RunRepository },
+  runIdOrNewRunId: string,
+  atOrNewRunId: string,
+  clock?: Clock
+): Run | Promise<Run> {
+  if ("runs" in runOrRepositories) {
+    return cloneInterruptedRunFromRepository(runOrRepositories, runIdOrNewRunId, atOrNewRunId, clock);
+  }
+  return cloneInterruptedRunValue(runOrRepositories, runIdOrNewRunId, atOrNewRunId);
+}
+
+function cloneInterruptedRunValue(run: Run, newRunId: string, at: string): Run {
   if (run.status !== "INTERRUPTED") {
     throw new TransitionError("only interrupted runs can be cloned");
   }
@@ -78,4 +96,32 @@ export function cloneInterruptedRunAsPending(run: Run, newRunId: string, at: str
     createdAt: at,
     updatedAt: at
   };
+}
+
+async function cloneInterruptedRunFromRepository(
+  repositories: { runs: RunRepository },
+  runId: string,
+  newRunId: string,
+  clock: Clock | undefined
+): Promise<Run> {
+  if (clock === undefined) throw new TransitionError("clock is required");
+  const run = await repositories.runs.getById(runId);
+  if (run === null) throw new TransitionError(`run ${runId} not found`);
+  const cloned = cloneInterruptedRunValue(run, newRunId, clock.nowIso());
+  return repositories.runs.create(cloned);
+}
+
+export async function interruptActiveRuns(
+  repositories: { runs: RunRepository },
+  clock: Clock
+): Promise<Run[]> {
+  const interrupted: Run[] = [];
+  let active = await repositories.runs.findActiveByWorkspace("*");
+  while (active !== null) {
+    const next = interruptRun(active, `interrupt:${active.id}:${clock.nowIso()}`, clock.nowIso());
+    interrupted.push(await repositories.runs.update(next));
+    active = await repositories.runs.findActiveByWorkspace("*");
+    if (interrupted.some((run) => active?.id === run.id)) break;
+  }
+  return interrupted;
 }

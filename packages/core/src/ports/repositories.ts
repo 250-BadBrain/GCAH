@@ -1,8 +1,10 @@
 import type {
   ConfigSnapshot,
+  Action,
   MemoryEntry,
   Run,
-  RunEvent
+  RunEvent,
+  Step
 } from "@gcah/shared";
 
 export interface RunRepository {
@@ -10,6 +12,16 @@ export interface RunRepository {
   getById(id: string): Promise<Run | null>;
   findActiveByWorkspace(workspaceId: string): Promise<Run | null>;
   update(run: Run): Promise<Run>;
+}
+
+export interface StepRepository {
+  create(step: Step): Promise<Step>;
+  listByRun(runId: string): Promise<Step[]>;
+}
+
+export interface ActionRepository {
+  create(action: Action): Promise<Action>;
+  listByStep(stepId: string): Promise<Action[]>;
 }
 
 export interface EventRepository {
@@ -29,6 +41,8 @@ export interface ConfigRepository {
 
 export interface RepositorySet {
   runs: RunRepository;
+  steps: StepRepository;
+  actions: ActionRepository;
   events: EventRepository;
   memory: MemoryRepository;
   config: ConfigRepository;

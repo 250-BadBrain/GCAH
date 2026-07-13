@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createInMemoryRepositories } from "../src/index.js";
 import type { Clock } from "@gcah/core";
-import type { ConfigSnapshot, MemoryEntry, Run, RunEvent } from "@gcah/shared";
+import type { Action, ConfigSnapshot, MemoryEntry, Run, RunEvent, Step } from "@gcah/shared";
 
 const timestamp = "2026-07-13T00:00:00.000Z";
 
@@ -26,6 +26,37 @@ function run(id: string, workspaceId = "workspace-1", status: Run["status"] = "R
     budgetUsage: { rounds: 0, tokens: 0, elapsedMs: 0, repeatedFailures: 0 },
     stopReason: null,
     stopDetail: null,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+}
+
+function step(id: string, sequence: number): Step {
+  return {
+    id,
+    runId: "run-1",
+    sequence,
+    contextSummary: "context",
+    llmUsage: null,
+    usageMissing: false,
+    status: "PENDING",
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+}
+
+function action(id: string): Action {
+  return {
+    id,
+    stepId: "step-1",
+    kind: "tool",
+    toolName: "read",
+    finishSummary: null,
+    args: { path: "README.md" },
+    displayRationale: "read",
+    normalizedSummary: "read README.md",
+    riskCategory: "low",
+    status: "PROPOSED",
     createdAt: timestamp,
     updatedAt: timestamp
   };
@@ -62,6 +93,43 @@ describe("in-memory repositories", () => {
       { cursor: 1 },
       { cursor: 2 }
     ]);
+  });
+
+  it("enforces serial step sequences and stores actions", async () => {
+    const store = createInMemoryRepositories(new FakeClock());
+    await store.repositories.runs.create(run("run-1"));
+    await expect(store.repositories.steps.create(step("step-1", 1))).resolves.toMatchObject({ id: "step-1" });
+    await expect(store.repositories.steps.create(step("step-2", 1))).rejects.toThrow(/duplicate step sequence/u);
+    await expect(store.repositories.actions.create(action("action-1"))).resolves.toMatchObject({ id: "action-1" });
+    await expect(store.repositories.actions.listByStep("step-1")).resolves.toEqual([action("action-1")]);
+  });
+
+  it("rolls back transaction writes and event cursors on failure", async () => {
+    const store = createInMemoryRepositories(new FakeClock());
+    await expect(store.transaction(async (repositories) => {
+      await repositories.runs.create(run("run-rollback"));
+      await repositories.events.append({
+        id: "event-rollback",
+        runId: "run-rollback",
+        stepId: null,
+        type: "run.started",
+        relatedEntityId: "run-rollback",
+        summary: "started",
+        createdAt: timestamp
+      });
+      throw new Error("abort");
+    })).rejects.toThrow("abort");
+
+    await expect(store.repositories.runs.getById("run-rollback")).resolves.toBeNull();
+    await expect(store.repositories.events.append({
+      id: "event-1",
+      runId: "run-1",
+      stepId: null,
+      type: "run.started",
+      relatedEntityId: "run-1",
+      summary: "started",
+      createdAt: timestamp
+    })).resolves.toMatchObject({ cursor: 1 });
   });
 
   it("stores config and memory through the UnitOfWork facade", async () => {

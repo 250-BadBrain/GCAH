@@ -73,7 +73,10 @@ describe("BudgetTracker", () => {
       maxProtocolRetries: 2
     }, clock);
 
-    expect(tracker.recordUsage(undefined, 1)).toBeNull();
+    expect(tracker.recordUsage(undefined, 1)).toMatchObject({
+      reason: "USAGE_UNAVAILABLE",
+      event: { type: "budget.usage_unavailable" }
+    });
     expect(tracker.snapshot()).toMatchObject({ tokens: 0, usageUnavailable: true });
   });
 
@@ -88,7 +91,10 @@ describe("BudgetTracker", () => {
     }, clock);
 
     expect(tracker.recordFailureFingerprint("same")).toBeNull();
-    expect(tracker.recordFailureFingerprint("same")).toEqual({ reason: "REPEATED_FAILURE" });
+    expect(tracker.recordFailureFingerprint("same", 2)).toEqual({
+      reason: "REPEATED_FAILURE",
+      detail: { kind: "repeatedFailures", limit: 2, used: 2, remaining: 0, observedAtStep: 2 }
+    });
 
     const retryTracker = new BudgetTracker({
       maxRounds: 10,
@@ -98,6 +104,20 @@ describe("BudgetTracker", () => {
       maxProtocolRetries: 2
     }, clock);
     expect(retryTracker.recordProtocolError()).toBeNull();
-    expect(retryTracker.recordProtocolError()).toEqual({ reason: "PROTOCOL_ERROR" });
+    expect(retryTracker.recordProtocolError(2)).toEqual({
+      reason: "PROTOCOL_ERROR",
+      detail: { kind: "protocolRetries", limit: 2, used: 2, remaining: 0, observedAtStep: 2 }
+    });
+  });
+
+  it("requires finite fallback limits when token budgets are enabled", () => {
+    const clock = new FakeClock(new Date("2026-07-13T00:00:00.000Z"));
+    expect(() => new BudgetTracker({
+      maxRounds: Number.POSITIVE_INFINITY,
+      maxTokens: 10,
+      maxElapsedMs: 1000,
+      repeatedFailureLimit: 2,
+      maxProtocolRetries: 2
+    }, clock)).toThrow(/finite round and elapsed/u);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cloneInterruptedRunAsPending, interruptRun, transitionRun } from "../src/index.js";
+import { cloneInterruptedRunAsPending, interruptActiveRuns, interruptRun, transitionRun } from "../src/index.js";
 import type { Run } from "@gcah/shared";
 
 const timestamp = "2026-07-13T00:00:00.000Z";
@@ -33,6 +33,13 @@ describe("run state machine", () => {
 
     expect(() => transitionRun(run(), { id: "bad", type: "stop", reason: "UNFIXABLE_FAILURE" as never, at: timestamp })).toThrow();
     expect(transitionRun(run(), { id: "approval", type: "wait_for_approval", at: timestamp }).stopReason).toBeNull();
+    expect(transitionRun(run(), {
+      id: "budget",
+      type: "stop",
+      reason: "BUDGET_EXHAUSTED",
+      detail: { kind: "rounds", limit: 2, used: 2, remaining: 0, observedAtStep: 2 },
+      at: timestamp
+    }).stopDetail).toEqual({ kind: "rounds", limit: 2, used: 2, remaining: 0, observedAtStep: 2 });
   });
 
   it("interrupts without allowing resume and clones only task/config references", () => {
@@ -46,6 +53,31 @@ describe("run state machine", () => {
       configSnapshotId: "config-1",
       status: "PENDING",
       stopReason: null
+    });
+  });
+
+  it("interrupts active runs through repositories and clones by run id", async () => {
+    const runs = new Map<string, Run>([["run-1", run()]]);
+    const repositories = {
+      runs: {
+        create: async (value: Run) => {
+          runs.set(value.id, value);
+          return value;
+        },
+        getById: async (id: string) => runs.get(id) ?? null,
+        findActiveByWorkspace: async () => [...runs.values()].find((value) => value.status === "RUNNING") ?? null,
+        update: async (value: Run) => {
+          runs.set(value.id, value);
+          return value;
+        }
+      }
+    };
+    const clock = { now: () => new Date(timestamp), nowIso: () => timestamp };
+
+    await expect(interruptActiveRuns(repositories, clock)).resolves.toHaveLength(1);
+    await expect(cloneInterruptedRunAsPending(repositories, "run-1", "run-2", clock)).resolves.toMatchObject({
+      id: "run-2",
+      status: "PENDING"
     });
   });
 });

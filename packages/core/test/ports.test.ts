@@ -9,6 +9,8 @@ import {
   type MemoryRepository,
   type RepositorySet,
   type RunRepository,
+  type StepRepository,
+  type ActionRepository,
   type ToolGatewayPort,
   type UnitOfWork,
   type ValidationRunner,
@@ -30,6 +32,14 @@ describe("core ports", () => {
       append: async (event) => ({ ...event, cursor: 1 }),
       listAfterCursor: async () => []
     };
+    const steps: StepRepository = {
+      create: async (step) => step,
+      listByRun: async () => []
+    };
+    const actions: ActionRepository = {
+      create: async (action) => action,
+      listByStep: async () => []
+    };
     const memory: MemoryRepository = {
       add: async (entry) => entry,
       search: async () => []
@@ -38,7 +48,7 @@ describe("core ports", () => {
       createSnapshot: async (snapshot) => snapshot,
       getSnapshot: async () => null
     };
-    const repositories: RepositorySet = { runs, events, memory, config };
+    const repositories: RepositorySet = { runs, steps, actions, events, memory, config };
     const unitOfWork: UnitOfWork = {
       repositories,
       transaction: async (work) => work(repositories)

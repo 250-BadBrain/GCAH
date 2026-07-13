@@ -1,16 +1,20 @@
 import type {
   ConfigSnapshot,
+  Action,
   MemoryEntry,
   Run,
-  RunEvent
+  RunEvent,
+  Step
 } from "@gcah/shared";
 import type {
   Clock,
+  ActionRepository,
   ConfigRepository,
   EventRepository,
   MemoryRepository,
   RepositorySet,
   RunRepository,
+  StepRepository,
   UnitOfWork
 } from "@gcah/core";
 
@@ -29,6 +33,8 @@ export interface InMemoryRepositories extends UnitOfWork {
 export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
   void clock;
   const runs = new Map<string, Run>();
+  const steps = new Map<string, Step>();
+  const actions = new Map<string, Action>();
   const events = new Map<string, RunEvent[]>();
   const memory = new Map<string, MemoryEntry>();
   const configs = new Map<string, ConfigSnapshot>();
@@ -91,6 +97,36 @@ export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
     }
   };
 
+  const stepRepository: StepRepository = {
+    async create(step) {
+      for (const existing of steps.values()) {
+        if (existing.runId === step.runId && existing.sequence === step.sequence) {
+          throw new Error(`duplicate step sequence ${step.sequence} for run ${step.runId}`);
+        }
+      }
+      steps.set(step.id, clone(step));
+      return clone(step);
+    },
+    async listByRun(runId) {
+      return [...steps.values()]
+        .filter((step) => step.runId === runId)
+        .sort((left, right) => left.sequence - right.sequence)
+        .map((step) => clone(step));
+    }
+  };
+
+  const actionRepository: ActionRepository = {
+    async create(action) {
+      actions.set(action.id, clone(action));
+      return clone(action);
+    },
+    async listByStep(stepId) {
+      return [...actions.values()]
+        .filter((action) => action.stepId === stepId)
+        .map((action) => clone(action));
+    }
+  };
+
   const memoryRepository: MemoryRepository = {
     async add(entry) {
       memory.set(entry.id, clone(entry));
@@ -125,6 +161,8 @@ export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
 
   const repositories: RepositorySet = {
     runs: runRepository,
+    steps: stepRepository,
+    actions: actionRepository,
     events: eventRepository,
     memory: memoryRepository,
     config: configRepository
@@ -133,10 +171,30 @@ export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
   return {
     repositories,
     async transaction(work) {
-      return work(repositories);
+      const backup = {
+        runs: clone([...runs.entries()]),
+        steps: clone([...steps.entries()]),
+        actions: clone([...actions.entries()]),
+        events: clone([...events.entries()]),
+        memory: clone([...memory.entries()]),
+        configs: clone([...configs.entries()])
+      };
+      try {
+        return await work(repositories);
+      } catch (error) {
+        runs.clear(); for (const [key, value] of backup.runs) runs.set(key, value);
+        steps.clear(); for (const [key, value] of backup.steps) steps.set(key, value);
+        actions.clear(); for (const [key, value] of backup.actions) actions.set(key, value);
+        events.clear(); for (const [key, value] of backup.events) events.set(key, value);
+        memory.clear(); for (const [key, value] of backup.memory) memory.set(key, value);
+        configs.clear(); for (const [key, value] of backup.configs) configs.set(key, value);
+        throw error;
+      }
     },
     reset() {
       runs.clear();
+      steps.clear();
+      actions.clear();
       events.clear();
       memory.clear();
       configs.clear();

@@ -25,14 +25,34 @@ export type BudgetStop = {
   detail: BudgetStopDetail;
 };
 
+export interface DeterministicStopDetail {
+  kind: BudgetStopDetail["kind"] | "protocolRetries";
+  limit: number;
+  used: number;
+  remaining: number;
+  observedAtStep: number;
+}
+
 export type NonBudgetStop = {
   reason: "REPEATED_FAILURE" | "PROTOCOL_ERROR";
+  detail: DeterministicStopDetail;
+};
+
+export type UsageUnavailable = {
+  reason: "USAGE_UNAVAILABLE";
+  event: {
+    type: "budget.usage_unavailable";
+    summary: string;
+    observedAtStep: number;
+  };
 };
 
 export class BudgetTracker {
   private readonly startedAt: number;
   private rounds = 0;
   private tokens = 0;
+  private repeatedFailures = 0;
+  private protocolErrors = 0;
   private usageUnavailable = false;
   private readonly failures: FailureWindow;
   private readonly protocolRetries: ProtocolRetries;
@@ -41,6 +61,9 @@ export class BudgetTracker {
     private readonly limits: BudgetLimits,
     private readonly clock: Clock
   ) {
+    if (Number.isFinite(limits.maxTokens) && (!Number.isFinite(limits.maxRounds) || !Number.isFinite(limits.maxElapsedMs))) {
+      throw new Error("token budgeting requires finite round and elapsed fallback limits");
+    }
     this.startedAt = clock.now().getTime();
     this.failures = new FailureWindow(limits.repeatedFailureLimit);
     this.protocolRetries = new ProtocolRetries(limits.maxProtocolRetries);
@@ -54,10 +77,17 @@ export class BudgetTracker {
     return null;
   }
 
-  recordUsage(usage: LlmUsage | undefined, step: number): BudgetStop | null {
+  recordUsage(usage: LlmUsage | undefined, step: number): BudgetStop | UsageUnavailable | null {
     if (usage === undefined) {
       this.usageUnavailable = true;
-      return null;
+      return {
+        reason: "USAGE_UNAVAILABLE",
+        event: {
+          type: "budget.usage_unavailable",
+          summary: "LLM usage was unavailable; token budget was not incremented.",
+          observedAtStep: step
+        }
+      };
     }
     this.tokens += usage.totalTokens;
     if (this.tokens >= this.limits.maxTokens) {
@@ -74,12 +104,37 @@ export class BudgetTracker {
     return null;
   }
 
-  recordFailureFingerprint(fingerprint: string): NonBudgetStop | null {
-    return this.failures.record(fingerprint) ? { reason: "REPEATED_FAILURE" } : null;
+  recordFailureFingerprint(fingerprint: string, step = 0): NonBudgetStop | null {
+    const stopped = this.failures.record(fingerprint);
+    this.repeatedFailures = stopped ? this.limits.repeatedFailureLimit : this.repeatedFailures + 1;
+    return stopped
+      ? {
+          reason: "REPEATED_FAILURE",
+          detail: {
+            kind: "repeatedFailures",
+            limit: this.limits.repeatedFailureLimit,
+            used: this.limits.repeatedFailureLimit,
+            remaining: 0,
+            observedAtStep: step
+          }
+        }
+      : null;
   }
 
-  recordProtocolError(): NonBudgetStop | null {
-    return this.protocolRetries.record() ? { reason: "PROTOCOL_ERROR" } : null;
+  recordProtocolError(step = 0): NonBudgetStop | null {
+    this.protocolErrors += 1;
+    return this.protocolRetries.record()
+      ? {
+          reason: "PROTOCOL_ERROR",
+          detail: {
+            kind: "protocolRetries",
+            limit: this.limits.maxProtocolRetries,
+            used: this.protocolErrors,
+            remaining: Math.max(0, this.limits.maxProtocolRetries - this.protocolErrors),
+            observedAtStep: step
+          }
+        }
+      : null;
   }
 
   snapshot(): BudgetSnapshot {
@@ -87,7 +142,7 @@ export class BudgetTracker {
       rounds: this.rounds,
       tokens: this.tokens,
       elapsedMs: this.elapsedMs(),
-      repeatedFailures: 0,
+      repeatedFailures: this.repeatedFailures,
       usageUnavailable: this.usageUnavailable
     };
   }

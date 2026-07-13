@@ -488,6 +488,33 @@
 - Generated output: removed package `dist` directories after build validation.
 - Commit: `7e7b98e` (`feat: add budget tracking`).
 
+## 2026-07-13 - PR-02 Review Fixes
+
+- Scope: PR-02 independent review findings for T03, T04, and T06.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5b2a-2c05-7e93-838d-16455cfc3e94`.
+  - Code quality/security reviewer: `019f5b2a-8dee-7672-a6dd-399ad4ed6b51`.
+- Findings addressed:
+  - Added `StepRepository` and `ActionRepository` to core repository ports and in-memory persistence.
+  - In-memory repositories now reject duplicate step sequence numbers per run and expose action persistence by step.
+  - `UnitOfWork.transaction()` now snapshots and rolls back in-memory state, including event cursor assignment, when work fails.
+  - Added repository-backed active-run interruption and run-id clone path.
+  - Budget missing usage now returns a cost-accounting warning event request and does not increment token usage.
+  - Repeated failure and protocol retry stops now carry deterministic details; budget snapshots track repeated failures.
+  - `BUDGET_EXHAUSTED` run transitions now require and carry `BudgetStopDetail`.
+- Regression evidence:
+  - Added focused failing tests before implementation for repositories, transaction rollback, interruption/clone, missing usage warning, repeated/protocol details, and budget stop detail.
+  - After fixes, `pnpm --filter @gcah/persistence test` exited 0.
+  - After fixes, `pnpm --filter @gcah/core test -- run-machine budget` exited 0.
+  - `pnpm verify` exited 0 with 14 files and 34 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Note:
+  - Transition idempotency remains in-memory for PR-02 because no shared persisted transition-id field exists yet; repository/audit persistence tasks will add durable transition records.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: pending follow-up hash record.
+
 ## 2026-07-13 - T03a
 
 - Scope: PR-02 `core-domain`, T03a core repository, UnitOfWork, and clock ports.
