@@ -1081,4 +1081,4 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
-- Commit: pending.
+- Commit: `2e85678` (`feat: add server event replay`).

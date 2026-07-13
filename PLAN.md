@@ -296,7 +296,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [x] Refactor subscriber cleanup; rerun server tests.
 - [x] Update logs/status; commit and record hash.
 
-**Done:** T18 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** pending.
+**Done:** T18 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** `2e85678` (`feat: add server event replay`).
 
 #### T21a — CLI HTTP client and run lifecycle commands
 
@@ -985,7 +985,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** API/SSE/auth/restart acceptance tests pass with fake credentials and no network beyond Fastify injection.
 
-**Parallel:** After T17, can overlap T19/T22 preparation. **Status:** Complete. **Commit:** pending.
+**Parallel:** After T17, can overlap T19/T22 preparation. **Status:** Complete. **Commit:** `2e85678` (`feat: add server event replay`).
 
 #### T18d — Cloudflare Worker HTTP/SSE composition root and D1 adapter
 
