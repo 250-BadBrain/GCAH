@@ -638,3 +638,23 @@
   - Spec compliance re-reviewer `019f5ba3-1164-7712-a720-2601e3f22d1c`: PASS.
   - Code quality/security re-reviewer `019f5ba3-4a52-7a81-886d-2783439635d0`: PASS.
 - Commit under review: `5f6e94e` (`docs: record governance review fixes`).
+
+## 2026-07-13 - T09
+
+- Scope: PR-04 `governed-tools`, T09 executor ports and mandatory governance ToolGateway.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `be3d2fd`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- tool-gateway` exited 1 because `packages/tools/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/tools`, `ToolRegistry`, executor port, fake executor, and `createToolGateway`.
+  - Gateway validates args, normalizes actions, asks governance, rechecks approvals for risky actions, persists action/decision inside `UnitOfWork`, and only dispatches after persistence succeeds.
+  - Focused gateway tests exited 0 with 1 file and 3 tests.
+- Refactor/verification evidence:
+  - Added tools package to root build/typecheck scripts and workspace graph.
+  - `pnpm verify` exited 0 with 21 files and 53 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `e046b0f` (`feat: add governed tool gateway`).

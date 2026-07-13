@@ -751,7 +751,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Tests prove every executor call has a persisted governance decision or valid approval and no bypass export exists.
 
-**Parallel:** No before T03/T07/T08; after those dependencies it can run while T13–T15 proceed. T10 follows within PR. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No before T03/T07/T08; after those dependencies it can run while T13?T15 proceed. T10 follows within PR. **Status:** Complete. **Commit:** `e046b0f` (`feat: add governed tool gateway`).
 
 ### Task T10: Implement list/read, bounded output, and safe LocalExecutor file access
 
