@@ -135,3 +135,17 @@
 - External operations: no Cloudflare login, authorization, token creation, deployment, domain binding, DNS, or HTTPS operation was performed; S02 is not recorded as a real remote deployment.
 - Spike artifacts: disposable spike code was deleted; original reports were not modified.
 - Commit: none; awaiting human review.
+
+## 2026-07-13 - PR-01 Approval
+
+- Approval time: 2026-07-13 14:11:39 +08:00.
+- Human decision:
+  - Formal execution is approved for PR-01 `foundation-contracts` only.
+  - Approved task scope is limited to PLAN PR-01: T01-T02 and their child tasks.
+  - Later PR groups are not authorized by this approval.
+- Branch/worktree:
+  - Branch: `feat/foundation-contracts`
+  - Worktree: `E:/Desktop/GCAH-foundation-contracts`
+  - Baseline commit: `390c8da738431401086ea2205aada8cde3ab777d`
+- Implementation status: not started by this approval-record update.
+- Commit: none; awaiting human commit.

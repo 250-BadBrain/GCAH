@@ -1292,4 +1292,6 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 - **Cross-platform paths:** T05 must pass Windows-native and Linux `amd64` matrices before governed mutation tools are accepted.
 - **Scope growth:** Multi-agent orchestration, vector memory, full event sourcing, Anthropic, multi-user collaboration, and cloud repository execution remain excluded.
 
-Plan status: **Awaiting human review; no task authorized for execution.**
+Plan status: **Approved for execution: PR-01 foundation-contracts**
+
+Approval scope: PR-01 only, covering the T01-T02 child tasks assigned to PR-01 in this plan. Later PR groups remain unauthorized until a separate human approval is recorded.
