@@ -959,7 +959,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** In-memory and SQLite pass the shared contract suite, which is exported for D1 parity in T18d; database failure prevents side effects; no plaintext credential column/value exists.
 
-**Parallel:** No within PR-07; T19 may proceed separately after S01. **Status:** Complete. **Commit:** pending.
+**Parallel:** No within PR-07; T19 may proceed separately after S01. **Status:** Complete. **Commit:** `7a84c99` (`feat: add sqlite persistence adapter`).
 
 ### Task T18: Build the Fastify API, local/self-hosted auth, SSE, and restart behavior
 

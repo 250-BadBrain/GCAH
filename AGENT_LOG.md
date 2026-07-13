@@ -1019,4 +1019,4 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
-- Commit: pending.
+- Commit: `7a84c99` (`feat: add sqlite persistence adapter`).
