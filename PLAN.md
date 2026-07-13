@@ -751,7 +751,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Tests prove every executor call has a persisted governance decision or valid approval and no bypass export exists.
 
-**Parallel:** No before T03/T07/T08; after those dependencies it can run while T13–T15 proceed. T10 follows within PR. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No before T03/T07/T08; after those dependencies it can run while T13?T15 proceed. T10 follows within PR. **Status:** Complete. **Commit:** `e046b0f` (`feat: add governed tool gateway`).
 
 ### Task T10: Implement list/read, bounded output, and safe LocalExecutor file access
 
@@ -777,7 +777,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Read-only tools are bounded, fenced, audit-ready, and never request validation.
 
-**Parallel:** No within PR-04. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No within PR-04. **Status:** Complete. **Commit:** `260ae6b` (`feat: add read-only local tools`).
 
 ### Task T11: Implement patch, write, and delete with stale-base and mutation semantics
 
@@ -803,7 +803,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Stale patches never change files; overwrite/delete cannot execute without current authorization; successful mutations request validation.
 
-**Parallel:** No within PR-04. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No within PR-04. **Status:** Complete. **Commit:** `3a6bec5` (`feat: add mutation file tools`).
 
 ### Task T12: Implement structured run_command and independent run_validation dispatch
 
@@ -829,7 +829,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Tests prove system shell is never invoked, public demo cannot run commands, and LLM cannot alter validation commands.
 
-**Parallel:** No; unlocks full loop. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; unlocks full loop. **Status:** Complete. **Commit:** `4c8185a` (`feat: add structured command tools`).
 
 ### Task T13: Implement validation orchestration, failure classification, fingerprints, and feedback
 

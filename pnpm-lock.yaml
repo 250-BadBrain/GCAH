@@ -51,6 +51,18 @@ importers:
 
   packages/shared: {}
 
+  packages/tools:
+    dependencies:
+      '@gcah/core':
+        specifier: workspace:*
+        version: link:../core
+      '@gcah/governance':
+        specifier: workspace:*
+        version: link:../governance
+      '@gcah/shared':
+        specifier: workspace:*
+        version: link:../shared
+
 packages:
 
   '@emnapi/core@1.11.1':

@@ -638,3 +638,114 @@
   - Spec compliance re-reviewer `019f5ba3-1164-7712-a720-2601e3f22d1c`: PASS.
   - Code quality/security re-reviewer `019f5ba3-4a52-7a81-886d-2783439635d0`: PASS.
 - Commit under review: `5f6e94e` (`docs: record governance review fixes`).
+
+## 2026-07-13 - T09
+
+- Scope: PR-04 `governed-tools`, T09 executor ports and mandatory governance ToolGateway.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `be3d2fd`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- tool-gateway` exited 1 because `packages/tools/src/index.ts` did not exist.
+- Green evidence:
+  - Added `@gcah/tools`, `ToolRegistry`, executor port, fake executor, and `createToolGateway`.
+  - Gateway validates args, normalizes actions, asks governance, rechecks approvals for risky actions, persists action/decision inside `UnitOfWork`, and only dispatches after persistence succeeds.
+  - Focused gateway tests exited 0 with 1 file and 3 tests.
+- Refactor/verification evidence:
+  - Added tools package to root build/typecheck scripts and workspace graph.
+  - `pnpm verify` exited 0 with 21 files and 53 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `e046b0f` (`feat: add governed tool gateway`).
+
+## 2026-07-13 - T10
+
+- Scope: PR-04 `governed-tools`, T10 list/read, bounded output, and safe LocalExecutor file access.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `62d17d8`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- read-tools local-executor` exited 1 because `LocalExecutor`, `registerReadTools`, and `boundOutput` were not exported.
+- Green evidence:
+  - Added `LocalExecutor`, bounded output helper, and list/read tool registration.
+  - Read-only tools resolve targets through the workspace fence, sort list output deterministically, cap output, return stable boundary errors, and never mark validation required.
+  - Focused read/local-executor tests exited 0 with 2 files and 3 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 23 files and 56 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `260ae6b` (`feat: add read-only local tools`).
+
+## 2026-07-13 - T11
+
+- Scope: PR-04 `governed-tools`, T11 patch/write/delete with stale-base and mutation semantics.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `258665f`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- patch write-delete` exited 1 because `registerMutationTools` was not exported.
+- Green evidence:
+  - Added file hashing, one-file unified diff application, atomic sibling writes, create-only write, explicit delete, and mutation registration.
+  - Covered successful patch, stale base no-op, create-only write, delete, and validation-required marking after successful mutation.
+  - Focused mutation tests exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0 with 25 files and 60 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `3a6bec5` (`feat: add mutation file tools`).
+
+## 2026-07-13 - T12
+
+- Scope: PR-04 `governed-tools`, T12 structured run_command and independent run_validation dispatch.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Baseline commit: `cbb11b6`.
+- Red evidence:
+  - `pnpm --filter @gcah/tools test -- command` exited 1 because command template matching and `CommandRunner` were not exported.
+- Green evidence:
+  - Added exact command-template matching, direct runner dispatch with `shell:false`, public-demo command denial, and validator-ID-only run_validation routing.
+  - Focused command and run-validation tests exited 0 with 3 files and 4 tests.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 28 files and 64 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `4c8185a` (`feat: add structured command tools`).
+
+## 2026-07-13 - PR-04 Review Fixes
+
+- Scope: PR-04 independent review findings for T09-T12.
+- Agent: OpenAI Codex.
+- Reviewers:
+  - Spec compliance reviewer: `019f5bb7-f9d8-7241-ad5c-540dee1ad29b`.
+  - Code quality/security reviewer: `019f5bb8-3eb0-7670-9335-7884b7c7753b`.
+- Findings addressed:
+  - Removed raw `LocalExecutor`, command runner, and tool registration exports from the public package index to avoid public bypass paths.
+  - Added execution context so mutation and command tools reject calls that do not come through `ToolGateway`.
+  - Updated tests to execute tools via `createToolGateway`, preserving governance/persistence-before-effect ordering.
+  - Added `CommandValidationRunner` implementing the core `ValidationRunner` port.
+  - ToolGateway now maps thrown tool errors to stable summaries without stack output.
+- Regression evidence:
+  - Focused PR-04 tests exited 0 with 8 files and 14 tests after fixes.
+  - `pnpm verify` exited 0 with 28 files and 64 tests after fixes.
+  - `pnpm build` exited 0 after fixes.
+  - `git diff --check` exited 0 after fixes.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: `4ad1e16` (`fix: close tool execution bypasses`).
+
+## 2026-07-13 - PR-04 Final Review
+
+- Scope: PR-04 `governed-tools` final review after fixes.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/governed-tools` at `E:/Desktop/GCAH-governed-tools`.
+- Final review evidence:
+  - Spec compliance re-reviewer `019f5bc0-a526-7c41-a328-4c2615959534`: PASS.
+  - Code quality/security re-reviewer `019f5bc0-db1f-74a2-82d6-17cdbb99da92`: PASS.
+- Commit under review: `29ccefb` (`docs: record tool review fixes`).
