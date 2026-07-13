@@ -192,7 +192,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor shared bounded-string helpers; rerun package tests.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** T02 acceptance holds and rationale is excluded from hashable data. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T02 acceptance holds and rationale is excluded from hashable data. **Parallel:** No. **Status:** Complete. **Commit:** pending follow-up hash record.
 
 #### T03a — Core repository, UnitOfWork, and clock ports
 

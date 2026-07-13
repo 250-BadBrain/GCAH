@@ -269,3 +269,36 @@
   - `git diff --check` exited 0.
 - External operations: none beyond local test/typecheck/lint/install verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
 - Commit: `7397339` (`feat: add agent response tool contracts`).
+
+## 2026-07-13 - T02c
+
+- Scope: PR-01 `foundation-contracts`, T02c safe display, event, and API schemas.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/foundation-contracts` at `E:/Desktop/GCAH-foundation-contracts`.
+- Baseline commit: `0356158090870ee2a0fc36165f6dfc3bf1f4e625`.
+- Files added/modified:
+  - `packages/shared/src/safe-display.ts`
+  - `packages/shared/src/events.ts`
+  - `packages/shared/src/api-contracts.ts`
+  - `packages/shared/src/index.ts`
+  - `packages/shared/test/safe-display.test.ts`
+  - `packages/shared/test/events.test.ts`
+  - `packages/shared/test/api-contracts.test.ts`
+  - `PLAN.md`
+  - `AGENT_LOG.md`
+- Red evidence:
+  - `pnpm --filter @gcah/shared test -- safe-display events api-contracts` exited 1 because the three target modules did not exist.
+- Green evidence:
+  - Added deterministic rationale escaping/redaction/truncation.
+  - Added event cursor parsing and event schema export.
+  - Added strict run, approval, event-response API DTO schemas that reject unknown secret-shaped fields.
+  - `pnpm --filter @gcah/shared test -- safe-display events api-contracts` exited 0 with 3 files and 4 tests.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/shared test` exited 0 with 8 files and 15 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm verify` exited 0.
+  - `pnpm install --frozen-lockfile` exited 0.
+  - `git diff --check` exited 0.
+- External operations: none beyond local verification; no real LLM, Cloudflare, credential, deployment, or secret operation was performed.
+- Commit: pending follow-up hash record.
