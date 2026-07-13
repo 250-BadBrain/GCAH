@@ -4,8 +4,12 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { LocalExecutor, registerReadTools } from "../src/index.js";
+import { createToolGateway } from "../src/index.js";
+import { LocalExecutor } from "../src/executor/local-executor.js";
+import { registerReadTools } from "../src/tools/read-tools.js";
 import { createWorkspaceFence } from "@gcah/governance";
+import type { Action, RunEvent } from "@gcah/shared";
+import type { UnitOfWork } from "@gcah/core";
 
 async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "gcah-tools-"));
@@ -14,6 +18,27 @@ async function workspace(): Promise<string> {
   await writeFile(join(root, "src", "b.txt"), "bravo");
   await writeFile(join(root, "big.txt"), "x".repeat(32));
   return root;
+}
+
+function unitOfWork(): UnitOfWork {
+  return {
+    repositories: {} as never,
+    transaction: async (work) => work({
+      actions: { create: async (action: Action) => action, listByStep: async () => [] },
+      events: { append: async (event: Omit<RunEvent, "cursor"> & { cursor?: number }) => ({ ...event, cursor: 1 }), listAfterCursor: async () => [] }
+    } as never)
+  };
+}
+
+function gatewayFor(executor: LocalExecutor): ReturnType<typeof createToolGateway> {
+  return createToolGateway({
+    runId: "run-1",
+    actionIdFactory: () => "action-1",
+    unitOfWork: unitOfWork(),
+    governance: { decide: () => ({ result: "ALLOW", ruleId: "test", riskCategory: "low", explanation: "test" }) },
+    approval: { authorize: () => ({ authorized: false, reason: "NO_GRANT" }) },
+    registry: executor.registry
+  });
 }
 
 describe("read-only tools", () => {
@@ -29,12 +54,13 @@ describe("read-only tools", () => {
       outputLimitBytes: 16
     });
     registerReadTools(executor);
+    const gateway = gatewayFor(executor);
 
-    await expect(executor.execute({ tool: "list", args: { path: "src" } })).resolves.toMatchObject({
+    await expect(gateway.execute({ tool: "list", args: { path: "src" } })).resolves.toMatchObject({
       status: "OK",
       summary: "a.txt\nb.txt"
     });
-    await expect(executor.execute({ tool: "read", args: { path: "big.txt" } })).resolves.toMatchObject({
+    await expect(gateway.execute({ tool: "read", args: { path: "big.txt" } })).resolves.toMatchObject({
       status: "OK",
       summary: "xxxxxxxxxxxxxxxx\n[truncated]"
     });
@@ -51,8 +77,9 @@ describe("read-only tools", () => {
       })
     });
     registerReadTools(executor);
+    const gateway = gatewayFor(executor);
 
-    await expect(executor.execute({ tool: "read", args: { path: "../outside.txt" } })).resolves.toMatchObject({
+    await expect(gateway.execute({ tool: "read", args: { path: "../outside.txt" } })).resolves.toMatchObject({
       status: "ERROR",
       summary: "PATH_BOUNDARY_VIOLATION"
     });

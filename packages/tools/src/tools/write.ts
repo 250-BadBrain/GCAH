@@ -6,7 +6,9 @@ import { writeAtomically } from "./atomic-file.js";
 export function registerWriteTool(executor: LocalExecutor): void {
   executor.registry.register({
     tool: "write",
-    async execute(request) {
+    async execute(request, context) {
+      const unauthorized = context?.authorized === true ? null : { status: "ERROR" as const, summary: "GATEWAY_AUTHORIZATION_REQUIRED" };
+      if (unauthorized !== null) return unauthorized;
       const args = request.args as { path: string; content: string };
       const target = await executor.fence.resolveNewTarget(args.path);
       try {

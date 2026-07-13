@@ -13,7 +13,8 @@ export interface RegisterValidationToolOptions {
 export function registerValidationTool(options: RegisterValidationToolOptions): void {
   options.registry.register({
     tool: "run_validation",
-    async execute(request) {
+    async execute(request, context) {
+      if (context?.authorized !== true) return { status: "ERROR", summary: "GATEWAY_AUTHORIZATION_REQUIRED" };
       const parsed = RunValidationArgsSchema.safeParse(request.args);
       if (!parsed.success) return { status: "ERROR", summary: "INVALID_VALIDATION_ARGS" };
       const command = options.validators[parsed.data.kind];

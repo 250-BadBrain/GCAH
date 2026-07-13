@@ -1,7 +1,7 @@
 import type { WorkspaceFence } from "@gcah/governance";
 import type { ToolGatewayRequest, ToolGatewayResult } from "@gcah/core";
 
-import type { Executor } from "./executor.js";
+import type { ExecutionContext, Executor } from "./executor.js";
 import { ToolRegistry } from "../gateway/tool-registry.js";
 
 export interface LocalExecutorOptions {
@@ -37,4 +37,8 @@ export class LocalExecutor implements Executor {
       return { status: "ERROR", summary: code };
     }
   }
+}
+
+export function requireAuthorizedContext(context: ExecutionContext | undefined): ToolGatewayResult | null {
+  return context?.authorized === true ? null : { status: "ERROR", summary: "GATEWAY_AUTHORIZATION_REQUIRED" };
 }

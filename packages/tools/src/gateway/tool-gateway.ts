@@ -98,7 +98,14 @@ export function createToolGateway(options: ToolGatewayOptions): ToolGatewayPort 
         return error("persistence failed before dispatch");
       }
 
-      return definition.execute({ tool: request.tool, args: normalized.args });
+      try {
+        return await definition.execute({ tool: request.tool, args: normalized.args }, { authorized: true });
+      } catch (executionError) {
+        const code = executionError instanceof Error && "code" in executionError && typeof executionError.code === "string"
+          ? executionError.code
+          : "TOOL_EXECUTION_FAILED";
+        return error(code);
+      }
     }
   };
 }

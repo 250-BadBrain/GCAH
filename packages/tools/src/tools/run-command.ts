@@ -14,7 +14,8 @@ export interface RegisterCommandToolsOptions {
 export function registerCommandTools(options: RegisterCommandToolsOptions): void {
   options.registry.register({
     tool: "run_command",
-    async execute(request) {
+    async execute(request, context) {
+      if (context?.authorized !== true) return { status: "ERROR", summary: "GATEWAY_AUTHORIZATION_REQUIRED" };
       if (options.publicDemo) return { status: "ERROR", summary: "PUBLIC_DEMO_DENIED" };
       const parsed = RunCommandArgsSchema.safeParse(request.args);
       if (!parsed.success) return { status: "ERROR", summary: "INVALID_COMMAND_ARGS" };
