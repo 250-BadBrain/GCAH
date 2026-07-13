@@ -983,4 +983,4 @@
 - Review evidence before this fix:
   - Spec compliance final re-reviewer `019f5c1b-4174-7da1-aad5-d228b9dd6013`: PASS.
   - Code quality/security final re-reviewer `019f5c1b-8b6a-7030-b834-918028d63409`: FAIL with approval consumption exception finding.
-- Commit: pending.
+- Commit: `0cfec9b` (`fix: fail approval consumption errors`).
