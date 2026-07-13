@@ -4,3 +4,6 @@ export * from "./ports/repositories.js";
 export * from "./ports/tool-gateway.js";
 export * from "./ports/validation-runner.js";
 export * from "./ports/workspace-fence.js";
+export * from "./state/action-machine.js";
+export * from "./state/run-machine.js";
+export * from "./state/transition-error.js";

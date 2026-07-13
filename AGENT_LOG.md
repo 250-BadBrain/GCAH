@@ -450,6 +450,25 @@
   - `git diff --check` exited 0.
 - Commit: `de920fe` (`feat: add in-memory repositories`).
 
+## 2026-07-13 - T04
+
+- Scope: PR-02 `core-domain`, T04 run/action state machines and interruption policy.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/core-domain` at `E:/Desktop/GCAH-core-domain`.
+- Baseline commit: `144386c`.
+- Red evidence:
+  - `pnpm --filter @gcah/core test -- run-machine action-machine` exited 1 because state transition functions were not implemented.
+- Green evidence:
+  - Added `transitionRun`, `transitionAction`, `interruptRun`, `cloneInterruptedRunAsPending`, and `TransitionError`.
+  - Added deterministic tests for terminal reason mapping, idempotent transition IDs, illegal transitions, and clone-only interruption.
+  - Focused core tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 12 files and 26 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Generated output: removed package `dist` directories after build validation.
+- Commit: pending follow-up hash record.
+
 ## 2026-07-13 - T03a
 
 - Scope: PR-02 `core-domain`, T03a core repository, UnitOfWork, and clock ports.
