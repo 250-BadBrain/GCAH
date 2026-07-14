@@ -1043,7 +1043,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Offline fake-transport suite passes; manual DeepSeek/Qwen instructions exist; missing usage is preserved as unavailable; no key is logged.
 
-**Parallel:** Yes after T19; independent of server UI. **Status:** Complete. **Commit:** pending (`feat: add openai compatible llm adapter`).
+**Parallel:** Yes after T19; independent of server UI. **Status:** Complete. **Commit:** `9c23e83` (`feat: add openai compatible llm adapter`).
 
 ### Task T21: Build the CLI for run, status, approval, config, and credentials
 

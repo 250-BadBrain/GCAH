@@ -1185,4 +1185,4 @@
   - `@gcah/llm` imports only the credential resolver type from `@gcah/credentials`, not concrete OS backends.
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0 after adding `scripts/*.ts` to the existing ESLint default project allowlist.
-- Commit: pending.
+- Commit: `9c23e83` (`feat: add openai compatible llm adapter`).
