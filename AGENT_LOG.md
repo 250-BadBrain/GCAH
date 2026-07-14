@@ -1186,3 +1186,24 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0 after adding `scripts/*.ts` to the existing ESLint default project allowlist.
 - Commit: `9c23e83` (`feat: add openai compatible llm adapter`).
+
+## 2026-07-14 - T21
+
+- Scope: PR-08 `credentials-llm-cli`, T21 CLI run/status/approval/config/credential/server commands.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `90477da`.
+- Red evidence:
+  - `pnpm --filter @gcah/cli test` exited 1 because `apps/cli/src/main.ts` and CLI commands did not exist.
+- Green evidence:
+  - Added `@gcah/cli` workspace package, root build/typecheck inclusion, and thin injected HTTP transport client.
+  - Added run submit/status/cancel/clone commands using shared DTO validation.
+  - Added approval list/approve-once/approve-session/reject and config status commands as DTO-only calls with no local policy calculation.
+  - Added credential status/set/update/clear commands using hidden-input callback and injected `CredentialStore`; outputs never echo secret sentinels.
+  - Added server start guidance command and backend-unavailable credential status handling.
+  - `pnpm --filter @gcah/cli test` exited 0 with 5 files and 6 tests.
+- Refactor/verification evidence:
+  - CLI output uses shared sanitization for secret-shaped text.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: pending.

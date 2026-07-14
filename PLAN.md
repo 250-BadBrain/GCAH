@@ -309,7 +309,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor shared formatter; rerun CLI tests/typecheck.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** Run lifecycle commands pass. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Run lifecycle commands pass. **Parallel:** No. **Status:** Complete. **Commit:** pending (`feat: add cli commands`).
 
 #### T21b — CLI approval and configuration commands
 
@@ -322,7 +322,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor common option validation; rerun tests.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** CLI never calculates authorization. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** CLI never calculates authorization. **Parallel:** No. **Status:** Complete. **Commit:** pending (`feat: add cli commands`).
 
 #### T21c — CLI credential and server commands
 
@@ -335,7 +335,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor sanitized errors; run all CLI tests.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** T21 acceptance holds. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T21 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** pending (`feat: add cli commands`).
 
 #### T22a — WebUI shell, Run list, timeline, and validation views
 
