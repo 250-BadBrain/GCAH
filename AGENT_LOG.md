@@ -1253,4 +1253,4 @@
   - `pnpm verify` exited 0 with 58 files and 142 tests.
   - `pnpm build` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
-- Commit: pending.
+- Commit: `4b1c91d` (`fix: close credentials cli re-review gaps`).
