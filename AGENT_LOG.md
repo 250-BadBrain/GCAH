@@ -1254,3 +1254,28 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
 - Commit: `4b1c91d` (`fix: close credentials cli re-review gaps`).
+
+## 2026-07-14 - PR-08 Final Re-review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after second re-review.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `c61a055`.
+- Reviewer evidence:
+  - Spec re-reviewer `019f604e-6325-7733-812a-045ac174c6fb` reported that the emitted CLI bin loaded workspace TypeScript exports at runtime and that hidden input consumed only the first raw keypress chunk.
+  - Code quality/security re-reviewer `019f604e-7759-7e10-b01f-34c645d91d62` reported the same hidden-input chunk handling gap.
+- Red evidence:
+  - Added regression tests for multi-chunk raw-mode input with backspace handling and for executing `apps/cli/dist/src/bin.js server start` after a clean CLI build.
+  - Focused CLI tests exited 1 before implementation because `execFile` could not build/run the emitted bin path from a clean test run.
+- Green evidence:
+  - Added chunk-wise raw-mode line reading until Enter/Ctrl-C and restored the prior terminal raw-mode state after prompting.
+  - Removed CLI top-level runtime imports of workspace TypeScript-only exports; credential keychain loading is now deferred to credential commands.
+  - Updated the credential package export/build path for runtime JavaScript consumers.
+  - `node apps/cli/dist/src/bin.js server start` exited 0 and printed the server composition-root guidance.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/cli test -- hidden-input bin` exited 0 with 2 files and 5 tests.
+  - `pnpm --filter @gcah/credentials test -- credential-store` exited 0 with 1 file and 5 tests.
+  - `pnpm verify` exited 0 with 58 files and 143 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `1fb645c` (`fix: make cli runtime executable`).
