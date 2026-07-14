@@ -1206,4 +1206,4 @@
   - CLI output uses shared sanitization for secret-shaped text.
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
-- Commit: pending.
+- Commit: `6d552d0` (`feat: add cli commands`).
