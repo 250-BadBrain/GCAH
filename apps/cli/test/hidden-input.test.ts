@@ -15,6 +15,20 @@ describe("CLI hidden input and entrypoint", () => {
     expect(writes.join("")).not.toContain("sk-test-sentinel");
   });
 
+  it("disables terminal echo with raw mode while reading default input", async () => {
+    const rawModes: boolean[] = [];
+    const writes: string[] = [];
+    const prompt = createHiddenInputPrompt({
+      read: async () => "sk-test-sentinel\n",
+      write: (value) => writes.push(value),
+      setRawMode: (enabled) => rawModes.push(enabled)
+    });
+
+    await expect(prompt()).resolves.toBe("sk-test-sentinel");
+    expect(rawModes).toEqual([true, false]);
+    expect(writes.join("")).not.toContain("sk-test-sentinel");
+  });
+
   it("runs argv through the executable entrypoint dependencies", async () => {
     let stored = "";
     const store: CredentialStore = {

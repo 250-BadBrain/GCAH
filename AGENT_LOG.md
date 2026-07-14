@@ -1231,3 +1231,26 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
 - Commit: `e6987d6` (`fix: address credentials cli review findings`).
+
+## 2026-07-14 - PR-08 Re-review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after first re-review.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `6050a96`.
+- Reviewer evidence:
+  - Spec re-reviewer `019f6042-53c8-77d2-9493-735399c3464d` reported backend operation error leakage, default hidden input echo, and non-runnable CLI bin.
+  - Code quality/security re-reviewer `019f6042-6815-7ce1-8f2a-419aabffa775` reported the same three blocking issues.
+- Red evidence:
+  - Added regression tests for backend `getPassword`/`setPassword`/`deletePassword` failures containing a sentinel, raw-mode hidden input, and CLI bin pointing to emitted JavaScript.
+  - Focused credentials/CLI tests exited 1 before implementation for these missing behaviors.
+- Green evidence:
+  - Wrapped credential backend operation failures as safe `CredentialBackendUnavailableError` and converted status read failures to backend-unavailable status.
+  - Updated hidden input to enable raw mode during the read and restore it afterward.
+  - Updated CLI package bin to `dist/src/bin.js` and CLI build config to emit JavaScript.
+  - Focused regression tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 58 files and 142 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: pending.

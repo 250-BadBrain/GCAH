@@ -45,6 +45,24 @@ class ThrowingDiagnoseBackend implements KeychainBackend {
   async deletePassword(): Promise<void> {}
 }
 
+class ThrowingOperationBackend implements KeychainBackend {
+  async diagnose(): Promise<{ id: string }> {
+    return { id: "native-windows" };
+  }
+
+  async getPassword(): Promise<string | null> {
+    throw new Error("get leaked sk-test-sentinel");
+  }
+
+  async setPassword(): Promise<void> {
+    throw new Error("set leaked sk-test-sentinel");
+  }
+
+  async deletePassword(): Promise<void> {
+    throw new Error("delete leaked sk-test-sentinel");
+  }
+}
+
 describe("CredentialStore", () => {
   it("allows only platform OS credential backends and rejects file/null/unknown", () => {
     expect(validateCredentialBackend("win32", "native-windows")).toEqual({ ok: true });
@@ -118,6 +136,31 @@ describe("CredentialStore", () => {
       message: "credential backend unavailable: unknown"
     });
     await expect(store.withCredential("openai-compatible", async () => "unused")).rejects.not.toThrow("sk-test-sentinel");
+    await expect(store.status("openai-compatible")).resolves.toMatchObject({
+      available: false,
+      reason: "backend-unavailable"
+    });
+  });
+
+  it("maps backend operation exceptions without leaking plaintext", async () => {
+    const store = createCredentialStore({
+      backend: new ThrowingOperationBackend(),
+      platform: "win32",
+      clock: () => timestamp
+    });
+
+    for (const operation of [
+      () => store.set("openai-compatible", "sk-test-sentinel"),
+      () => store.update("openai-compatible", "sk-test-sentinel"),
+      () => store.clear("openai-compatible"),
+      () => store.withCredential("openai-compatible", async () => "unused")
+    ]) {
+      await expect(operation()).rejects.toMatchObject({
+        name: "CredentialBackendUnavailableError",
+        message: "credential backend unavailable: native-windows"
+      });
+      await expect(operation()).rejects.not.toThrow("sk-test-sentinel");
+    }
     await expect(store.status("openai-compatible")).resolves.toMatchObject({
       available: false,
       reason: "backend-unavailable"

@@ -108,6 +108,14 @@ export function createCredentialStore(input: CreateCredentialStoreInput): Creden
     return { backend: await ensureBackend(), account: accountByProvider[provider] };
   }
 
+  async function runBackend<T>(backend: string, operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch {
+      throw new CredentialBackendUnavailableError(backend);
+    }
+  }
+
   return {
     async status(provider) {
       let id: string;
@@ -122,7 +130,18 @@ export function createCredentialStore(input: CreateCredentialStoreInput): Creden
           updatedAt: null
         };
       }
-      const secret = await input.backend.getPassword(service, accountByProvider[provider]);
+      let secret: string | null;
+      try {
+        secret = await runBackend(id, () => input.backend.getPassword(service, accountByProvider[provider]));
+      } catch {
+        return {
+          available: false,
+          provider,
+          source: "os",
+          reason: "backend-unavailable",
+          updatedAt: null
+        };
+      }
       if (secret === null) {
         return {
           available: false,
@@ -143,22 +162,22 @@ export function createCredentialStore(input: CreateCredentialStoreInput): Creden
     },
     async set(provider, secret) {
       const target = await account(provider);
-      await input.backend.setPassword(service, target.account, secret);
+      await runBackend(target.backend, () => input.backend.setPassword(service, target.account, secret));
       updatedAt.set(provider, clock());
     },
     async update(provider, secret) {
       const target = await account(provider);
-      await input.backend.setPassword(service, target.account, secret);
+      await runBackend(target.backend, () => input.backend.setPassword(service, target.account, secret));
       updatedAt.set(provider, clock());
     },
     async clear(provider) {
       const target = await account(provider);
-      await input.backend.deletePassword(service, target.account);
+      await runBackend(target.backend, () => input.backend.deletePassword(service, target.account));
       updatedAt.delete(provider);
     },
     async withCredential(provider, callback) {
       const target = await account(provider);
-      const secret = await input.backend.getPassword(service, target.account);
+      const secret = await runBackend(target.backend, () => input.backend.getPassword(service, target.account));
       if (secret === null) throw new CredentialMissingError(provider);
       return callback(secret);
     }

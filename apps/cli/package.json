@@ -10,7 +10,7 @@
     }
   },
   "bin": {
-    "gcah": "./src/bin.ts"
+    "gcah": "./dist/src/bin.js"
   },
   "scripts": {
     "test": "vitest run"
