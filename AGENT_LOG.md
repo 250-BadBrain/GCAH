@@ -1165,3 +1165,24 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
 - Commit: `583d56d` (`feat: add credential store`).
+
+## 2026-07-14 - T20
+
+- Scope: PR-08 `credentials-llm-cli`, T20 OpenAI-compatible single-call adapter.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `6ed36c9`.
+- Red evidence:
+  - `pnpm --filter @gcah/llm test -- openai-compatible` exited 1 because `OpenAiCompatibleLlmClient` was not exported/implemented.
+- Green evidence:
+  - Added fake-transport OpenAI-compatible Chat Completions adapter implementing core `LlmClientPort`.
+  - Added callback-scoped credential resolution so the API key is placed only in the outbound Authorization header and not in request body/domain DTOs.
+  - Added usage mapping, missing-usage preservation, and stable rate-limit/network/protocol errors without provider message/key leakage.
+  - Added manual integration script gated by `GCAH_RUN_REAL_LLM_INTEGRATION=1` and documentation; it is not part of default CI.
+  - `pnpm --filter @gcah/llm test -- openai-compatible` exited 0 with 1 file and 4 tests.
+  - `pnpm --filter @gcah/llm test` exited 0 with 2 files and 5 tests.
+- Refactor/verification evidence:
+  - `@gcah/llm` imports only the credential resolver type from `@gcah/credentials`, not concrete OS backends.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0 after adding `scripts/*.ts` to the existing ESLint default project allowlist.
+- Commit: pending.

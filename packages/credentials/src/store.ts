@@ -1,4 +1,5 @@
 export type CredentialProvider = "openai-compatible" | "admin-token";
+export type CredentialPlatform = "win32" | "darwin" | "linux" | string;
 
 export type CredentialStatus =
   | {
@@ -58,7 +59,7 @@ export type BackendValidationResult =
   | { ok: true }
   | { ok: false; reason: "backend-unavailable" };
 
-const allowedBackends: Partial<Record<NodeJS.Platform, readonly string[]>> = {
+const allowedBackends: Partial<Record<CredentialPlatform, readonly string[]>> = {
   win32: ["native-windows", "windows"],
   darwin: ["native-macos", "macos"],
   linux: ["native-linux", "secret-service"]
@@ -69,20 +70,20 @@ const accountByProvider: Record<CredentialProvider, string> = {
   "admin-token": "admin-token"
 };
 
-export function validateCredentialBackend(platform: NodeJS.Platform, backend: string): BackendValidationResult {
+export function validateCredentialBackend(platform: CredentialPlatform, backend: string): BackendValidationResult {
   if (allowedBackends[platform]?.includes(backend) === true) return { ok: true };
   return { ok: false, reason: "backend-unavailable" };
 }
 
 export interface CreateCredentialStoreInput {
   backend: KeychainBackend;
-  platform?: NodeJS.Platform;
+  platform?: CredentialPlatform;
   service?: string;
   clock?: () => string;
 }
 
 export function createCredentialStore(input: CreateCredentialStoreInput): CredentialStore {
-  const platform = input.platform ?? process.platform;
+  const platform = input.platform ?? currentPlatform();
   const service = input.service ?? "gcah.credentials";
   const clock = input.clock ?? (() => new Date().toISOString());
   const updatedAt = new Map<CredentialProvider, string>();
@@ -158,4 +159,9 @@ export function createCredentialStore(input: CreateCredentialStoreInput): Creden
       return callback(secret);
     }
   };
+}
+
+function currentPlatform(): CredentialPlatform {
+  const processLike = globalThis as typeof globalThis & { process?: { platform?: string } };
+  return processLike.process?.platform ?? "unknown";
 }

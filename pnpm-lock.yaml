@@ -69,6 +69,9 @@ importers:
       '@gcah/core':
         specifier: workspace:*
         version: link:../core
+      '@gcah/credentials':
+        specifier: workspace:*
+        version: link:../credentials
       '@gcah/shared':
         specifier: workspace:*
         version: link:../shared
