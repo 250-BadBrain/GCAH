@@ -998,3 +998,149 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Final commit under review: `0e9c215` (`docs: record final harness quality fix`).
+
+## 2026-07-13 - T17
+
+- Scope: PR-07 `persistence-server`, T17 SQLite repositories and append-only audit persistence.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `a51e0de`.
+- Red evidence:
+  - `pnpm --filter @gcah/persistence test` exited 1 because `openSqliteRepositories` and `openAuditLog` were not exported.
+- Green evidence:
+  - Added shared repository contract and ran it against in-memory and SQLite adapters.
+  - Added Node built-in `node:sqlite` repository adapter with schema migration, active-run and step-sequence constraints, transactional rollback, monotonic event cursors, config and memory storage, and close support.
+  - Added append-only JSONL audit log with secret/path redaction.
+  - Focused persistence tests exited 0 with 3 files and 11 tests.
+- Refactor/verification evidence:
+  - Persistence package explicitly enables Node types because SQLite/audit are Node adapters.
+  - No new package dependency or build-script allowlist entry was added.
+  - `pnpm verify` exited 0 with 40 files and 101 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: `7a84c99` (`feat: add sqlite persistence adapter`).
+
+## 2026-07-13 - T18a
+
+- Scope: PR-07 `persistence-server`, T18a Fastify composition and REST run APIs.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `d1c835e`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- runs` exited 1 because `createServerApp` and the server package entry did not exist.
+- Green evidence:
+  - Added `apps/server` workspace package with Fastify 5.10.0, TS config, and root build/typecheck inclusion.
+  - Added health, create run, get run, cancel run, and clone interrupted run routes using injected `UnitOfWork` and core state transitions.
+  - Added schema-error handling that rejects invalid create-run requests without creating a Run.
+  - Focused server run tests exited 0 with 1 file and 2 tests.
+- Refactor/verification evidence:
+  - Added `apps/*` to pnpm workspace and locked Fastify without adding build-script allowlist entries.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: `a0088a3` (`feat: add local server run routes`).
+
+## 2026-07-13 - T18b
+
+- Scope: PR-07 `persistence-server`, T18b local/self-hosted cookie auth and CSRF/Origin checks.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `d095d25`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- auth` exited 1 because unauthenticated mutations were accepted and the auth session route did not set cookies.
+- Green evidence:
+  - Added injected `AdminTokenStore` boundary, no-body admin-token session route, HttpOnly/SameSite session cookie, CSRF token header, same-origin mutation enforcement, and optional Secure cookie flag.
+  - Focused server auth/run tests exited 0 with 2 files and 4 tests.
+- Refactor/verification evidence:
+  - Admin token plaintext is read only from request headers in the authentication comparison boundary and is not serialized in route responses.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: `ac22440` (`feat: add server cookie auth`).
+
+## 2026-07-13 - T18c
+
+- Scope: PR-07 `persistence-server`, T18c persisted SSE replay and interruption startup handling.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `8cf1be7`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- sse restart` exited 1 because event replay routes and startup interruption helper were missing.
+- Green evidence:
+  - Added committed event JSON replay with cursor and SSE replay honoring `Last-Event-ID`.
+  - Added startup helper that marks active runs interrupted without resuming execution.
+  - Focused server tests exited 0 with 4 files and 6 tests.
+- Refactor/verification evidence:
+  - SSE publishes only events already persisted in the repository.
+  - `pnpm verify` exited 0 with 44 files and 107 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - Removed package `dist` directories after build validation.
+- Commit: `2e85678` (`feat: add server event replay`).
+
+## 2026-07-14 - T18a/T18b completion gap fix
+
+- Scope: PR-07 `persistence-server`, T18a REST approval/config/credential-status routes and T18b REST read protection.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `c24d65b`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- approvals-config` exited 1 because approval, config-status, and credential-status routes returned 404.
+  - `pnpm --filter @gcah/server test -- auth` exited 1 because authenticated REST reads were not required.
+- Green evidence:
+  - Added shared non-sensitive config and credential-status DTOs.
+  - Added approval-decision recording route that validates shared DTO input and persists a safe committed event.
+  - Added config-status and credential-status routes that return injected non-secret status only.
+  - Tightened server auth so all REST routes require a session while CSRF/Origin checks remain scoped to mutations.
+  - Focused server tests exited 0 with 5 files and 10 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `28c23eb` (`fix: complete server REST surface`).
+
+## 2026-07-14 - PR-07 Review Fixes
+
+- Scope: PR-07 `persistence-server`, fixes after independent spec and quality/security reviews.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `14b8da2`.
+- Reviewer evidence:
+  - Spec compliance reviewer `019f5e7a-c751-7ae3-9c7f-3549c8e684b8` reported blocking issues in verification, run/event transactionality, SSE live streaming, approval binding, and SQLite relational constraints.
+  - Code quality/security reviewer `019f5e7a-db72-7341-a928-5c69321c7ea2` reported matching issues plus workspace-boundary validation at the server boundary.
+- Red evidence:
+  - Added regression tests for failed run-created event rollback, approval missing/non-pending action rejection, live SSE delivery after replay, orphan repository state rejection, SQLite active-run database index, and injected workspace validation.
+  - `pnpm --filter @gcah/server test -- runs approvals-config sse` exited 1 for missing transaction/approval/live SSE behavior.
+  - `pnpm --filter @gcah/persistence test` exited 1 for orphan rows and missing active-run database index.
+- Green evidence:
+  - Wrapped run creation and creation-event append in one `UnitOfWork.transaction`.
+  - Added publish-after-commit SSE subscribers with cleanup and test-only idle timeout.
+  - Bound approval decisions to existing runs, existing actions, and `WAITING_APPROVAL` status before persisting committed events.
+  - Added injected workspace boundary validation before run creation.
+  - Added in-memory referential checks and SQLite foreign keys plus active-run partial unique index.
+  - `pnpm --filter @gcah/server test` exited 0 with 5 files and 14 tests.
+  - `pnpm --filter @gcah/persistence test` exited 0 with 3 files and 14 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `d102d15` (`fix: address persistence server review findings`).
+
+## 2026-07-14 - PR-07 Final Review
+
+- Scope: PR-07 `persistence-server` final review after fixes.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Final review evidence:
+  - Spec compliance re-reviewer `019f5ebf-bd6a-7220-9545-5725a60a269f`: PASS.
+  - Code quality/security re-reviewer `019f5ebf-d193-7040-a0f0-1e5568c50f04`: PASS.
+- Verification evidence:
+  - `pnpm verify` exited 0 with 45 files and 118 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Final commit under review: `b1f8561` (`docs: record persistence server review fixes`).

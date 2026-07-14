@@ -263,40 +263,40 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Expose schema-validated run, status, cancel, clone, approval, config, credential-status, and health routes. **Dependencies:** T09, T12, T14, T16c, and T17. **Files:** server manifests, `app.ts`, `composition.ts`, run/approval/config/credential/health routes and tests listed by T18. **First red:** Fastify injection returns missing routes. **Expected implementation:** Thin handlers calling server-side services only; composition injects governance/tools/persistence adapters into core ports.
 
-- [ ] Add health and create/status Run injection tests.
-- [ ] Run `pnpm --filter @gcah/server test -- runs`; confirm route-not-found red.
-- [ ] Add app/composition and minimal routes.
-- [ ] Add approval/cancel/clone/schema-error tests and handlers.
-- [ ] Refactor common error envelopes; rerun server tests/typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add health and create/status Run injection tests.
+- [x] Run `pnpm --filter @gcah/server test -- runs`; confirm route-not-found red.
+- [x] Add app/composition and minimal routes.
+- [x] Add approval/cancel/clone/schema-error tests and handlers.
+- [x] Refactor common error envelopes; rerun server tests/typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** REST authority remains in core. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** REST authority remains in core. **Parallel:** No. **Status:** Complete. **Commit:** `a0088a3` (`feat: add local server run routes`).
 
 #### T18b — Local/self-hosted cookie auth and CSRF/Origin checks
 
 **Goal:** Protect REST with injected admin-token storage and same-origin cookies. **Dependencies:** T18a. **Files:** `apps/server/src/auth/admin-auth.ts`, `csrf.ts`, `apps/server/test/auth.test.ts`. **First red:** Missing/wrong token and cross-origin mutations are accepted. **Expected implementation:** HttpOnly/SameSite cookie, explicit Secret mode, CSRF/Origin enforcement; plaintext admin tokens exist only inside the `AdminTokenStore`/authentication comparison boundary and never in domain/events/logs/serialized errors.
 
-- [ ] Add unauthorized and cross-origin failing tests.
-- [ ] Run focused auth test; observe security red.
-- [ ] Add minimal auth hook and fake `AdminTokenStore` port.
-- [ ] Add secure-cookie/self-hosted Secret cases; rerun green.
-- [ ] Refactor auth error paths; typecheck.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add unauthorized and cross-origin failing tests.
+- [x] Run focused auth test; observe security red.
+- [x] Add minimal auth hook and fake `AdminTokenStore` port.
+- [x] Add secure-cookie/self-hosted Secret cases; rerun green.
+- [x] Refactor auth error paths; typecheck.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Browser-readable storage never receives bearer/admin token. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Browser-readable storage never receives bearer/admin token. **Parallel:** No. **Status:** Complete. **Commit:** `ac22440` (`feat: add server cookie auth`).
 
 #### T18c — Persisted SSE replay and interruption startup handling
 
 **Goal:** Stream only committed events and interrupt active Runs without replay. **Dependencies:** T18b. **Files:** `apps/server/src/routes/events.ts`, startup logic in `server.ts`, tests `sse.test.ts`, `restart.test.ts`. **First red:** Cursor reconnect/restart assertions fail. **Expected implementation:** `Last-Event-ID` replay and view/close/clone-only interruption.
 
-- [ ] Add commit-before-publish and cursor replay tests.
-- [ ] Run focused tests; confirm missing SSE red.
-- [ ] Implement persisted query then live publish.
-- [ ] Add startup interruption and no-resume/replay tests/implementation.
-- [ ] Refactor subscriber cleanup; rerun server tests.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add commit-before-publish and cursor replay tests.
+- [x] Run focused tests; confirm missing SSE red.
+- [x] Implement persisted query then live publish.
+- [x] Add startup interruption and no-resume/replay tests/implementation.
+- [x] Refactor subscriber cleanup; rerun server tests.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** T18 acceptance holds. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T18 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** `2e85678` (`feat: add server event replay`), REST surface fix `28c23eb` (`fix: complete server REST surface`), review fix `d102d15` (`fix: address persistence server review findings`).
 
 #### T21a — CLI HTTP client and run lifecycle commands
 
@@ -959,7 +959,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** In-memory and SQLite pass the shared contract suite, which is exported for D1 parity in T18d; database failure prevents side effects; no plaintext credential column/value exists.
 
-**Parallel:** No within PR-07; T19 may proceed separately after S01. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No within PR-07; T19 may proceed separately after S01. **Status:** Complete. **Commit:** `7a84c99` (`feat: add sqlite persistence adapter`), review fix `d102d15` (`fix: address persistence server review findings`).
 
 ### Task T18: Build the Fastify API, local/self-hosted auth, SSE, and restart behavior
 
@@ -985,7 +985,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** API/SSE/auth/restart acceptance tests pass with fake credentials and no network beyond Fastify injection.
 
-**Parallel:** After T17, can overlap T19/T22 preparation. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** After T17, can overlap T19/T22 preparation. **Status:** Complete. **Commit:** `2e85678` (`feat: add server event replay`), REST surface fix `28c23eb` (`fix: complete server REST surface`), review fix `d102d15` (`fix: address persistence server review findings`).
 
 #### T18d — Cloudflare Worker HTTP/SSE composition root and D1 adapter
 
