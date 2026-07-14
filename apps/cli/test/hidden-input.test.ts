@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createHiddenInputPrompt, runMain } from "../src/main.js";
+import { EventEmitter } from "node:events";
+
+import { createHiddenInputPrompt, createRawModeLineReader, runMain } from "../src/main.js";
 import type { CredentialStore } from "@gcah/credentials";
 
 describe("CLI hidden input and entrypoint", () => {
@@ -27,6 +29,20 @@ describe("CLI hidden input and entrypoint", () => {
     await expect(prompt()).resolves.toBe("sk-test-sentinel");
     expect(rawModes).toEqual([true, false]);
     expect(writes.join("")).not.toContain("sk-test-sentinel");
+  });
+
+  it("reads raw-mode input until enter and handles backspace", async () => {
+    const input = new EventEmitter();
+    const read = createRawModeLineReader(input);
+    const promise = read();
+
+    input.emit("data", Buffer.from("sk"));
+    input.emit("data", Buffer.from("-bad"));
+    input.emit("data", Buffer.from("\u007f"));
+    input.emit("data", Buffer.from("g"));
+    input.emit("data", Buffer.from("\r"));
+
+    await expect(promise).resolves.toBe("sk-bag");
   });
 
   it("runs argv through the executable entrypoint dependencies", async () => {

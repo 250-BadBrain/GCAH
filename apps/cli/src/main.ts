@@ -1,11 +1,10 @@
-import { createOsKeychainBackend, createCredentialStore, type CredentialStore } from "@gcah/credentials";
-import { ConfigStatusDtoSchema, CredentialStatusDtoSchema, RunDtoSchema, RunEventsResponseSchema } from "@gcah/shared";
+import type { CredentialStore } from "@gcah/credentials";
 
 import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
-import { createHiddenInputPrompt } from "./hidden-input.js";
+import { createHiddenInputPrompt, createRawModeLineReader } from "./hidden-input.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
-export { createFetchTransport, createHiddenInputPrompt, sanitizeOutput, type CliResult };
+export { createFetchTransport, createHiddenInputPrompt, createRawModeLineReader, sanitizeOutput, type CliResult };
 export type { CliTransport };
 
 export interface RunCliDependencies {
@@ -43,9 +42,9 @@ async function runCommand(command: string | undefined, args: readonly string[], 
     const task = option(args, "--task");
     if (workspace === null || task === null) return fail("missing run submit options\n");
     const response = await transport({ method: "POST", url: "/api/runs", body: { workspacePath: workspace, task } });
-    const parsed = RunDtoSchema.safeParse(response.body);
-    if (response.status >= 300 || !parsed.success) return fail("run submit failed\n");
-    return ok(`${parsed.data.id}\n`);
+    const parsed = parseRunDto(response.body);
+    if (response.status >= 300 || parsed === null) return fail("run submit failed\n");
+    return ok(`${parsed.id}\n`);
   }
   const id = args[0];
   if (id === undefined) return fail("missing run id\n");
@@ -58,9 +57,9 @@ async function runCommand(command: string | undefined, args: readonly string[], 
         : null;
   if (route === null) return fail("unknown run command\n");
   const response = await transport(route);
-  const parsed = RunDtoSchema.safeParse(response.body);
-  if (response.status >= 300 || !parsed.success) return fail("run command failed\n");
-  return ok(`${parsed.data.id} ${parsed.data.status}\n`);
+  const parsed = parseRunDto(response.body);
+  if (response.status >= 300 || parsed === null) return fail("run command failed\n");
+  return ok(`${parsed.id} ${parsed.status}\n`);
 }
 
 async function approvalCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {
@@ -68,9 +67,9 @@ async function approvalCommand(command: string | undefined, args: readonly strin
     const runId = args[0];
     if (runId === undefined) return fail("missing run id\n");
     const response = await transport({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
-    const parsed = RunEventsResponseSchema.safeParse(response.body);
-    if (response.status >= 300 || !parsed.success) return fail("approval list failed\n");
-    return ok(parsed.data.events.map((event) => `${event.id} ${event.type} ${event.summary}`).join("\n") + "\n");
+    const parsed = parseRunEventsResponse(response.body);
+    if (response.status >= 300 || parsed === null) return fail("approval list failed\n");
+    return ok(parsed.events.map((event) => `${event.id} ${event.type} ${event.summary}`).join("\n") + "\n");
   }
   const runId = args[0];
   const actionId = args[1];
@@ -85,21 +84,16 @@ async function approvalCommand(command: string | undefined, args: readonly strin
 
 async function configStatus(transport: CliTransport): Promise<CliResult> {
   const response = await transport({ method: "GET", url: "/api/config/status" });
-  const parsed = ConfigStatusDtoSchema.safeParse(response.body);
-  if (response.status >= 300 || !parsed.success) return fail("config status failed\n");
-  return ok(`mode=${parsed.data.mode} llm=${parsed.data.llmProvider} publicDemo=${parsed.data.publicDemo}\n`);
+  const parsed = parseConfigStatusDto(response.body);
+  if (response.status >= 300 || parsed === null) return fail("config status failed\n");
+  return ok(`mode=${parsed.mode} llm=${parsed.llmProvider} publicDemo=${parsed.publicDemo}\n`);
 }
 
 async function credentialCommand(command: string | undefined, deps: RunCliDependencies): Promise<CliResult> {
-  const store = deps.credentialStore ?? createCredentialStore({ backend: createOsKeychainBackend() });
+  const store = deps.credentialStore ?? await createDefaultCredentialStore();
   if (command === "status") {
     try {
       const status = await store.status("openai-compatible");
-      const httpStatus = CredentialStatusDtoSchema.safeParse({
-        backend: status.available ? "available" : status.reason === "backend-unavailable" ? "unavailable" : "available",
-        providers: [{ provider: "openai-compatible", configured: status.available }]
-      });
-      void httpStatus;
       if (!status.available && status.reason === "backend-unavailable") return fail("credential backend unavailable\n", 2);
       if (!status.available) return ok("openai-compatible missing\n");
       return ok(`openai-compatible configured backend=${status.backend}\n`);
@@ -122,6 +116,50 @@ async function credentialCommand(command: string | undefined, deps: RunCliDepend
     return ok("credential cleared\n");
   }
   return fail(".env plaintext source requires explicit enablement\n", 2);
+}
+
+async function createDefaultCredentialStore(): Promise<CredentialStore> {
+  const { createCredentialStore, createOsKeychainBackend } = await import("@gcah/credentials");
+  return createCredentialStore({ backend: createOsKeychainBackend() });
+}
+
+interface RunDto {
+  id: string;
+  status: string;
+}
+
+interface RunEventsResponse {
+  events: Array<{ id: string; type: string; summary: string }>;
+}
+
+interface ConfigStatusDto {
+  mode: string;
+  llmProvider: string;
+  publicDemo: boolean;
+}
+
+function parseRunDto(value: unknown): RunDto | null {
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.status !== "string") return null;
+  return { id: value.id, status: value.status };
+}
+
+function parseRunEventsResponse(value: unknown): RunEventsResponse | null {
+  if (!isRecord(value) || !Array.isArray(value.events)) return null;
+  const events = value.events.map((event) => {
+    if (!isRecord(event) || typeof event.id !== "string" || typeof event.type !== "string" || typeof event.summary !== "string") return null;
+    return { id: event.id, type: event.type, summary: event.summary };
+  });
+  if (events.some((event) => event === null)) return null;
+  return { events: events as RunEventsResponse["events"] };
+}
+
+function parseConfigStatusDto(value: unknown): ConfigStatusDto | null {
+  if (!isRecord(value) || typeof value.mode !== "string" || typeof value.llmProvider !== "string" || typeof value.publicDemo !== "boolean") return null;
+  return { mode: value.mode, llmProvider: value.llmProvider, publicDemo: value.publicDemo };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function option(args: readonly string[], name: string): string | null {
