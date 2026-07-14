@@ -1103,3 +1103,30 @@
   - `pnpm lint` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
 - Commit: `28c23eb` (`fix: complete server REST surface`).
+
+## 2026-07-14 - PR-07 Review Fixes
+
+- Scope: PR-07 `persistence-server`, fixes after independent spec and quality/security reviews.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `14b8da2`.
+- Reviewer evidence:
+  - Spec compliance reviewer `019f5e7a-c751-7ae3-9c7f-3549c8e684b8` reported blocking issues in verification, run/event transactionality, SSE live streaming, approval binding, and SQLite relational constraints.
+  - Code quality/security reviewer `019f5e7a-db72-7341-a928-5c69321c7ea2` reported matching issues plus workspace-boundary validation at the server boundary.
+- Red evidence:
+  - Added regression tests for failed run-created event rollback, approval missing/non-pending action rejection, live SSE delivery after replay, orphan repository state rejection, SQLite active-run database index, and injected workspace validation.
+  - `pnpm --filter @gcah/server test -- runs approvals-config sse` exited 1 for missing transaction/approval/live SSE behavior.
+  - `pnpm --filter @gcah/persistence test` exited 1 for orphan rows and missing active-run database index.
+- Green evidence:
+  - Wrapped run creation and creation-event append in one `UnitOfWork.transaction`.
+  - Added publish-after-commit SSE subscribers with cleanup and test-only idle timeout.
+  - Bound approval decisions to existing runs, existing actions, and `WAITING_APPROVAL` status before persisting committed events.
+  - Added injected workspace boundary validation before run creation.
+  - Added in-memory referential checks and SQLite foreign keys plus active-run partial unique index.
+  - `pnpm --filter @gcah/server test` exited 0 with 5 files and 14 tests.
+  - `pnpm --filter @gcah/persistence test` exited 0 with 3 files and 14 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `d102d15` (`fix: address persistence server review findings`).
