@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   OpenAiCompatibleError,
@@ -54,6 +54,38 @@ describe("OpenAiCompatibleLlmClient", () => {
       timeoutMs: 30000
     }]);
     expect(JSON.stringify(requests[0]?.body)).not.toContain("sk-test-secret");
+  });
+
+  it("provides a default fetch-backed transport", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({ kind: "finish", summary: "done", rationale: "complete" }) } }]
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = new OpenAiCompatibleLlmClient({
+      baseUrl: "https://course-gateway.example/v1/",
+      model: "deepseek-course",
+      providerName: "course",
+      credentialResolver: resolver("sk-test-secret")
+    });
+
+    try {
+      await expect(client.complete([{ role: "user", content: "hello" }])).resolves.toMatchObject({
+        response: { kind: "finish", summary: "done", rationale: "complete" }
+      });
+      expect(fetchSpy).toHaveBeenCalledOnce();
+      const [url, init] = fetchSpy.mock.calls[0] ?? [];
+      expect(url).toBe("https://course-gateway.example/v1/chat/completions");
+      expect(init).toMatchObject({
+        method: "POST",
+        headers: {
+          authorization: "Bearer sk-test-secret",
+          "content-type": "application/json"
+        }
+      });
+      expect(String(init?.body)).not.toContain("sk-test-secret");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("preserves missing usage as unavailable and maps provider errors without leaking the key", async () => {

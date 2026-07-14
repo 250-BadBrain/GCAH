@@ -27,7 +27,7 @@ export interface OpenAiCompatibleLlmClientOptions {
   model: string;
   providerName: string;
   credentialResolver: CredentialResolver;
-  transport: OpenAiCompatibleTransport;
+  transport?: OpenAiCompatibleTransport;
   timeoutMs?: number;
 }
 
@@ -37,7 +37,8 @@ export class OpenAiCompatibleLlmClient implements LlmClientPort {
   async complete(messages: readonly unknown[]): Promise<LlmClientResult> {
     try {
       return await this.options.credentialResolver.withCredential("openai-compatible", async (secret) => {
-        const response = await this.options.transport({
+        const transport = this.options.transport ?? createOpenAiCompatibleFetchTransport();
+        const response = await transport({
           url: `${this.options.baseUrl.replace(/\/+$/u, "")}/chat/completions`,
           method: "POST",
           headers: {
@@ -59,6 +60,21 @@ export class OpenAiCompatibleLlmClient implements LlmClientPort {
       throw new OpenAiCompatibleError("NETWORK_ERROR", this.options.providerName);
     }
   }
+}
+
+export function createOpenAiCompatibleFetchTransport(fetchFn: typeof fetch = fetch): OpenAiCompatibleTransport {
+  return async (request) => {
+    const response = await fetchFn(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body: JSON.stringify(request.body),
+      signal: AbortSignal.timeout(request.timeoutMs)
+    });
+    return {
+      status: response.status,
+      body: await response.json()
+    };
+  };
 }
 
 function parseResponse(body: unknown, providerName: string): LlmClientResult {
