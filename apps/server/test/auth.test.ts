@@ -23,6 +23,26 @@ class FakeAdminTokenStore implements AdminTokenStore {
 }
 
 describe("server auth", () => {
+  it("requires a session for REST reads without exposing admin tokens to the browser", async () => {
+    const app = createServerApp({
+      unitOfWork: createInMemoryRepositories(new FakeClock()),
+      clock: new FakeClock(),
+      auth: { enabled: true, adminTokenStore: new FakeAdminTokenStore(), allowedOrigin: "http://localhost:3000" }
+    });
+
+    await expect(app.inject({ method: "GET", url: "/api/config/status" })).resolves.toMatchObject({ statusCode: 401 });
+
+    const session = await app.inject({ method: "POST", url: "/api/auth/session", headers: { "x-admin-token": "admin-secret" } });
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/config/status",
+      headers: { cookie: String(session.headers["set-cookie"]) }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).not.toContain("admin-secret");
+  });
+
   it("requires same-origin authenticated cookies and CSRF for mutations", async () => {
     const app = createServerApp({
       unitOfWork: createInMemoryRepositories(new FakeClock()),

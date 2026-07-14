@@ -41,8 +41,24 @@ export const RunEventsResponseSchema = z.object({
   nextCursor: z.number().int().positive().nullable()
 }).strict();
 
+export const ConfigStatusDtoSchema = z.object({
+  mode: z.enum(["local", "self-hosted", "public-demo"]),
+  llmProvider: z.string().min(1),
+  publicDemo: z.boolean()
+}).strict();
+
+export const CredentialStatusDtoSchema = z.object({
+  backend: z.enum(["available", "unavailable"]),
+  providers: z.array(z.object({
+    provider: z.string().min(1),
+    configured: z.boolean()
+  }).strict())
+}).strict();
+
 export type CreateRunRequest = z.infer<typeof CreateRunRequestSchema>;
 export type ApprovalDecisionRequest = z.infer<typeof ApprovalDecisionRequestSchema>;
 export type RunDto = z.infer<typeof RunDtoSchema>;
 export type EventDto = z.infer<typeof EventDtoSchema>;
 export type RunEventsResponse = z.infer<typeof RunEventsResponseSchema>;
+export type ConfigStatusDto = z.infer<typeof ConfigStatusDtoSchema>;
+export type CredentialStatusDto = z.infer<typeof CredentialStatusDtoSchema>;

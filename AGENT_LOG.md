@@ -1082,3 +1082,24 @@
   - `git diff --check` exited 0.
   - Removed package `dist` directories after build validation.
 - Commit: `2e85678` (`feat: add server event replay`).
+
+## 2026-07-14 - T18a/T18b completion gap fix
+
+- Scope: PR-07 `persistence-server`, T18a REST approval/config/credential-status routes and T18b REST read protection.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/persistence-server` at `E:/Desktop/GCAH-persistence-server`.
+- Baseline commit: `c24d65b`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- approvals-config` exited 1 because approval, config-status, and credential-status routes returned 404.
+  - `pnpm --filter @gcah/server test -- auth` exited 1 because authenticated REST reads were not required.
+- Green evidence:
+  - Added shared non-sensitive config and credential-status DTOs.
+  - Added approval-decision recording route that validates shared DTO input and persists a safe committed event.
+  - Added config-status and credential-status routes that return injected non-secret status only.
+  - Tightened server auth so all REST routes require a session while CSRF/Origin checks remain scoped to mutations.
+  - Focused server tests exited 0 with 5 files and 10 tests.
+- Refactor/verification evidence:
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: pending.

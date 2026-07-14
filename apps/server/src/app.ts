@@ -1,6 +1,13 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { CreateRunRequestSchema, type EventDto, type RunDto } from "@gcah/shared";
+import {
+  ApprovalDecisionRequestSchema,
+  CreateRunRequestSchema,
+  type ConfigStatusDto,
+  type CredentialStatusDto,
+  type EventDto,
+  type RunDto
+} from "@gcah/shared";
 import type { Clock, UnitOfWork } from "@gcah/core";
 import { cloneInterruptedRunAsPending, transitionRun } from "@gcah/core";
 
@@ -19,6 +26,8 @@ export interface CreateServerAppOptions {
   unitOfWork: UnitOfWork;
   clock: Clock;
   auth: ServerAuthOptions;
+  configStatus?: ConfigStatusDto;
+  credentialStatus?: CredentialStatusDto;
 }
 
 export function createServerApp(options: CreateServerAppOptions): FastifyInstance {
@@ -26,18 +35,31 @@ export function createServerApp(options: CreateServerAppOptions): FastifyInstanc
   const sessions = new Map<string, string>();
 
   app.addHook("preHandler", async (request, reply) => {
-    if (!options.auth.enabled || request.method === "GET" || request.url === "/api/auth/session") return;
-    const origin = request.headers.origin;
-    if (origin !== undefined && options.auth.allowedOrigin !== undefined && origin !== options.auth.allowedOrigin) {
-      return reply.code(403).send({ error: "BAD_ORIGIN" });
-    }
+    if (!options.auth.enabled || !request.url.startsWith("/api/") || request.url === "/api/auth/session") return;
     const sessionId = parseCookie(request.headers.cookie ?? "").get("gcah_session");
     const expectedCsrf = sessionId === undefined ? undefined : sessions.get(sessionId);
     if (expectedCsrf === undefined) return reply.code(401).send({ error: "UNAUTHORIZED" });
-    if (request.headers["x-csrf-token"] !== expectedCsrf) return reply.code(403).send({ error: "BAD_CSRF" });
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      const origin = request.headers.origin;
+      if (origin !== undefined && options.auth.allowedOrigin !== undefined && origin !== options.auth.allowedOrigin) {
+        return reply.code(403).send({ error: "BAD_ORIGIN" });
+      }
+      if (request.headers["x-csrf-token"] !== expectedCsrf) return reply.code(403).send({ error: "BAD_CSRF" });
+    }
   });
 
   app.get("/health", async () => ({ ok: true }));
+
+  app.get("/api/config/status", async () => options.configStatus ?? {
+    mode: "local",
+    llmProvider: "mock",
+    publicDemo: false
+  });
+
+  app.get("/api/credential-status", async () => options.credentialStatus ?? {
+    backend: "unavailable",
+    providers: []
+  });
 
   app.post("/api/auth/session", async (request, reply) => {
     if (!options.auth.enabled || options.auth.adminTokenStore === undefined) return reply.code(404).send({ error: "NOT_FOUND" });
@@ -105,6 +127,22 @@ export function createServerApp(options: CreateServerAppOptions): FastifyInstanc
     const id = (request.params as { id: string }).id;
     const clone = await cloneInterruptedRunAsPending(options.unitOfWork.repositories, id, `run:${Date.now()}:${Math.random().toString(16).slice(2)}`, options.clock);
     return reply.code(201).send(toRunDto(clone));
+  });
+
+  app.post("/api/runs/:id/approvals/:actionId", async (request, reply) => {
+    const parsed = ApprovalDecisionRequestSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "BAD_REQUEST" });
+    const { id, actionId } = request.params as { id: string; actionId: string };
+    await options.unitOfWork.repositories.events.append({
+      id: `event:${id}:${actionId}:approval:${options.clock.now().getTime()}`,
+      runId: id,
+      stepId: null,
+      type: "approval.decision",
+      relatedEntityId: actionId,
+      summary: `approval decision: ${parsed.data.decision}`,
+      createdAt: options.clock.nowIso()
+    });
+    return { status: "recorded" };
   });
 
   app.get("/api/runs/:id/events", async (request) => {
