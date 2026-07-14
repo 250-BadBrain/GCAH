@@ -1102,4 +1102,4 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
-- Commit: pending.
+- Commit: `28c23eb` (`fix: complete server REST surface`).
