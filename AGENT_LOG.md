@@ -1230,4 +1230,4 @@
   - `pnpm --filter @gcah/cli test` exited 0 with 7 files and 9 tests.
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
-- Commit: pending.
+- Commit: `e6987d6` (`fix: address credentials cli review findings`).
