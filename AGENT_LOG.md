@@ -1279,3 +1279,27 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
 - Commit: `1fb645c` (`fix: make cli runtime executable`).
+
+## 2026-07-14 - PR-08 Additional Quality Review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after quality/security reviewer `019f605a-6a3d-7d13-a391-9ae2f8592054`.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `9633ca9`.
+- Reviewer evidence:
+  - The reviewer reported that `OpenAiCompatibleLlmClient` still required a caller-supplied transport, leaving real callers to hand-roll fetch behavior.
+  - The reviewer reported that the emitted CLI bin was runnable through `node` but not marked executable for POSIX-style environments.
+- Red evidence:
+  - Added regression coverage for constructing `OpenAiCompatibleLlmClient` without a custom transport and verifying the default fetch-backed request excludes the secret from the body.
+  - Added regression coverage that the CLI bin test marks the emitted script executable and, on non-Windows platforms, asserts an executable bit before direct execution.
+- Green evidence:
+  - Added `createOpenAiCompatibleFetchTransport` and made it the default transport when no transport is supplied.
+  - Added `scripts/mark-cli-bin-executable.mjs` to the root build pipeline to set `apps/cli/dist/src/bin.js` to `0755` after TypeScript emission.
+  - `node apps/cli/dist/src/bin.js server start` exited 0 and printed the server composition-root guidance.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/llm test -- openai-compatible` exited 0 with 1 file and 5 tests.
+  - `pnpm --filter @gcah/cli test -- bin` exited 0 with 1 file and 1 test.
+  - `pnpm verify` exited 0 with 58 files and 144 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `724f029` (`fix: add default llm transport and executable cli bin`).
