@@ -1144,3 +1144,177 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Final commit under review: `b1f8561` (`docs: record persistence server review fixes`).
+
+## 2026-07-14 - T19
+
+- Scope: PR-08 `credentials-llm-cli`, T19 standalone credentials package and secret-isolation contract.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `9b93256`.
+- Red evidence:
+  - `pnpm --filter @gcah/credentials test` exited 1 because `packages/credentials/src/index.ts` and credential ports/resolver did not exist.
+- Green evidence:
+  - Added `@gcah/credentials` workspace package and locked `cross-keychain@1.1.0` per S01.
+  - Added backend allowlist validation for Windows/macOS/Linux OS backends and fail-closed rejection of `file`, `null`, and unknown backends.
+  - Added callback-scoped `CredentialStore`, `CredentialResolver` precedence OS store -> explicitly enabled environment -> explicitly enabled dotenv, and credential-backed `AdminTokenStore`.
+  - Added secret-isolation tests proving status and serialized errors do not include sentinel plaintext.
+  - `pnpm --filter @gcah/credentials test` exited 0 with 4 files and 7 tests.
+- Refactor/verification evidence:
+  - Real `cross-keychain` access is isolated behind `createOsKeychainBackend`; tests use fake backends and do not read/write real credentials.
+  - `.env` and `.env.*` were already ignored; no `.gitignore` change was required.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: `583d56d` (`feat: add credential store`).
+
+## 2026-07-14 - T20
+
+- Scope: PR-08 `credentials-llm-cli`, T20 OpenAI-compatible single-call adapter.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `6ed36c9`.
+- Red evidence:
+  - `pnpm --filter @gcah/llm test -- openai-compatible` exited 1 because `OpenAiCompatibleLlmClient` was not exported/implemented.
+- Green evidence:
+  - Added fake-transport OpenAI-compatible Chat Completions adapter implementing core `LlmClientPort`.
+  - Added callback-scoped credential resolution so the API key is placed only in the outbound Authorization header and not in request body/domain DTOs.
+  - Added usage mapping, missing-usage preservation, and stable rate-limit/network/protocol errors without provider message/key leakage.
+  - Added manual integration script gated by `GCAH_RUN_REAL_LLM_INTEGRATION=1` and documentation; it is not part of default CI.
+  - `pnpm --filter @gcah/llm test -- openai-compatible` exited 0 with 1 file and 4 tests.
+  - `pnpm --filter @gcah/llm test` exited 0 with 2 files and 5 tests.
+- Refactor/verification evidence:
+  - `@gcah/llm` imports only the credential resolver type from `@gcah/credentials`, not concrete OS backends.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0 after adding `scripts/*.ts` to the existing ESLint default project allowlist.
+- Commit: `9c23e83` (`feat: add openai compatible llm adapter`).
+
+## 2026-07-14 - T21
+
+- Scope: PR-08 `credentials-llm-cli`, T21 CLI run/status/approval/config/credential/server commands.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `90477da`.
+- Red evidence:
+  - `pnpm --filter @gcah/cli test` exited 1 because `apps/cli/src/main.ts` and CLI commands did not exist.
+- Green evidence:
+  - Added `@gcah/cli` workspace package, root build/typecheck inclusion, and thin injected HTTP transport client.
+  - Added run submit/status/cancel/clone commands using shared DTO validation.
+  - Added approval list/approve-once/approve-session/reject and config status commands as DTO-only calls with no local policy calculation.
+  - Added credential status/set/update/clear commands using hidden-input callback and injected `CredentialStore`; outputs never echo secret sentinels.
+  - Added server start guidance command and backend-unavailable credential status handling.
+  - `pnpm --filter @gcah/cli test` exited 0 with 5 files and 6 tests.
+- Refactor/verification evidence:
+  - CLI output uses shared sanitization for secret-shaped text.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: `6d552d0` (`feat: add cli commands`).
+
+## 2026-07-14 - PR-08 Review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after independent spec and quality/security reviews.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `5479883`.
+- Reviewer evidence:
+  - Spec compliance reviewer `019f5fbf-773d-7f72-a8c0-9b5731b4ec2d` reported backend exception fail-closed gaps and missing default HTTP client behavior.
+  - Code quality/security reviewer `019f5fbf-8b63-7741-bb20-4fd894bbbfdf` reported missing real hidden-input path and executable CLI entrypoint.
+- Red evidence:
+  - Added regression tests for backend `diagnose()` exceptions containing a secret sentinel, fetch-backed default transport, no-echo hidden input, and executable entrypoint wiring.
+  - Focused credentials/CLI tests exited 1 before implementation for these missing behaviors.
+- Green evidence:
+  - Mapped backend diagnostic failures to safe `CredentialBackendUnavailableError("unknown")`.
+  - Added fetch-backed CLI transport using `GCAH_SERVER_URL` or local default.
+  - Added hidden-input prompt helper and `runMain`/`bin.ts` executable entrypoint with `gcah` package bin.
+  - Focused credentials and CLI review-fix tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/credentials test` exited 0 with 4 files and 8 tests.
+  - `pnpm --filter @gcah/cli test` exited 0 with 7 files and 9 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: `e6987d6` (`fix: address credentials cli review findings`).
+
+## 2026-07-14 - PR-08 Re-review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after first re-review.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `6050a96`.
+- Reviewer evidence:
+  - Spec re-reviewer `019f6042-53c8-77d2-9493-735399c3464d` reported backend operation error leakage, default hidden input echo, and non-runnable CLI bin.
+  - Code quality/security re-reviewer `019f6042-6815-7ce1-8f2a-419aabffa775` reported the same three blocking issues.
+- Red evidence:
+  - Added regression tests for backend `getPassword`/`setPassword`/`deletePassword` failures containing a sentinel, raw-mode hidden input, and CLI bin pointing to emitted JavaScript.
+  - Focused credentials/CLI tests exited 1 before implementation for these missing behaviors.
+- Green evidence:
+  - Wrapped credential backend operation failures as safe `CredentialBackendUnavailableError` and converted status read failures to backend-unavailable status.
+  - Updated hidden input to enable raw mode during the read and restore it afterward.
+  - Updated CLI package bin to `dist/src/bin.js` and CLI build config to emit JavaScript.
+  - Focused regression tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm verify` exited 0 with 58 files and 142 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `4b1c91d` (`fix: close credentials cli re-review gaps`).
+
+## 2026-07-14 - PR-08 Final Re-review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after second re-review.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `c61a055`.
+- Reviewer evidence:
+  - Spec re-reviewer `019f604e-6325-7733-812a-045ac174c6fb` reported that the emitted CLI bin loaded workspace TypeScript exports at runtime and that hidden input consumed only the first raw keypress chunk.
+  - Code quality/security re-reviewer `019f604e-7759-7e10-b01f-34c645d91d62` reported the same hidden-input chunk handling gap.
+- Red evidence:
+  - Added regression tests for multi-chunk raw-mode input with backspace handling and for executing `apps/cli/dist/src/bin.js server start` after a clean CLI build.
+  - Focused CLI tests exited 1 before implementation because `execFile` could not build/run the emitted bin path from a clean test run.
+- Green evidence:
+  - Added chunk-wise raw-mode line reading until Enter/Ctrl-C and restored the prior terminal raw-mode state after prompting.
+  - Removed CLI top-level runtime imports of workspace TypeScript-only exports; credential keychain loading is now deferred to credential commands.
+  - Updated the credential package export/build path for runtime JavaScript consumers.
+  - `node apps/cli/dist/src/bin.js server start` exited 0 and printed the server composition-root guidance.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/cli test -- hidden-input bin` exited 0 with 2 files and 5 tests.
+  - `pnpm --filter @gcah/credentials test -- credential-store` exited 0 with 1 file and 5 tests.
+  - `pnpm verify` exited 0 with 58 files and 143 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `1fb645c` (`fix: make cli runtime executable`).
+
+## 2026-07-14 - PR-08 Additional Quality Review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after quality/security reviewer `019f605a-6a3d-7d13-a391-9ae2f8592054`.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `9633ca9`.
+- Reviewer evidence:
+  - The reviewer reported that `OpenAiCompatibleLlmClient` still required a caller-supplied transport, leaving real callers to hand-roll fetch behavior.
+  - The reviewer reported that the emitted CLI bin was runnable through `node` but not marked executable for POSIX-style environments.
+- Red evidence:
+  - Added regression coverage for constructing `OpenAiCompatibleLlmClient` without a custom transport and verifying the default fetch-backed request excludes the secret from the body.
+  - Added regression coverage that the CLI bin test marks the emitted script executable and, on non-Windows platforms, asserts an executable bit before direct execution.
+- Green evidence:
+  - Added `createOpenAiCompatibleFetchTransport` and made it the default transport when no transport is supplied.
+  - Added `scripts/mark-cli-bin-executable.mjs` to the root build pipeline to set `apps/cli/dist/src/bin.js` to `0755` after TypeScript emission.
+  - `node apps/cli/dist/src/bin.js server start` exited 0 and printed the server composition-root guidance.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/llm test -- openai-compatible` exited 0 with 1 file and 5 tests.
+  - `pnpm --filter @gcah/cli test -- bin` exited 0 with 1 file and 1 test.
+  - `pnpm verify` exited 0 with 58 files and 144 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `724f029` (`fix: add default llm transport and executable cli bin`).
+
+## 2026-07-14 - PR-08 Reviewer Override
+
+- Scope: PR-08 `credentials-llm-cli` final merge gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Human decision:
+  - Fresh reviewer tools repeatedly timed out or remained unresponsive after PR-08 final fixes.
+  - Human explicitly authorized continuing PR-08 merge using the existing local validation evidence instead of waiting for additional reviewer output.
+- Validation evidence used for the override:
+  - `pnpm verify` exited 0 with 58 files and 144 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - `node apps/cli/dist/src/bin.js server start` exited 0.
+- Commit: pending.

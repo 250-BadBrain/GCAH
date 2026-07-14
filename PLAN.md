@@ -309,7 +309,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor shared formatter; rerun CLI tests/typecheck.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** Run lifecycle commands pass. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Run lifecycle commands pass. **Parallel:** No. **Status:** Complete. **Commit:** `6d552d0` (`feat: add cli commands`).
 
 #### T21b — CLI approval and configuration commands
 
@@ -322,7 +322,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor common option validation; rerun tests.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** CLI never calculates authorization. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** CLI never calculates authorization. **Parallel:** No. **Status:** Complete. **Commit:** `6d552d0` (`feat: add cli commands`).
 
 #### T21c — CLI credential and server commands
 
@@ -335,7 +335,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [ ] Refactor sanitized errors; run all CLI tests.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** T21 acceptance holds. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** T21 acceptance holds. **Parallel:** No. **Status:** Complete. **Commit:** `6d552d0` (`feat: add cli commands`).
 
 #### T22a — WebUI shell, Run list, timeline, and validation views
 
@@ -1017,7 +1017,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Lifecycle and precedence tests pass; unavailable OS backend never silently falls back to a created file; plaintext appears only at the three permitted short-lived boundaries; no API/status/serialized error exposes it. Documentation states that JavaScript memory zeroization is not guaranteed.
 
-**Parallel:** Yes, after S01; can overlap T17/T18. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, after S01; can overlap T17/T18. **Status:** Complete. **Commit:** `583d56d` (`feat: add credential store`).
 
 ### Task T20: Implement the OpenAI-compatible single-call adapter
 
@@ -1043,7 +1043,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Offline fake-transport suite passes; manual DeepSeek/Qwen instructions exist; missing usage is preserved as unavailable; no key is logged.
 
-**Parallel:** Yes after T19; independent of server UI. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes after T19; independent of server UI. **Status:** Complete. **Commit:** `9c23e83` (`feat: add openai compatible llm adapter`).
 
 ### Task T21: Build the CLI for run, status, approval, config, and credentials
 
