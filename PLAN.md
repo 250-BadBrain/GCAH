@@ -1017,7 +1017,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Lifecycle and precedence tests pass; unavailable OS backend never silently falls back to a created file; plaintext appears only at the three permitted short-lived boundaries; no API/status/serialized error exposes it. Documentation states that JavaScript memory zeroization is not guaranteed.
 
-**Parallel:** Yes, after S01; can overlap T17/T18. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Yes, after S01; can overlap T17/T18. **Status:** Complete. **Commit:** pending (`feat: add credential store`).
 
 ### Task T20: Implement the OpenAI-compatible single-call adapter
 

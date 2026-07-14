@@ -1144,3 +1144,24 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Final commit under review: `b1f8561` (`docs: record persistence server review fixes`).
+
+## 2026-07-14 - T19
+
+- Scope: PR-08 `credentials-llm-cli`, T19 standalone credentials package and secret-isolation contract.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `9b93256`.
+- Red evidence:
+  - `pnpm --filter @gcah/credentials test` exited 1 because `packages/credentials/src/index.ts` and credential ports/resolver did not exist.
+- Green evidence:
+  - Added `@gcah/credentials` workspace package and locked `cross-keychain@1.1.0` per S01.
+  - Added backend allowlist validation for Windows/macOS/Linux OS backends and fail-closed rejection of `file`, `null`, and unknown backends.
+  - Added callback-scoped `CredentialStore`, `CredentialResolver` precedence OS store -> explicitly enabled environment -> explicitly enabled dotenv, and credential-backed `AdminTokenStore`.
+  - Added secret-isolation tests proving status and serialized errors do not include sentinel plaintext.
+  - `pnpm --filter @gcah/credentials test` exited 0 with 4 files and 7 tests.
+- Refactor/verification evidence:
+  - Real `cross-keychain` access is isolated behind `createOsKeychainBackend`; tests use fake backends and do not read/write real credentials.
+  - `.env` and `.env.*` were already ignored; no `.gitignore` change was required.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: pending.
