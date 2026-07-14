@@ -1303,3 +1303,18 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
 - Commit: `724f029` (`fix: add default llm transport and executable cli bin`).
+
+## 2026-07-14 - PR-08 Reviewer Override
+
+- Scope: PR-08 `credentials-llm-cli` final merge gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Human decision:
+  - Fresh reviewer tools repeatedly timed out or remained unresponsive after PR-08 final fixes.
+  - Human explicitly authorized continuing PR-08 merge using the existing local validation evidence instead of waiting for additional reviewer output.
+- Validation evidence used for the override:
+  - `pnpm verify` exited 0 with 58 files and 144 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+  - `node apps/cli/dist/src/bin.js server start` exited 0.
+- Commit: pending.
