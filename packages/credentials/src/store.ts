@@ -89,8 +89,12 @@ export function createCredentialStore(input: CreateCredentialStoreInput): Creden
   const updatedAt = new Map<CredentialProvider, string>();
 
   async function backendId(): Promise<string> {
-    const diagnosis = await input.backend.diagnose();
-    return diagnosis.id;
+    try {
+      const diagnosis = await input.backend.diagnose();
+      return diagnosis.id;
+    } catch {
+      throw new CredentialBackendUnavailableError("unknown");
+    }
   }
 
   async function ensureBackend(): Promise<string> {

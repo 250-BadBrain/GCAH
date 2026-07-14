@@ -31,6 +31,20 @@ class FakeKeychainBackend implements KeychainBackend {
   }
 }
 
+class ThrowingDiagnoseBackend implements KeychainBackend {
+  async diagnose(): Promise<{ id: string }> {
+    throw new Error("locked backend leaked sk-test-sentinel");
+  }
+
+  async getPassword(): Promise<string | null> {
+    return null;
+  }
+
+  async setPassword(): Promise<void> {}
+
+  async deletePassword(): Promise<void> {}
+}
+
 describe("CredentialStore", () => {
   it("allows only platform OS credential backends and rejects file/null/unknown", () => {
     expect(validateCredentialBackend("win32", "native-windows")).toEqual({ ok: true });
@@ -86,6 +100,24 @@ describe("CredentialStore", () => {
     });
 
     await expect(store.set("openai-compatible", "sk-test-sentinel")).rejects.toBeInstanceOf(CredentialBackendUnavailableError);
+    await expect(store.status("openai-compatible")).resolves.toMatchObject({
+      available: false,
+      reason: "backend-unavailable"
+    });
+  });
+
+  it("maps locked or unavailable backend exceptions to safe backend-unavailable errors", async () => {
+    const store = createCredentialStore({
+      backend: new ThrowingDiagnoseBackend(),
+      platform: "win32",
+      clock: () => timestamp
+    });
+
+    await expect(store.set("openai-compatible", "sk-test-sentinel")).rejects.toMatchObject({
+      name: "CredentialBackendUnavailableError",
+      message: "credential backend unavailable: unknown"
+    });
+    await expect(store.withCredential("openai-compatible", async () => "unused")).rejects.not.toThrow("sk-test-sentinel");
     await expect(store.status("openai-compatible")).resolves.toMatchObject({
       available: false,
       reason: "backend-unavailable"

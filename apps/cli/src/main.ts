@@ -1,10 +1,11 @@
 import { createOsKeychainBackend, createCredentialStore, type CredentialStore } from "@gcah/credentials";
 import { ConfigStatusDtoSchema, CredentialStatusDtoSchema, RunDtoSchema, RunEventsResponseSchema } from "@gcah/shared";
 
-import { defaultTransport, type CliTransport } from "./client.js";
+import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
+import { createHiddenInputPrompt } from "./hidden-input.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
-export { sanitizeOutput, type CliResult };
+export { createFetchTransport, createHiddenInputPrompt, sanitizeOutput, type CliResult };
 export type { CliTransport };
 
 export interface RunCliDependencies {
@@ -26,6 +27,14 @@ export async function runCli(args: readonly string[], deps: RunCliDependencies =
   } catch {
     return fail("command failed\n");
   }
+}
+
+export async function runMain(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
+  const result = await runCli(args, {
+    promptSecret: createHiddenInputPrompt(),
+    ...deps
+  });
+  return result;
 }
 
 async function runCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {
@@ -99,8 +108,7 @@ async function credentialCommand(command: string | undefined, deps: RunCliDepend
     }
   }
   if (command === "set" || command === "update") {
-    const prompt = deps.promptSecret;
-    if (prompt === undefined) return fail("hidden input unavailable\n", 2);
+    const prompt = deps.promptSecret ?? createHiddenInputPrompt();
     const secret = await prompt();
     if (command === "set") {
       await store.set("openai-compatible", secret);

@@ -9,6 +9,9 @@
       "default": "./src/main.ts"
     }
   },
+  "bin": {
+    "gcah": "./src/bin.ts"
+  },
   "scripts": {
     "test": "vitest run"
   },

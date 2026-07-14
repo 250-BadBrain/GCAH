@@ -1207,3 +1207,27 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
 - Commit: `6d552d0` (`feat: add cli commands`).
+
+## 2026-07-14 - PR-08 Review Fixes
+
+- Scope: PR-08 `credentials-llm-cli`, fixes after independent spec and quality/security reviews.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/credentials-llm-cli` at `E:/Desktop/GCAH-credentials-llm-cli`.
+- Baseline commit: `5479883`.
+- Reviewer evidence:
+  - Spec compliance reviewer `019f5fbf-773d-7f72-a8c0-9b5731b4ec2d` reported backend exception fail-closed gaps and missing default HTTP client behavior.
+  - Code quality/security reviewer `019f5fbf-8b63-7741-bb20-4fd894bbbfdf` reported missing real hidden-input path and executable CLI entrypoint.
+- Red evidence:
+  - Added regression tests for backend `diagnose()` exceptions containing a secret sentinel, fetch-backed default transport, no-echo hidden input, and executable entrypoint wiring.
+  - Focused credentials/CLI tests exited 1 before implementation for these missing behaviors.
+- Green evidence:
+  - Mapped backend diagnostic failures to safe `CredentialBackendUnavailableError("unknown")`.
+  - Added fetch-backed CLI transport using `GCAH_SERVER_URL` or local default.
+  - Added hidden-input prompt helper and `runMain`/`bin.ts` executable entrypoint with `gcah` package bin.
+  - Focused credentials and CLI review-fix tests exited 0.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/credentials test` exited 0 with 4 files and 8 tests.
+  - `pnpm --filter @gcah/cli test` exited 0 with 7 files and 9 tests.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: pending.
