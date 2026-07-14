@@ -1164,4 +1164,4 @@
   - `.env` and `.env.*` were already ignored; no `.gitignore` change was required.
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
-- Commit: pending.
+- Commit: `583d56d` (`feat: add credential store`).
