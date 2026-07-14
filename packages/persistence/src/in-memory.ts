@@ -86,6 +86,8 @@ export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
 
   const eventRepository: EventRepository = {
     async append(event) {
+      if (!runs.has(event.runId)) throw new Error(`run ${event.runId} does not exist`);
+      if (event.stepId !== null && !steps.has(event.stepId)) throw new Error(`step ${event.stepId} does not exist`);
       const existing = events.get(event.runId) ?? [];
       const persisted = {
         ...event,
@@ -104,6 +106,7 @@ export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
 
   const stepRepository: StepRepository = {
     async create(step) {
+      if (!runs.has(step.runId)) throw new Error(`run ${step.runId} does not exist`);
       for (const existing of steps.values()) {
         if (existing.runId === step.runId && existing.sequence === step.sequence) {
           throw new Error(`duplicate step sequence ${step.sequence} for run ${step.runId}`);
@@ -122,6 +125,7 @@ export function createInMemoryRepositories(clock: Clock): InMemoryRepositories {
 
   const actionRepository: ActionRepository = {
     async create(action) {
+      if (!steps.has(action.stepId)) throw new Error(`step ${action.stepId} does not exist`);
       actions.set(action.id, clone(action));
       return clone(action);
     },

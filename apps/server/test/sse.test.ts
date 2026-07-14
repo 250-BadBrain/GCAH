@@ -19,7 +19,8 @@ class FakeClock implements Clock {
 describe("server events", () => {
   it("replays committed events from cursor as JSON and SSE", async () => {
     const unitOfWork = createInMemoryRepositories(new FakeClock());
-    const app = createServerApp({ unitOfWork, clock: new FakeClock(), auth: { enabled: false } });
+    await seedRun(unitOfWork, "run-1");
+    const app = createServerApp({ unitOfWork, clock: new FakeClock(), auth: { enabled: false }, sseIdleTimeoutMs: 5 });
     await unitOfWork.repositories.events.append({
       id: "event-1",
       runId: "run-1",
@@ -50,4 +51,68 @@ describe("server events", () => {
     expect(sse.payload).toContain("id: 2");
     expect(sse.payload).toContain("event: run.completed");
   });
+
+  it("keeps SSE subscribers open for committed events published after replay", async () => {
+    const unitOfWork = createInMemoryRepositories(new FakeClock());
+    await seedApprovalAction(unitOfWork);
+    const app = createServerApp({ unitOfWork, clock: new FakeClock(), auth: { enabled: false }, sseIdleTimeoutMs: 50 });
+
+    const stream = app.inject({ method: "GET", url: "/api/runs/run-live/events/stream" });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await app.inject({
+      method: "POST",
+      url: "/api/runs/run-live/approvals/action-live",
+      payload: { decision: "reject", reason: "not approved" }
+    });
+
+    const response = await stream;
+    expect(response.payload).toContain("event: approval.decision");
+    expect(response.payload).toContain("approval decision: reject");
+  });
 });
+
+async function seedRun(unitOfWork: ReturnType<typeof createInMemoryRepositories>, runId: string): Promise<void> {
+  await unitOfWork.repositories.runs.create({
+    id: runId,
+    workspaceId: `workspace-${runId}`,
+    taskSummary: "task",
+    status: "RUNNING",
+    configSnapshotId: "config-1",
+    budgetUsage: { rounds: 0, tokens: 0, elapsedMs: 0, repeatedFailures: 0 },
+    transitionIds: [],
+    stopReason: null,
+    stopDetail: null,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+}
+
+async function seedApprovalAction(unitOfWork: ReturnType<typeof createInMemoryRepositories>): Promise<void> {
+  await seedRun(unitOfWork, "run-live");
+  await unitOfWork.repositories.steps.create({
+    id: "step-live",
+    runId: "run-live",
+    sequence: 1,
+    contextSummary: "context",
+    llmUsage: null,
+    usageMissing: false,
+    status: "WAITING_APPROVAL",
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+  await unitOfWork.repositories.actions.create({
+    id: "action-live",
+    stepId: "step-live",
+    kind: "tool",
+    toolName: "read",
+    finishSummary: null,
+    args: { path: "README.md" },
+    displayRationale: "read",
+    normalizedSummary: "read README.md",
+    riskCategory: "low",
+    status: "WAITING_APPROVAL",
+    transitionIds: [],
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+}

@@ -145,6 +145,25 @@ export function repositoryContract(factory: RepositoryContractFactory): void {
       }
     });
 
+    it("rejects orphaned steps, actions, and events", async () => {
+      const store = await factory.create();
+      try {
+        await expect(store.repositories.steps.create(step("orphan-step", 1))).rejects.toThrow(/run .* does not exist/u);
+        await expect(store.repositories.actions.create(action("orphan-action"))).rejects.toThrow(/step .* does not exist/u);
+        await expect(store.repositories.events.append({
+          id: "orphan-event",
+          runId: "missing-run",
+          stepId: null,
+          type: "run.started",
+          relatedEntityId: "missing-run",
+          summary: "started",
+          createdAt: timestamp
+        })).rejects.toThrow(/run .* does not exist/u);
+      } finally {
+        store.close?.();
+      }
+    });
+
     it("rolls back transaction writes and event cursors on failure", async () => {
       const store = await factory.create();
       try {
@@ -163,6 +182,7 @@ export function repositoryContract(factory: RepositoryContractFactory): void {
         })).rejects.toThrow("abort");
 
         await expect(store.repositories.runs.getById("run-rollback")).resolves.toBeNull();
+        await store.repositories.runs.create(run("run-1"));
         await expect(store.repositories.events.append({
           id: "event-1",
           runId: "run-1",

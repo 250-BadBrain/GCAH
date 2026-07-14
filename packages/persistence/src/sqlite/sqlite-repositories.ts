@@ -32,6 +32,10 @@ function isActive(run: Run): boolean {
   return ["PENDING", "RUNNING", "WAITING_APPROVAL"].includes(run.status);
 }
 
+function isSqliteConstraint(error: unknown, constraint: string): boolean {
+  return String(error).toUpperCase().includes(constraint);
+}
+
 function migrationSql(): string {
   const currentFile = fileURLToPath(import.meta.url);
   return readFileSync(join(currentFile, "..", "migrations", "001-initial.sql"), "utf8");
@@ -57,7 +61,12 @@ export function openSqliteRepositories(input: OpenSqliteRepositoriesInput): Sqli
         if (isActive(run) && activeRunForWorkspace(run.workspaceId) !== null) {
           throw new Error(`workspace ${run.workspaceId} already has an active run`);
         }
-        db.prepare("INSERT INTO runs(id, workspace_id, status, json) VALUES (?, ?, ?, ?)").run(run.id, run.workspaceId, run.status, encode(run));
+        try {
+          db.prepare("INSERT INTO runs(id, workspace_id, status, json) VALUES (?, ?, ?, ?)").run(run.id, run.workspaceId, run.status, encode(run));
+        } catch (error) {
+          if (isSqliteConstraint(error, "UNIQUE")) throw new Error(`workspace ${run.workspaceId} already has an active run`);
+          throw error;
+        }
         return clone(run);
       },
       async getById(id) {
@@ -86,7 +95,8 @@ export function openSqliteRepositories(input: OpenSqliteRepositoriesInput): Sqli
         try {
           db.prepare("INSERT INTO steps(id, run_id, sequence, json) VALUES (?, ?, ?, ?)").run(step.id, step.runId, step.sequence, encode(step));
         } catch (error) {
-          if (String(error).includes("UNIQUE")) throw new Error(`duplicate step sequence ${step.sequence} for run ${step.runId}`);
+          if (isSqliteConstraint(error, "FOREIGN KEY")) throw new Error(`run ${step.runId} does not exist`);
+          if (isSqliteConstraint(error, "UNIQUE")) throw new Error(`duplicate step sequence ${step.sequence} for run ${step.runId}`);
           throw error;
         }
         return clone(step);
@@ -100,7 +110,12 @@ export function openSqliteRepositories(input: OpenSqliteRepositoriesInput): Sqli
     },
     actions: {
       async create(action) {
-        db.prepare("INSERT INTO actions(id, step_id, json) VALUES (?, ?, ?)").run(action.id, action.stepId, encode(action));
+        try {
+          db.prepare("INSERT INTO actions(id, step_id, json) VALUES (?, ?, ?)").run(action.id, action.stepId, encode(action));
+        } catch (error) {
+          if (isSqliteConstraint(error, "FOREIGN KEY")) throw new Error(`step ${action.stepId} does not exist`);
+          throw error;
+        }
         return clone(action);
       },
       async listByStep(stepId) {
@@ -115,7 +130,21 @@ export function openSqliteRepositories(input: OpenSqliteRepositoriesInput): Sqli
         const row = db.prepare("SELECT COALESCE(MAX(cursor), 0) AS cursor FROM events WHERE run_id = ?").get(event.runId);
         const nextCursor = Number(row?.cursor ?? 0) + 1;
         const persisted = { ...event, cursor: nextCursor } satisfies RunEvent;
-        db.prepare("INSERT INTO events(id, run_id, cursor, json) VALUES (?, ?, ?, ?)").run(persisted.id, persisted.runId, persisted.cursor, encode(persisted));
+        try {
+          db.prepare("INSERT INTO events(id, run_id, step_id, cursor, json) VALUES (?, ?, ?, ?, ?)").run(
+            persisted.id,
+            persisted.runId,
+            persisted.stepId,
+            persisted.cursor,
+            encode(persisted)
+          );
+        } catch (error) {
+          if (isSqliteConstraint(error, "FOREIGN KEY")) {
+            if (persisted.stepId !== null) throw new Error(`step ${persisted.stepId} does not exist`);
+            throw new Error(`run ${persisted.runId} does not exist`);
+          }
+          throw error;
+        }
         return clone(persisted);
       },
       async listAfterCursor(runId, cursor) {

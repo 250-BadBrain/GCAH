@@ -12,9 +12,13 @@ CREATE TABLE IF NOT EXISTS runs (
   json TEXT NOT NULL
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_one_active_per_workspace
+  ON runs(workspace_id)
+  WHERE status IN ('PENDING', 'RUNNING', 'WAITING_APPROVAL');
+
 CREATE TABLE IF NOT EXISTS steps (
   id TEXT PRIMARY KEY,
-  run_id TEXT NOT NULL,
+  run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE RESTRICT,
   sequence INTEGER NOT NULL,
   json TEXT NOT NULL,
   UNIQUE (run_id, sequence)
@@ -22,13 +26,14 @@ CREATE TABLE IF NOT EXISTS steps (
 
 CREATE TABLE IF NOT EXISTS actions (
   id TEXT PRIMARY KEY,
-  step_id TEXT NOT NULL,
+  step_id TEXT NOT NULL REFERENCES steps(id) ON DELETE RESTRICT,
   json TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
-  run_id TEXT NOT NULL,
+  run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE RESTRICT,
+  step_id TEXT REFERENCES steps(id) ON DELETE RESTRICT,
   cursor INTEGER NOT NULL,
   json TEXT NOT NULL,
   UNIQUE (run_id, cursor)

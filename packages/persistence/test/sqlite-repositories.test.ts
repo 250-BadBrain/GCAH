@@ -1,6 +1,7 @@
 import { mkdtemp, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { DatabaseSync } from "node:sqlite";
 
 import { describe, expect, it } from "vitest";
 
@@ -53,5 +54,22 @@ describe("sqlite repositories", () => {
       store.close();
     }
     await expect(readFile(join(dataDir, "gcah.sqlite"), "utf8")).resolves.not.toContain("sk-test-secret");
+  });
+
+  it("uses database constraints for active run uniqueness", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "gcah-sqlite-"));
+    const store = await openSqliteRepositories({ dataDir, clock: new FakeClock() });
+    store.close();
+
+    const db = new DatabaseSync(join(dataDir, "gcah.sqlite"));
+    try {
+      const indexes = db.prepare("PRAGMA index_list('runs')").all();
+      expect(indexes).toContainEqual(expect.objectContaining({
+        name: "idx_runs_one_active_per_workspace",
+        unique: 1
+      }));
+    } finally {
+      db.close();
+    }
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createServerApp } from "../src/index.js";
 import { createInMemoryRepositories } from "@gcah/persistence";
-import type { Clock } from "@gcah/core";
+import type { Clock, RepositorySet, UnitOfWork } from "@gcah/core";
 
 const timestamp = "2026-07-13T00:00:00.000Z";
 
@@ -64,5 +64,49 @@ describe("server run routes", () => {
 
     expect(response.statusCode).toBe(400);
     await expect(unitOfWork.repositories.runs.listActive()).resolves.toEqual([]);
+  });
+
+  it("rejects workspace paths rejected by the injected boundary validator", async () => {
+    const unitOfWork = createInMemoryRepositories(new FakeClock());
+    const app = createServerApp({
+      unitOfWork,
+      clock: new FakeClock(),
+      auth: { enabled: false },
+      workspaceValidator: async () => ({ ok: false, code: "WORKSPACE_OUTSIDE_ALLOWED_ROOT" })
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/runs",
+      payload: { workspacePath: "C:/Users/AAA", task: "fix test" }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "WORKSPACE_OUTSIDE_ALLOWED_ROOT" });
+    await expect(unitOfWork.repositories.runs.listActive()).resolves.toEqual([]);
+  });
+
+  it("rolls back run creation when the creation event cannot be persisted", async () => {
+    const backing = createInMemoryRepositories(new FakeClock());
+    const failingEvents = {
+      ...backing.repositories.events,
+      append: async () => {
+        throw new Error("event store unavailable");
+      }
+    };
+    const failingUnitOfWork: UnitOfWork = {
+      repositories: { ...backing.repositories, events: failingEvents },
+      transaction: (work) => backing.transaction((repositories: RepositorySet) => work({ ...repositories, events: failingEvents }))
+    };
+    const app = createServerApp({ unitOfWork: failingUnitOfWork, clock: new FakeClock(), auth: { enabled: false } });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/runs",
+      payload: { workspacePath: "E:/workspace", task: "fix test" }
+    });
+
+    expect(response.statusCode).toBe(500);
+    await expect(backing.repositories.runs.listActive()).resolves.toEqual([]);
   });
 });
