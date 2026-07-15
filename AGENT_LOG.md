@@ -1428,4 +1428,4 @@
   - `pnpm test -- scripts/demo-output.test.ts` exited 0 with 1 file and 1 test.
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
-- Commit: pending.
+- Commit: `67d9a4d` (`feat: add deterministic mechanism demo`).
