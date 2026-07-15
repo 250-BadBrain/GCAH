@@ -32,7 +32,7 @@
       "path": "./apps/webui"
     },
     {
-      "path": "./scripts/tsconfig.demo.json"
+      "path": "./scripts/tsconfig.json"
     }
   ]
 }

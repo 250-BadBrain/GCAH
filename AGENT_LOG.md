@@ -1466,3 +1466,22 @@
   - `pnpm lint` exited 0.
   - Real registry publishing and anonymous pull remain CI/human environment steps; no remote push was executed.
 - Commit: `d43e322` (`feat: add self-hosted image contract`).
+
+## 2026-07-15 - T27
+
+- Scope: PR-10 `release-evidence`, T27 Cloudflare/manual deployment/security evidence.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `7fd187f`.
+- Red evidence:
+  - `pnpm test -- scripts/scan-secrets.test.ts` exited 1 because `docs/security-review.md` was missing.
+- Green evidence:
+  - Added security review, deployment guide, README verification commands, and scanner contract.
+  - Documented Cloudflare login, Wrangler login, DNS, HTTPS, remote migrations, tokens, and deployment as manual human steps.
+  - Recorded that public demo is Mock LLM only and no real credentials are required for CI/local evidence.
+- Refactor/verification evidence:
+  - `pnpm test -- scripts/scan-secrets.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: pending.
