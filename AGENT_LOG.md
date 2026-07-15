@@ -1409,4 +1409,4 @@
   - `pnpm verify` exited 0 with 68 files and 155 tests.
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
-- Commit: pending.
+- Commit: `90c8a5c` (`docs: record web public demo reviewer override`).
