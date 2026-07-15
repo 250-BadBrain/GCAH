@@ -45,6 +45,9 @@ importers:
       '@gcah/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@gcah/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@gcah/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence

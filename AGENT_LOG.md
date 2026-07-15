@@ -1374,3 +1374,25 @@
   - `pnpm --filter @gcah/webui build` exited 0.
   - `pnpm typecheck` exited 0.
 - Commit: `f52d79a` (`feat: serve webui from local server`).
+
+## 2026-07-15 - T23
+
+- Scope: PR-09 `web-public-demo`, T23 anonymous restricted public-demo mode.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `ba11e3c`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- public-demo demo-workspace` exited 1 because `public-demo.ts` and `demo-workspace.ts` were missing.
+  - `pnpm --filter @gcah/tools test -- demo-executor demo-validation-runner` exited 1 because demo executor and validation runner modules were missing.
+- Green evidence:
+  - Added anonymous public-demo Fastify composition with fixed examples, Mock LLM only, and hard denial for arbitrary workspace/task, uploads, API keys, real LLM selection, shell/install, and network-shaped requests.
+  - Added resettable demo workspace copier and fixed template files under `examples/demo-workspace`.
+  - Added `DemoExecutor` and `DemoValidationRunner` with deterministic preset behavior and no subprocess/network execution.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/server test -- public-demo demo-workspace` exited 0 with 2 files and 3 tests.
+  - `pnpm --filter @gcah/tools test -- demo-executor demo-validation-runner` exited 0 with 2 files and 2 tests.
+  - `pnpm --filter @gcah/webui test` exited 0 with 4 files and 4 tests.
+  - `pnpm verify` exited 0 with 68 files and 155 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: pending.

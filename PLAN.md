@@ -1121,7 +1121,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Capability and isolation tests prove anonymous users cannot reach real workspace/LLM/credentials/commands or start a real subprocess/network call; no API key exists in request, browser, log, error, D1, KV, or R2 boundaries; preset outcomes still traverse the real state path without cross-visitor contamination.
 
-**Parallel:** No after T22; completes PR-09. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No after T22; completes PR-09. **Status:** Complete. **Commit:** pending.
 
 ### Task T24: Add the deterministic one-command mechanism demonstration
 
