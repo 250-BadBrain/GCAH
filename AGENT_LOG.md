@@ -1485,3 +1485,20 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
 - Commit: `23ffc4f` (`docs: add final deployment and security evidence`).
+
+## 2026-07-15 - PR-10 Reviewer Override
+
+- Scope: PR-10 `release-evidence` final merge gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Human decision:
+  - Fresh reviewer tools remained unresponsive across two 30-second wait windows.
+  - Human explicitly authorized continuing PR-10 merge using existing local validation evidence instead of waiting for additional reviewer output.
+- Validation evidence used for the override:
+  - `pnpm lint` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm test` exited 0 with 76 files and 163 tests.
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Commit: pending.
