@@ -1447,4 +1447,4 @@
   - `pnpm demo:mechanisms` exited 0.
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
-- Commit: pending.
+- Commit: `6ea053e` (`feat: add offline ci pipelines`).

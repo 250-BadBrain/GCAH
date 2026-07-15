@@ -1173,7 +1173,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** `.gitlab-ci.yml` has passing `unit-test`; GitHub Actions passes equivalent offline checks; neither pipeline requires a key or networked LLM.
 
-**Parallel:** No after T24. **Status:** Complete. **Commit:** pending.
+**Parallel:** No after T24. **Status:** Complete. **Commit:** `6ea053e` (`feat: add offline ci pipelines`).
 
 ### Task T26: Build the Docker/self-hosted delivery path
 
