@@ -1501,4 +1501,4 @@
   - `pnpm demo:mechanisms` exited 0.
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
-- Commit: pending.
+- Commit: `b0bb65c` (`docs: record release evidence reviewer override`).
