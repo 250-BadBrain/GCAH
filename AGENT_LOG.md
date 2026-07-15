@@ -1410,3 +1410,22 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Commit: `90c8a5c` (`docs: record web public demo reviewer override`).
+
+## 2026-07-15 - T24
+
+- Scope: PR-10 `release-evidence`, T24 deterministic one-command mechanism demonstration.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `0ca3c80`.
+- Red evidence:
+  - `pnpm test -- scripts/demo-output.test.ts` exited 1 because `demo:mechanisms` was missing.
+- Green evidence:
+  - Added `pnpm demo:mechanisms`, deterministic scenario data, JSON output, and mechanism-demo documentation.
+  - The demo emits `DANGEROUS_ACTION_DENIED`, `VALIDATION_FAILED`, `MOCK_ACTION_CHANGED`, `SESSION_GRANT_EXPIRED`, and `REAPPROVAL_REQUIRED`.
+  - The demo uses fixed output and does not require network, real credentials, or a real LLM.
+- Refactor/verification evidence:
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm test -- scripts/demo-output.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: pending.

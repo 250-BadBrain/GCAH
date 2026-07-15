@@ -1147,7 +1147,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** One command deterministically demonstrates blocking, feedback-driven action change, and grant expiry/reapproval offline.
 
-**Parallel:** No; release evidence depends on integrated system. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; release evidence depends on integrated system. **Status:** Complete. **Commit:** pending.
 
 ### Task T25: Add GitLab and GitHub continuous integration
 
