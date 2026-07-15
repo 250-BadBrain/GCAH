@@ -1337,3 +1337,22 @@
   - `pnpm --filter @gcah/webui build` exited 0.
   - `pnpm exec tsc --noEmit -p apps/webui/tsconfig.json --pretty false` exited 0.
 - Commit: `5aa7f2e` (`feat: add webui observation shell`).
+
+## 2026-07-15 - T22b
+
+- Scope: PR-09 `web-public-demo`, T22b WebUI approval controls and SSE reconnection.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `db15b18`.
+- Red evidence:
+  - `pnpm --filter @gcah/webui test -- client sse ApprovalPanel` exited 1 because `api/client.ts`, `api/sse.ts`, and `components/ApprovalPanel.tsx` were missing.
+- Green evidence:
+  - Added same-origin API client for approval decisions.
+  - Added `ApprovalPanel` controls for once, session, and reject decisions with browser-only request submission and no local policy calculation.
+  - Added SSE cursor tracking with replay fetch on reconnect and connection cleanup.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/webui test -- client sse ApprovalPanel` exited 0 with 3 files and 3 tests.
+  - `pnpm --filter @gcah/webui test` exited 0 with 4 files and 4 tests.
+  - `pnpm --filter @gcah/webui build` exited 0.
+  - `pnpm exec tsc --noEmit -p apps/webui/tsconfig.json --pretty false` exited 0.
+- Commit: pending.

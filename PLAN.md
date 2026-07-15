@@ -354,14 +354,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Submit once/session decisions and recover event gaps by cursor. **Dependencies:** T22a. **Files:** `apps/webui/src/api/sse.ts`, `components/ApprovalPanel.tsx`, their tests. **First red:** Approval submit and reconnect cursor expectations fail. **Expected implementation:** Same-origin EventSource plus REST approval calls.
 
-- [ ] Add approval and cursor-reconnect tests.
-- [ ] Run focused WebUI tests; confirm missing behavior red.
-- [ ] Add minimal ApprovalPanel and SSE cursor tracking.
-- [ ] Add missed-event fetch and duplicate-cursor tests.
-- [ ] Refactor connection cleanup; run test/build.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add approval and cursor-reconnect tests.
+- [x] Run focused WebUI tests; confirm missing behavior red.
+- [x] Add minimal ApprovalPanel and SSE cursor tracking.
+- [x] Add missed-event fetch and duplicate-cursor tests.
+- [x] Refactor connection cleanup; run test/build.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Browser remains a client, not an authority. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Browser remains a client, not an authority. **Parallel:** No. **Status:** Complete. **Commit:** pending.
 
 #### T22c — Fastify static hosting for local/Docker/self-hosted
 
