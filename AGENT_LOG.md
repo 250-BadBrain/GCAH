@@ -1396,3 +1396,17 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
 - Commit: `1254a8e` (`feat: add restricted public demo mode`).
+
+## 2026-07-15 - PR-09 Reviewer Override
+
+- Scope: PR-09 `web-public-demo` final merge gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Human decision:
+  - Fresh reviewer tools remained unresponsive across two 30-second wait windows.
+  - Human explicitly authorized continuing PR-09 merge using existing local validation evidence instead of waiting for additional reviewer output.
+- Validation evidence used for the override:
+  - `pnpm verify` exited 0 with 68 files and 155 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Commit: pending.
