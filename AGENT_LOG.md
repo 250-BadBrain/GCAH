@@ -1395,4 +1395,4 @@
   - `pnpm verify` exited 0 with 68 files and 155 tests.
   - `pnpm build` exited 0.
   - `git diff --check` exited 0 with line-ending warnings only.
-- Commit: pending.
+- Commit: `1254a8e` (`feat: add restricted public demo mode`).
