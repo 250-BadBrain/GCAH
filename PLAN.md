@@ -341,40 +341,40 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Render canonical status, event order, risk, pause guidance, and validation details. **Dependencies:** T18c. **Files:** WebUI manifests/config, `main.tsx`, `app.tsx`, API client, Run/timeline/validation/status components, CSS and tests listed by T22. **First red:** Component tests cannot render missing views. **Expected implementation:** Accessible observation-only components.
 
-- [ ] Add Run/timeline/validation rendering tests.
-- [ ] Run `pnpm --filter @gcah/webui test`; confirm missing-component red.
-- [ ] Add minimal app and components.
-- [ ] Add hostile-rationale-as-text and pause-guidance assertions.
-- [ ] Refactor status styles/accessibility; run test/build.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add Run/timeline/validation rendering tests.
+- [x] Run `pnpm --filter @gcah/webui test`; confirm missing-component red.
+- [x] Add minimal app and components.
+- [x] Add hostile-rationale-as-text and pause-guidance assertions.
+- [x] Refactor status styles/accessibility; run test/build.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Observation views pass without policy logic. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Observation views pass without policy logic. **Parallel:** No. **Status:** Complete. **Commit:** `5aa7f2e` (`feat: add webui observation shell`).
 
 #### T22b — WebUI approval controls and SSE reconnection
 
 **Goal:** Submit once/session decisions and recover event gaps by cursor. **Dependencies:** T22a. **Files:** `apps/webui/src/api/sse.ts`, `components/ApprovalPanel.tsx`, their tests. **First red:** Approval submit and reconnect cursor expectations fail. **Expected implementation:** Same-origin EventSource plus REST approval calls.
 
-- [ ] Add approval and cursor-reconnect tests.
-- [ ] Run focused WebUI tests; confirm missing behavior red.
-- [ ] Add minimal ApprovalPanel and SSE cursor tracking.
-- [ ] Add missed-event fetch and duplicate-cursor tests.
-- [ ] Refactor connection cleanup; run test/build.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add approval and cursor-reconnect tests.
+- [x] Run focused WebUI tests; confirm missing behavior red.
+- [x] Add minimal ApprovalPanel and SSE cursor tracking.
+- [x] Add missed-event fetch and duplicate-cursor tests.
+- [x] Refactor connection cleanup; run test/build.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Browser remains a client, not an authority. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Browser remains a client, not an authority. **Parallel:** No. **Status:** Complete. **Commit:** `c187ce4` (`feat: add webui approvals and event stream`).
 
 #### T22c — Fastify static hosting for local/Docker/self-hosted
 
 **Goal:** Serve the built React app from one Fastify process only for local/Docker/self-hosted and preserve API/SSE routing; Cloudflare production uses Pages + Workers. **Dependencies:** T18c and T22b. **Files:** `apps/server/src/static-webui.ts`, `apps/server/src/app.ts`, `apps/server/test/static-webui.integration.test.ts`, `apps/webui/vite.config.ts`. **First red:** Local production-mode server returns 404 or intercepts `/api`/SSE. **Expected implementation:** Static asset plugin, non-API HTML fallback, cache policy, built-asset integration fixture.
 
-- [ ] Build WebUI test fixture and add `/`, asset, SPA-route, API, and SSE assertions.
-- [ ] Run `pnpm --filter @gcah/server test -- static-webui`; confirm 404/interception red.
-- [ ] Add minimal static registration and index fallback excluding API/SSE paths.
-- [ ] Add hashed-asset cache and missing-index error tests.
-- [ ] Refactor route predicates; run WebUI build and server integration test.
-- [ ] Update logs/status; commit and record hash.
+- [x] Build WebUI test fixture and add `/`, asset, SPA-route, API, and SSE assertions.
+- [x] Run `pnpm --filter @gcah/server test -- static-webui`; confirm 404/interception red.
+- [x] Add minimal static registration and index fallback excluding API/SSE paths.
+- [x] Add hashed-asset cache and missing-index error tests.
+- [x] Refactor route predicates; run WebUI build and server integration test.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** One Fastify process serves local/Docker/self-hosted UI/API/SSE correctly; no claim is made for Cloudflare production. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** One Fastify process serves local/Docker/self-hosted UI/API/SSE correctly; no claim is made for Cloudflare production. **Parallel:** No. **Status:** Complete. **Commit:** `f52d79a` (`feat: serve webui from local server`).
 
 #### T26a — Reproducible Linux amd64 runtime image
 
@@ -1121,7 +1121,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Capability and isolation tests prove anonymous users cannot reach real workspace/LLM/credentials/commands or start a real subprocess/network call; no API key exists in request, browser, log, error, D1, KV, or R2 boundaries; preset outcomes still traverse the real state path without cross-visitor contamination.
 
-**Parallel:** No after T22; completes PR-09. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No after T22; completes PR-09. **Status:** Complete. **Commit:** `1254a8e` (`feat: add restricted public demo mode`).
 
 ### Task T24: Add the deterministic one-command mechanism demonstration
 

@@ -1317,4 +1317,96 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
   - `node apps/cli/dist/src/bin.js server start` exited 0.
-- Commit: pending.
+- Commit: `73224a6` (`docs: record credentials cli reviewer override`).
+
+## 2026-07-15 - T22a
+
+- Scope: PR-09 `web-public-demo`, T22a WebUI shell, Run list, timeline, validation, and status guidance.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `f90ee71`.
+- Red evidence:
+  - `pnpm --filter @gcah/webui test -- app` exited 1 because `apps/webui/src/app.tsx` did not exist.
+- Green evidence:
+  - Added `@gcah/webui` React/Vite package, app shell, run list, status guidance, ordered timeline, validation display, and CSS.
+  - Added hostile-rationale-as-text assertions proving script markup is rendered as text and not inserted as DOM.
+  - Added root build/typecheck coverage for the WebUI package.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/webui test -- app` exited 0 with 1 file and 1 test.
+  - `pnpm --filter @gcah/webui test` exited 0 with 1 file and 1 test.
+  - `pnpm --filter @gcah/webui build` exited 0.
+  - `pnpm exec tsc --noEmit -p apps/webui/tsconfig.json --pretty false` exited 0.
+- Commit: `5aa7f2e` (`feat: add webui observation shell`).
+
+## 2026-07-15 - T22b
+
+- Scope: PR-09 `web-public-demo`, T22b WebUI approval controls and SSE reconnection.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `db15b18`.
+- Red evidence:
+  - `pnpm --filter @gcah/webui test -- client sse ApprovalPanel` exited 1 because `api/client.ts`, `api/sse.ts`, and `components/ApprovalPanel.tsx` were missing.
+- Green evidence:
+  - Added same-origin API client for approval decisions.
+  - Added `ApprovalPanel` controls for once, session, and reject decisions with browser-only request submission and no local policy calculation.
+  - Added SSE cursor tracking with replay fetch on reconnect and connection cleanup.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/webui test -- client sse ApprovalPanel` exited 0 with 3 files and 3 tests.
+  - `pnpm --filter @gcah/webui test` exited 0 with 4 files and 4 tests.
+  - `pnpm --filter @gcah/webui build` exited 0.
+  - `pnpm exec tsc --noEmit -p apps/webui/tsconfig.json --pretty false` exited 0.
+- Commit: `c187ce4` (`feat: add webui approvals and event stream`).
+
+## 2026-07-15 - T22c
+
+- Scope: PR-09 `web-public-demo`, T22c Fastify static hosting for local/Docker/self-hosted WebUI.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `5ffcb2c`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- static-webui` exited 1 because `apps/server/src/static-webui.ts` did not exist.
+- Green evidence:
+  - Added `registerStaticWebui` for built WebUI assets, SPA fallback, and API/SSE route preservation.
+  - Added static integration fixture covering `/`, hashed assets, SPA routes, `/api/config/status`, and SSE stream routing.
+  - Added immutable one-year cache headers for static assets through `@fastify/static`.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/server test -- static-webui` exited 0 with 1 file and 1 test.
+  - `pnpm --filter @gcah/webui build` exited 0.
+  - `pnpm typecheck` exited 0.
+- Commit: `f52d79a` (`feat: serve webui from local server`).
+
+## 2026-07-15 - T23
+
+- Scope: PR-09 `web-public-demo`, T23 anonymous restricted public-demo mode.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `ba11e3c`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- public-demo demo-workspace` exited 1 because `public-demo.ts` and `demo-workspace.ts` were missing.
+  - `pnpm --filter @gcah/tools test -- demo-executor demo-validation-runner` exited 1 because demo executor and validation runner modules were missing.
+- Green evidence:
+  - Added anonymous public-demo Fastify composition with fixed examples, Mock LLM only, and hard denial for arbitrary workspace/task, uploads, API keys, real LLM selection, shell/install, and network-shaped requests.
+  - Added resettable demo workspace copier and fixed template files under `examples/demo-workspace`.
+  - Added `DemoExecutor` and `DemoValidationRunner` with deterministic preset behavior and no subprocess/network execution.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/server test -- public-demo demo-workspace` exited 0 with 2 files and 3 tests.
+  - `pnpm --filter @gcah/tools test -- demo-executor demo-validation-runner` exited 0 with 2 files and 2 tests.
+  - `pnpm --filter @gcah/webui test` exited 0 with 4 files and 4 tests.
+  - `pnpm verify` exited 0 with 68 files and 155 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0 with line-ending warnings only.
+- Commit: `1254a8e` (`feat: add restricted public demo mode`).
+
+## 2026-07-15 - PR-09 Reviewer Override
+
+- Scope: PR-09 `web-public-demo` final merge gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Human decision:
+  - Fresh reviewer tools remained unresponsive across two 30-second wait windows.
+  - Human explicitly authorized continuing PR-09 merge using existing local validation evidence instead of waiting for additional reviewer output.
+- Validation evidence used for the override:
+  - `pnpm verify` exited 0 with 68 files and 155 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Commit: `90c8a5c` (`docs: record web public demo reviewer override`).

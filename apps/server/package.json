@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@gcah/core": "workspace:*",
+    "@gcah/llm": "workspace:*",
     "@gcah/persistence": "workspace:*",
     "@gcah/shared": "workspace:*",
+    "@fastify/static": "latest",
     "fastify": "5.10.0"
   },
   "devDependencies": {}
