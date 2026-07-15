@@ -341,14 +341,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Render canonical status, event order, risk, pause guidance, and validation details. **Dependencies:** T18c. **Files:** WebUI manifests/config, `main.tsx`, `app.tsx`, API client, Run/timeline/validation/status components, CSS and tests listed by T22. **First red:** Component tests cannot render missing views. **Expected implementation:** Accessible observation-only components.
 
-- [ ] Add Run/timeline/validation rendering tests.
-- [ ] Run `pnpm --filter @gcah/webui test`; confirm missing-component red.
-- [ ] Add minimal app and components.
-- [ ] Add hostile-rationale-as-text and pause-guidance assertions.
-- [ ] Refactor status styles/accessibility; run test/build.
-- [ ] Update logs/status; commit and record hash.
+- [x] Add Run/timeline/validation rendering tests.
+- [x] Run `pnpm --filter @gcah/webui test`; confirm missing-component red.
+- [x] Add minimal app and components.
+- [x] Add hostile-rationale-as-text and pause-guidance assertions.
+- [x] Refactor status styles/accessibility; run test/build.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** Observation views pass without policy logic. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Observation views pass without policy logic. **Parallel:** No. **Status:** Complete. **Commit:** pending.
 
 #### T22b — WebUI approval controls and SSE reconnection
 

@@ -1317,4 +1317,23 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
   - `node apps/cli/dist/src/bin.js server start` exited 0.
+- Commit: `73224a6` (`docs: record credentials cli reviewer override`).
+
+## 2026-07-15 - T22a
+
+- Scope: PR-09 `web-public-demo`, T22a WebUI shell, Run list, timeline, validation, and status guidance.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `f90ee71`.
+- Red evidence:
+  - `pnpm --filter @gcah/webui test -- app` exited 1 because `apps/webui/src/app.tsx` did not exist.
+- Green evidence:
+  - Added `@gcah/webui` React/Vite package, app shell, run list, status guidance, ordered timeline, validation display, and CSS.
+  - Added hostile-rationale-as-text assertions proving script markup is rendered as text and not inserted as DOM.
+  - Added root build/typecheck coverage for the WebUI package.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/webui test -- app` exited 0 with 1 file and 1 test.
+  - `pnpm --filter @gcah/webui test` exited 0 with 1 file and 1 test.
+  - `pnpm --filter @gcah/webui build` exited 0.
+  - `pnpm exec tsc --noEmit -p apps/webui/tsconfig.json --pretty false` exited 0.
 - Commit: pending.
