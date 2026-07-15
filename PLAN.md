@@ -348,7 +348,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [x] Refactor status styles/accessibility; run test/build.
 - [x] Update logs/status; commit and record hash.
 
-**Done:** Observation views pass without policy logic. **Parallel:** No. **Status:** Complete. **Commit:** pending.
+**Done:** Observation views pass without policy logic. **Parallel:** No. **Status:** Complete. **Commit:** `5aa7f2e` (`feat: add webui observation shell`).
 
 #### T22b — WebUI approval controls and SSE reconnection
 
