@@ -12,6 +12,8 @@
   },
   "include": [
     "demo-mechanisms.ts",
-    "demo-scenarios.ts"
+    "demo-scenarios.ts",
+    "integration-real-llm.ts",
+    "*.test.ts"
   ]
 }

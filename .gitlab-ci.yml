@@ -1,0 +1,13 @@
+stages:
+  - test
+
+unit-test:
+  stage: test
+  image: node:26-bookworm
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@11.5.0 --activate
+  script:
+    - pnpm install --frozen-lockfile
+    - pnpm verify
+    - pnpm demo:mechanisms

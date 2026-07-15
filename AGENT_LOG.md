@@ -1429,3 +1429,22 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
 - Commit: `67d9a4d` (`feat: add deterministic mechanism demo`).
+
+## 2026-07-15 - T25
+
+- Scope: PR-10 `release-evidence`, T25 GitLab and GitHub CI.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `c633f63`.
+- Red evidence:
+  - `pnpm test -- scripts/ci-contract.test.ts` exited 1 because `.gitlab-ci.yml` was missing.
+- Green evidence:
+  - Added GitLab `unit-test` job and equivalent GitHub workflow.
+  - Both pipelines use frozen pnpm install, then `pnpm verify`, then `pnpm demo:mechanisms`, with no real-LLM integration command and no redundant standalone `pnpm test`.
+  - Added CI contract test command and script coverage.
+- Refactor/verification evidence:
+  - `pnpm test -- scripts/ci-contract.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: pending.

@@ -15,6 +15,24 @@
     },
     {
       "path": "./packages/tools"
+    },
+    {
+      "path": "./packages/credentials"
+    },
+    {
+      "path": "./packages/llm"
+    },
+    {
+      "path": "./apps/server"
+    },
+    {
+      "path": "./apps/cli"
+    },
+    {
+      "path": "./apps/webui"
+    },
+    {
+      "path": "./scripts/tsconfig.demo.json"
     }
   ]
 }
