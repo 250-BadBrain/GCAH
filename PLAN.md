@@ -1147,7 +1147,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** One command deterministically demonstrates blocking, feedback-driven action change, and grant expiry/reapproval offline.
 
-**Parallel:** No; release evidence depends on integrated system. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No; release evidence depends on integrated system. **Status:** Complete. **Commit:** `67d9a4d` (`feat: add deterministic mechanism demo`).
 
 ### Task T25: Add GitLab and GitHub continuous integration
 
@@ -1173,7 +1173,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** `.gitlab-ci.yml` has passing `unit-test`; GitHub Actions passes equivalent offline checks; neither pipeline requires a key or networked LLM.
 
-**Parallel:** No after T24. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No after T24. **Status:** Complete. **Commit:** `6ea053e` (`feat: add offline ci pipelines`).
 
 ### Task T26: Build the Docker/self-hosted delivery path
 
@@ -1199,7 +1199,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Linux `amd64` image builds, starts, passes healthcheck, is publicly pullable by digest, and contains no plaintext secret.
 
-**Parallel:** No after T25. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No after T25. **Status:** Complete. **Commit:** `d43e322` (`feat: add self-hosted image contract`).
 
 ### Task T27: Prepare Cloudflare delivery, document manual deployment, and pass final review
 
@@ -1225,7 +1225,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** All locally/CI-verifiable SPEC §10 criteria have evidence, Docker and Cloudflare artifacts are distinct, and no unresolved critical/high finding or secret leakage remains. A public URL/domain/HTTPS is recorded only after the separate human deployment step; S02 itself is not evidence of remote deployment.
 
-**Parallel:** Final serial gate. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** Final serial gate. **Status:** Complete. **Commit:** `23ffc4f` (`docs: add final deployment and security evidence`).
 
 ---
 

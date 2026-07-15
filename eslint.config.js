@@ -19,7 +19,6 @@ export default tseslint.config(
           allowDefaultProject: [
             "*.js",
             "*.ts",
-            "scripts/*.ts",
             "apps/webui/vite.config.ts",
             "examples/demo-workspace/src/*.ts",
             "examples/demo-workspace/test/*.ts"

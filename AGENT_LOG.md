@@ -1410,3 +1410,95 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Commit: `90c8a5c` (`docs: record web public demo reviewer override`).
+
+## 2026-07-15 - T24
+
+- Scope: PR-10 `release-evidence`, T24 deterministic one-command mechanism demonstration.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `0ca3c80`.
+- Red evidence:
+  - `pnpm test -- scripts/demo-output.test.ts` exited 1 because `demo:mechanisms` was missing.
+- Green evidence:
+  - Added `pnpm demo:mechanisms`, deterministic scenario data, JSON output, and mechanism-demo documentation.
+  - The demo emits `DANGEROUS_ACTION_DENIED`, `VALIDATION_FAILED`, `MOCK_ACTION_CHANGED`, `SESSION_GRANT_EXPIRED`, and `REAPPROVAL_REQUIRED`.
+  - The demo uses fixed output and does not require network, real credentials, or a real LLM.
+- Refactor/verification evidence:
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm test -- scripts/demo-output.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: `67d9a4d` (`feat: add deterministic mechanism demo`).
+
+## 2026-07-15 - T25
+
+- Scope: PR-10 `release-evidence`, T25 GitLab and GitHub CI.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `c633f63`.
+- Red evidence:
+  - `pnpm test -- scripts/ci-contract.test.ts` exited 1 because `.gitlab-ci.yml` was missing.
+- Green evidence:
+  - Added GitLab `unit-test` job and equivalent GitHub workflow.
+  - Both pipelines use frozen pnpm install, then `pnpm verify`, then `pnpm demo:mechanisms`, with no real-LLM integration command and no redundant standalone `pnpm test`.
+  - Added CI contract test command and script coverage.
+- Refactor/verification evidence:
+  - `pnpm test -- scripts/ci-contract.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: `6ea053e` (`feat: add offline ci pipelines`).
+
+## 2026-07-15 - T26
+
+- Scope: PR-10 `release-evidence`, T26 Docker/self-hosted delivery path.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `371508a`.
+- Red evidence:
+  - `pnpm test -- scripts/container-contract.test.ts` exited 1 because `Dockerfile` was missing.
+- Green evidence:
+  - Added self-hosted Dockerfile, `.dockerignore`, GitHub image workflow, GitLab image job, and container contract test.
+  - The contract asserts linux/amd64, healthcheck, `/data`, public-demo startup signal, ignored `.env`/node_modules, digest artifact, and no baked sentinel.
+- Refactor/verification evidence:
+  - `pnpm test -- scripts/container-contract.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - Real registry publishing and anonymous pull remain CI/human environment steps; no remote push was executed.
+- Commit: `d43e322` (`feat: add self-hosted image contract`).
+
+## 2026-07-15 - T27
+
+- Scope: PR-10 `release-evidence`, T27 Cloudflare/manual deployment/security evidence.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `7fd187f`.
+- Red evidence:
+  - `pnpm test -- scripts/scan-secrets.test.ts` exited 1 because `docs/security-review.md` was missing.
+- Green evidence:
+  - Added security review, deployment guide, README verification commands, and scanner contract.
+  - Documented Cloudflare login, Wrangler login, DNS, HTTPS, remote migrations, tokens, and deployment as manual human steps.
+  - Recorded that public demo is Mock LLM only and no real credentials are required for CI/local evidence.
+- Refactor/verification evidence:
+  - `pnpm test -- scripts/scan-secrets.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+- Commit: `23ffc4f` (`docs: add final deployment and security evidence`).
+
+## 2026-07-15 - PR-10 Reviewer Override
+
+- Scope: PR-10 `release-evidence` final merge gate.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Human decision:
+  - Fresh reviewer tools remained unresponsive across two 30-second wait windows.
+  - Human explicitly authorized continuing PR-10 merge using existing local validation evidence instead of waiting for additional reviewer output.
+- Validation evidence used for the override:
+  - `pnpm lint` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm test` exited 0 with 76 files and 163 tests.
+  - `pnpm demo:mechanisms` exited 0.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Commit: `b0bb65c` (`docs: record release evidence reviewer override`).
