@@ -1448,3 +1448,21 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
 - Commit: `6ea053e` (`feat: add offline ci pipelines`).
+
+## 2026-07-15 - T26
+
+- Scope: PR-10 `release-evidence`, T26 Docker/self-hosted delivery path.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/release-evidence` at `E:/Desktop/GCAH-release-evidence`.
+- Baseline commit: `371508a`.
+- Red evidence:
+  - `pnpm test -- scripts/container-contract.test.ts` exited 1 because `Dockerfile` was missing.
+- Green evidence:
+  - Added self-hosted Dockerfile, `.dockerignore`, GitHub image workflow, GitLab image job, and container contract test.
+  - The contract asserts linux/amd64, healthcheck, `/data`, public-demo startup signal, ignored `.env`/node_modules, digest artifact, and no baked sentinel.
+- Refactor/verification evidence:
+  - `pnpm test -- scripts/container-contract.test.ts` exited 0 with 1 file and 1 test.
+  - `pnpm typecheck` exited 0.
+  - `pnpm lint` exited 0.
+  - Real registry publishing and anonymous pull remain CI/human environment steps; no remote push was executed.
+- Commit: pending.

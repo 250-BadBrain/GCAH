@@ -1199,7 +1199,7 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 **Done:** Linux `amd64` image builds, starts, passes healthcheck, is publicly pullable by digest, and contains no plaintext secret.
 
-**Parallel:** No after T25. **Status:** Not started. **Commit:** — (record after execution).
+**Parallel:** No after T25. **Status:** Complete. **Commit:** pending.
 
 ### Task T27: Prepare Cloudflare delivery, document manual deployment, and pass final review
 
