@@ -1465,4 +1465,4 @@
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
   - Real registry publishing and anonymous pull remain CI/human environment steps; no remote push was executed.
-- Commit: pending.
+- Commit: `d43e322` (`feat: add self-hosted image contract`).
