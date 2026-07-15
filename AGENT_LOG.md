@@ -1373,4 +1373,4 @@
   - `pnpm --filter @gcah/server test -- static-webui` exited 0 with 1 file and 1 test.
   - `pnpm --filter @gcah/webui build` exited 0.
   - `pnpm typecheck` exited 0.
-- Commit: pending.
+- Commit: `f52d79a` (`feat: serve webui from local server`).

@@ -374,7 +374,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [x] Refactor route predicates; run WebUI build and server integration test.
 - [x] Update logs/status; commit and record hash.
 
-**Done:** One Fastify process serves local/Docker/self-hosted UI/API/SSE correctly; no claim is made for Cloudflare production. **Parallel:** No. **Status:** Complete. **Commit:** pending.
+**Done:** One Fastify process serves local/Docker/self-hosted UI/API/SSE correctly; no claim is made for Cloudflare production. **Parallel:** No. **Status:** Complete. **Commit:** `f52d79a` (`feat: serve webui from local server`).
 
 #### T26a — Reproducible Linux amd64 runtime image
 
