@@ -361,7 +361,7 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 - [x] Refactor connection cleanup; run test/build.
 - [x] Update logs/status; commit and record hash.
 
-**Done:** Browser remains a client, not an authority. **Parallel:** No. **Status:** Complete. **Commit:** pending.
+**Done:** Browser remains a client, not an authority. **Parallel:** No. **Status:** Complete. **Commit:** `c187ce4` (`feat: add webui approvals and event stream`).
 
 #### T22c — Fastify static hosting for local/Docker/self-hosted
 
