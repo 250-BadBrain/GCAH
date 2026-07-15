@@ -1484,4 +1484,4 @@
   - `pnpm demo:mechanisms` exited 0.
   - `pnpm typecheck` exited 0.
   - `pnpm lint` exited 0.
-- Commit: pending.
+- Commit: `23ffc4f` (`docs: add final deployment and security evidence`).
