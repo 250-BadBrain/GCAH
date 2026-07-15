@@ -367,14 +367,14 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Goal:** Serve the built React app from one Fastify process only for local/Docker/self-hosted and preserve API/SSE routing; Cloudflare production uses Pages + Workers. **Dependencies:** T18c and T22b. **Files:** `apps/server/src/static-webui.ts`, `apps/server/src/app.ts`, `apps/server/test/static-webui.integration.test.ts`, `apps/webui/vite.config.ts`. **First red:** Local production-mode server returns 404 or intercepts `/api`/SSE. **Expected implementation:** Static asset plugin, non-API HTML fallback, cache policy, built-asset integration fixture.
 
-- [ ] Build WebUI test fixture and add `/`, asset, SPA-route, API, and SSE assertions.
-- [ ] Run `pnpm --filter @gcah/server test -- static-webui`; confirm 404/interception red.
-- [ ] Add minimal static registration and index fallback excluding API/SSE paths.
-- [ ] Add hashed-asset cache and missing-index error tests.
-- [ ] Refactor route predicates; run WebUI build and server integration test.
-- [ ] Update logs/status; commit and record hash.
+- [x] Build WebUI test fixture and add `/`, asset, SPA-route, API, and SSE assertions.
+- [x] Run `pnpm --filter @gcah/server test -- static-webui`; confirm 404/interception red.
+- [x] Add minimal static registration and index fallback excluding API/SSE paths.
+- [x] Add hashed-asset cache and missing-index error tests.
+- [x] Refactor route predicates; run WebUI build and server integration test.
+- [x] Update logs/status; commit and record hash.
 
-**Done:** One Fastify process serves local/Docker/self-hosted UI/API/SSE correctly; no claim is made for Cloudflare production. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** One Fastify process serves local/Docker/self-hosted UI/API/SSE correctly; no claim is made for Cloudflare production. **Parallel:** No. **Status:** Complete. **Commit:** pending.
 
 #### T26a — Reproducible Linux amd64 runtime image
 

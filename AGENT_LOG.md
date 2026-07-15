@@ -1356,3 +1356,21 @@
   - `pnpm --filter @gcah/webui build` exited 0.
   - `pnpm exec tsc --noEmit -p apps/webui/tsconfig.json --pretty false` exited 0.
 - Commit: `c187ce4` (`feat: add webui approvals and event stream`).
+
+## 2026-07-15 - T22c
+
+- Scope: PR-09 `web-public-demo`, T22c Fastify static hosting for local/Docker/self-hosted WebUI.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/web-public-demo` at `E:/Desktop/GCAH-web-public-demo`.
+- Baseline commit: `5ffcb2c`.
+- Red evidence:
+  - `pnpm --filter @gcah/server test -- static-webui` exited 1 because `apps/server/src/static-webui.ts` did not exist.
+- Green evidence:
+  - Added `registerStaticWebui` for built WebUI assets, SPA fallback, and API/SSE route preservation.
+  - Added static integration fixture covering `/`, hashed assets, SPA routes, `/api/config/status`, and SSE stream routing.
+  - Added immutable one-year cache headers for static assets through `@fastify/static`.
+- Refactor/verification evidence:
+  - `pnpm --filter @gcah/server test -- static-webui` exited 0 with 1 file and 1 test.
+  - `pnpm --filter @gcah/webui build` exited 0.
+  - `pnpm typecheck` exited 0.
+- Commit: pending.
