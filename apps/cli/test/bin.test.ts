@@ -25,8 +25,8 @@ describe("CLI package bin", () => {
     }
     const executable = process.platform === "win32" ? process.execPath : binPath;
     const args = process.platform === "win32" ? [binPath, "server", "start"] : ["server", "start"];
-    await expect(execFileAsync(executable, args)).resolves.toMatchObject({
-      stdout: "server start: use @gcah/server composition root\n"
+    await expect(execFileAsync(executable, args)).rejects.toMatchObject({
+      stderr: "missing server start options\n"
     });
   });
 });

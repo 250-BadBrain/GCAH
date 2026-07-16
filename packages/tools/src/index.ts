@@ -6,8 +6,11 @@ export { createToolGateway, type ToolGatewayOptions } from "./gateway/tool-gatew
 export { boundOutput, type BoundedOutput } from "./tools/output-limit.js";
 export { sha256File } from "./tools/file-hash.js";
 export { matchCommandTemplate, type CommandMatch, type CommandTemplate } from "./command/template.js";
+export { CommandRunner, type SpawnRequest } from "./command/command-runner.js";
 export { CommandValidationRunner } from "./tools/validation-runner.js";
 export { DemoValidationRunner, type DemoValidationPreset } from "./validation/demo-validation-runner.js";
 export { LocalExecutor } from "./executor/local-executor.js";
 export { registerReadTools } from "./tools/read-tools.js";
 export { registerMutationTools } from "./tools/mutation-tools.js";
+export { registerCommandTools } from "./tools/run-command.js";
+export { registerValidationTool } from "./tools/run-validation.js";

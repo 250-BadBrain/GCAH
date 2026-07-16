@@ -36,6 +36,9 @@ importers:
       '@gcah/credentials':
         specifier: workspace:*
         version: link:../../packages/credentials
+      '@gcah/server':
+        specifier: workspace:*
+        version: link:../server
       '@gcah/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -48,6 +51,9 @@ importers:
       '@gcah/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@gcah/credentials':
+        specifier: workspace:*
+        version: link:../../packages/credentials
       '@gcah/governance':
         specifier: workspace:*
         version: link:../../packages/governance
