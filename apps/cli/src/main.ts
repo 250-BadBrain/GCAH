@@ -2,6 +2,8 @@ import type { CredentialStore } from "@gcah/credentials";
 
 import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
 import { createHiddenInputPrompt, createRawModeLineReader } from "./hidden-input.js";
+import { createFileLocalProfileStore, type LocalProfileStore } from "./local-profile.js";
+import { createPromptApprovalDecider, runEmbeddedLocalSession } from "./local-session.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
 export { createFetchTransport, createHiddenInputPrompt, createRawModeLineReader, sanitizeOutput, type CliResult };
@@ -11,6 +13,17 @@ export interface RunCliDependencies {
   transport?: CliTransport;
   credentialStore?: CredentialStore;
   promptSecret?: () => Promise<string>;
+  promptLine?: (label: string) => Promise<string>;
+  localProfileStore?: LocalProfileStore;
+  runLocalSession?: (options: LocalSessionOptions) => Promise<CliResult>;
+}
+
+export interface LocalSessionOptions {
+  workspacePath: string;
+  baseUrl: string;
+  model: string;
+  task?: string;
+  validation?: string;
 }
 
 export async function runCli(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
@@ -23,6 +36,7 @@ export async function runCli(args: readonly string[], deps: RunCliDependencies =
     if (group === "config" && command === "status") return configStatus(transport);
     if (group === "credential") return credentialCommand(command, { ...deps, args: rest });
     if (group === "server" && command === "start") return serverStart(rest, deps);
+    if (group === "local") return localCommand([command, ...rest].filter((value): value is string => value !== undefined), deps);
     return fail("unknown command\n");
   } catch {
     return fail("command failed\n");
@@ -32,9 +46,57 @@ export async function runCli(args: readonly string[], deps: RunCliDependencies =
 export async function runMain(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
   const result = await runCli(args, {
     promptSecret: createHiddenInputPrompt(),
+    promptLine: createDefaultPromptLine(),
     ...deps
   });
   return result;
+}
+
+async function localCommand(args: readonly string[], deps: RunCliDependencies): Promise<CliResult> {
+  const profileStore = deps.localProfileStore ?? createFileLocalProfileStore();
+  const profile = await profileStore.load();
+  const prompt = deps.promptLine ?? defaultPromptLine;
+  const workspacePath = option(args, "--workspace") ?? profile?.workspacePath ?? await prompt("Workspace");
+  const baseUrl = option(args, "--base-url") ?? profile?.baseUrl ?? await prompt("Base URL");
+  const model = option(args, "--model") ?? profile?.model ?? await prompt("Model");
+  const validation = option(args, "--validation") ?? profile?.validation ?? "pnpm-test";
+  const task = option(args, "--task") ?? await prompt("Task");
+  if (workspacePath === "" || baseUrl === "" || model === "") return fail("missing local options\n");
+  if (!isAllowedLocalValidation(validation)) return fail("unsupported local validation\n", 2);
+  await profileStore.save({ workspacePath, baseUrl, model, validation });
+  if (deps.runLocalSession !== undefined) return deps.runLocalSession({ workspacePath, baseUrl, model, task, validation });
+  return defaultLocalSession({ workspacePath, baseUrl, model, task, validation }, deps);
+}
+
+async function defaultLocalSession(options: LocalSessionOptions, deps?: RunCliDependencies): Promise<CliResult> {
+  if (options.task === undefined || options.task === "") return fail("missing local task\n");
+  const store = deps?.credentialStore ?? await createDefaultCredentialStore();
+  const { createLocalProductionApp } = await import("@gcah/server");
+  return runEmbeddedLocalSession({ ...options, task: options.task }, {
+    credentialStore: store,
+    createApp: async (input) => createLocalProductionApp(input),
+    decideApproval: createPromptApprovalDecider(deps?.promptLine ?? defaultPromptLine)
+  });
+}
+
+async function defaultPromptLine(): Promise<string> {
+  return "";
+}
+
+function createDefaultPromptLine(): (label: string) => Promise<string> {
+  const read = createRawModeLineReader(process.stdin);
+  return async (label) => {
+    process.stderr.write(`${label}: `);
+    try {
+      return await read();
+    } finally {
+      process.stderr.write("\n");
+    }
+  };
+}
+
+function isAllowedLocalValidation(value: string): boolean {
+  return value === "pnpm-test";
 }
 
 async function runCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {

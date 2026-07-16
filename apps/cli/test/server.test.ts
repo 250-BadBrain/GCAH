@@ -4,6 +4,45 @@ import { runCli } from "../src/main.js";
 import type { CredentialStore } from "@gcah/credentials";
 
 describe("CLI server commands", () => {
+  it("starts the interactive local agent through an injectable local session", async () => {
+    const calls: string[][] = [];
+    await expect(runCli(["local", "--workspace", "E:/project", "--base-url", "https://gateway.example/v1", "--model", "DeepSeek-V3"], {
+      runLocalSession: async (options) => {
+        calls.push([options.workspacePath, options.baseUrl, options.model]);
+        return { stdout: "local session complete\n", stderr: "", exitCode: 0 };
+      }
+    })).resolves.toMatchObject({ stdout: "local session complete\n", exitCode: 0 });
+    expect(calls).toEqual([["E:/project", "https://gateway.example/v1", "DeepSeek-V3"]]);
+  });
+
+  it("prompts for missing local options and saves a non-secret profile", async () => {
+    const prompts: string[] = [];
+    const saved: unknown[] = [];
+    const answers = ["E:/prompted", "https://gateway.example/v1", "Qwen-Coder", "fix it"];
+    await expect(runCli(["local"], {
+      promptLine: async (label) => {
+        prompts.push(label);
+        return answers.shift() ?? "";
+      },
+      localProfileStore: {
+        load: async () => null,
+        save: async (profile) => {
+          saved.push(profile);
+        }
+      },
+      runLocalSession: async (options) => ({ stdout: `${options.workspacePath} ${options.model} ${options.validation}\n`, stderr: "", exitCode: 0 })
+    })).resolves.toMatchObject({ stdout: "E:/prompted Qwen-Coder pnpm-test\n" });
+    expect(prompts).toEqual(["Workspace", "Base URL", "Model", "Task"]);
+    expect(JSON.stringify(saved)).not.toContain("sk-");
+    expect(saved).toEqual([{ workspacePath: "E:/prompted", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" }]);
+  });
+
+  it("rejects arbitrary local validation commands", async () => {
+    await expect(runCli(["local", "--workspace", "E:/project", "--base-url", "https://gateway.example/v1", "--model", "DeepSeek-V3", "--validation", "rm -rf"], {
+      runLocalSession: async () => ({ stdout: "should not run\n", stderr: "", exitCode: 0 })
+    })).resolves.toMatchObject({ stderr: "unsupported local validation\n", exitCode: 2 });
+  });
+
   it("validates local production server start options and backend unavailable errors", async () => {
     await expect(runCli(["server", "start"])).resolves.toMatchObject({
       stderr: "missing server start options\n"

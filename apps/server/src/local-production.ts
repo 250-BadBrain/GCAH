@@ -19,6 +19,7 @@ import {
   registerReadTools,
   registerValidationTool
 } from "@gcah/tools";
+import type { CommandTemplate } from "@gcah/tools";
 import type { ConfigSnapshot, Run, RunEvent, RunDto, EventDto } from "@gcah/shared";
 
 export interface LocalProductionAppOptions {
@@ -28,6 +29,7 @@ export interface LocalProductionAppOptions {
   model: string;
   allowedWorkspaceRoots: string[];
   clock?: Clock;
+  validationCommand?: CommandTemplate;
 }
 
 export async function createLocalProductionApp(options: LocalProductionAppOptions): Promise<FastifyInstance> {
@@ -73,7 +75,7 @@ export async function createLocalProductionApp(options: LocalProductionAppOption
     }
 
     const runId = `run:${randomUUID()}`;
-    const configSnapshot = localConfig(workspaceRoot);
+    const configSnapshot = localConfig(workspaceRoot, options.validationCommand);
     const loop = createLoop({
       runId,
       workspaceRoot,
@@ -83,7 +85,8 @@ export async function createLocalProductionApp(options: LocalProductionAppOption
       baseUrl: options.baseUrl,
       model: options.model,
       clock,
-      approvalService
+      approvalService,
+      validationCommand: options.validationCommand
     });
     try {
       const run = await loop.start({ runId, workspaceId: workspaceRoot, taskSummary: body.task, configSnapshot, maxSteps: 12 });
@@ -154,6 +157,7 @@ function createLoop(input: {
   model: string;
   clock: Clock;
   approvalService: ApprovalService;
+  validationCommand: CommandTemplate | undefined;
 }): AgentLoop {
   const executor = new LocalExecutor({
     workspaceRoot: input.workspaceRoot,
@@ -162,16 +166,17 @@ function createLoop(input: {
   registerReadTools(executor);
   registerMutationTools(executor);
   const runner = new CommandRunner(async (request) => await spawnCommand(request.executable, request.args, join(input.workspaceRoot, request.cwd), request.timeoutMs));
+  const validationCommand = input.validationCommand ?? { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 };
   registerCommandTools({
     registry: executor.registry,
     runner,
-    templates: [{ id: "test", executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 30000 }],
+    templates: [validationCommand],
     publicDemo: false
   });
   registerValidationTool({
     registry: executor.registry,
     runner,
-    validators: { test: { executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 } }
+    validators: { test: stripTemplateId(validationCommand) }
   });
   const toolGateway = createToolGateway({
     runId: input.runId,
@@ -212,8 +217,10 @@ function createLoop(input: {
     }),
     toolGateway,
     validationRunner: new CommandValidationRunner(
-      new CommandRunner(async () => await validateWorkspaceState(input.workspaceRoot)),
-      { test: { executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 } }
+      input.validationCommand === undefined
+        ? new CommandRunner(async () => await validateWorkspaceState(input.workspaceRoot))
+        : runner,
+      { test: stripTemplateId(validationCommand) }
     ),
     approval: {
       shouldPauseForFinish: () => false,
@@ -231,7 +238,9 @@ async function validateWorkspaceState(workspaceRoot: string): Promise<{ status: 
 
 async function spawnCommand(executable: string, args: string[], cwd: string, timeoutMs: number): Promise<{ status: "OK" | "ERROR"; summary: string }> {
   return await new Promise((resolve) => {
-    const child = spawn(executable, args, { cwd, shell: false, windowsHide: true });
+    const useWindowsCommandShim = process.platform === "win32" && executable === "pnpm";
+    const command = useWindowsCommandShim ? "pnpm.cmd" : executable;
+    const child = spawn(command, args, { cwd, shell: useWindowsCommandShim, windowsHide: true });
     const timer = setTimeout(() => {
       child.kill();
       resolve({ status: "ERROR", summary: "COMMAND_TIMEOUT" });
@@ -260,17 +269,21 @@ function containsOrEquals(parent: string, child: string): boolean {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-function localConfig(workspaceRoot: string): ConfigSnapshot {
+function localConfig(workspaceRoot: string, validationCommand: CommandTemplate = { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 }): ConfigSnapshot {
   return createConfigSnapshot({
     mode: "local",
     budgets: { maxRounds: 12, maxTokens: 100000, maxElapsedMs: 600000 },
     validation: { required: ["test"] },
     riskThresholds: { requireApproval: "medium", deny: "high" },
-    commands: { test: "demo-validator test" },
+    commands: { test: `${validationCommand.executable} ${validationCommand.args.join(" ")}`.trim() },
     allowedWorkspaceRoots: [workspaceRoot],
     executorBackend: "local",
     llm: { provider: "openai-compatible" }
   });
+}
+
+function stripTemplateId(template: CommandTemplate): Omit<CommandTemplate, "id"> {
+  return { executable: template.executable, args: template.args, cwd: template.cwd, timeoutMs: template.timeoutMs };
 }
 
 class MonotonicClock implements Clock {
