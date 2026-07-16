@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@gcah/core": "workspace:*",
+    "@gcah/credentials": "workspace:*",
     "@gcah/governance": "workspace:*",
     "@gcah/llm": "workspace:*",
     "@gcah/persistence": "workspace:*",

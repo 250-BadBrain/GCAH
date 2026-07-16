@@ -18,10 +18,11 @@ export async function runCli(args: readonly string[], deps: RunCliDependencies =
   const [group, command, ...rest] = args;
   try {
     if (group === "run") return runCommand(command, rest, transport);
+    if (group === "workspace") return workspaceCommand(command, rest, transport);
     if (group === "approval") return approvalCommand(command, rest, transport);
     if (group === "config" && command === "status") return configStatus(transport);
-    if (group === "credential") return credentialCommand(command, deps);
-    if (group === "server" && command === "start") return ok("server start: use @gcah/server composition root\n");
+    if (group === "credential") return credentialCommand(command, { ...deps, args: rest });
+    if (group === "server" && command === "start") return serverStart(rest, deps);
     return fail("unknown command\n");
   } catch {
     return fail("command failed\n");
@@ -50,6 +51,8 @@ async function runCommand(command: string | undefined, args: readonly string[], 
   if (id === undefined) return fail("missing run id\n");
   const route = command === "status"
     ? { method: "GET" as const, url: `/api/runs/${id}` }
+    : command === "events"
+      ? { method: "GET" as const, url: `/api/runs/${id}/events?cursor=0` }
     : command === "cancel"
       ? { method: "POST" as const, url: `/api/runs/${id}/cancel` }
       : command === "clone"
@@ -57,9 +60,23 @@ async function runCommand(command: string | undefined, args: readonly string[], 
         : null;
   if (route === null) return fail("unknown run command\n");
   const response = await transport(route);
+  if (command === "events") {
+    const parsed = parseRunEventsResponse(response.body);
+    if (response.status >= 300 || parsed === null) return fail("run command failed\n");
+    return ok(parsed.events.map((event) => `${event.id} ${event.type} ${event.summary}`).join("\n") + "\n");
+  }
   const parsed = parseRunDto(response.body);
   if (response.status >= 300 || parsed === null) return fail("run command failed\n");
   return ok(`${parsed.id} ${parsed.status}\n`);
+}
+
+async function workspaceCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {
+  if (command !== "add") return fail("unknown workspace command\n");
+  const path = option(args, "--path");
+  if (path === null) return fail("missing workspace path\n");
+  const response = await transport({ method: "POST", url: "/api/workspaces", body: { path } });
+  if (response.status >= 300 || !isRecord(response.body) || typeof response.body.path !== "string") return fail("workspace add failed\n");
+  return ok(`${response.body.path}\n`);
 }
 
 async function approvalCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {
@@ -89,7 +106,9 @@ async function configStatus(transport: CliTransport): Promise<CliResult> {
   return ok(`mode=${parsed.mode} llm=${parsed.llmProvider} publicDemo=${parsed.publicDemo}\n`);
 }
 
-async function credentialCommand(command: string | undefined, deps: RunCliDependencies): Promise<CliResult> {
+async function credentialCommand(command: string | undefined, deps: RunCliDependencies & { args?: readonly string[] }): Promise<CliResult> {
+  const provider = option(deps.args ?? [], "--provider") ?? "openai-compatible";
+  if (provider !== "openai-compatible") return fail("unsupported credential provider\n", 2);
   const store = deps.credentialStore ?? await createDefaultCredentialStore();
   if (command === "status") {
     try {
@@ -116,6 +135,29 @@ async function credentialCommand(command: string | undefined, deps: RunCliDepend
     return ok("credential cleared\n");
   }
   return fail(".env plaintext source requires explicit enablement\n", 2);
+}
+
+async function serverStart(args: readonly string[], deps: RunCliDependencies): Promise<CliResult> {
+  const mode = option(args, "--mode") ?? "local";
+  const llm = option(args, "--llm");
+  const baseUrl = option(args, "--base-url");
+  const model = option(args, "--model");
+  const dataDir = option(args, "--data-dir") ?? ".gcah";
+  const port = Number(option(args, "--port") ?? "8787");
+  if (mode !== "local" || llm !== "openai-compatible" || baseUrl === null || model === null || !Number.isInteger(port)) {
+    return fail("missing server start options\n");
+  }
+  const store = deps.credentialStore ?? await createDefaultCredentialStore();
+  const { createLocalProductionApp } = await import("@gcah/server");
+  const app = await createLocalProductionApp({
+    dataDir,
+    credentialStore: store,
+    baseUrl,
+    model,
+    allowedWorkspaceRoots: [process.cwd()]
+  });
+  await app.listen({ host: "127.0.0.1", port });
+  return ok(`server listening http://127.0.0.1:${port}\n`);
 }
 
 async function createDefaultCredentialStore(): Promise<CredentialStore> {

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@gcah/credentials": "workspace:*",
+    "@gcah/server": "workspace:*",
     "@gcah/shared": "workspace:*"
   },
   "devDependencies": {}

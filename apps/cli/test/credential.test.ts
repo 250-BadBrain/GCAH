@@ -31,7 +31,8 @@ describe("CLI credential commands", () => {
     };
 
     await expect(runCli(["credential", "set"], { credentialStore: store, promptSecret: async () => "sk-test-sentinel" })).resolves.toMatchObject({ stdout: "credential stored\n" });
-    await expect(runCli(["credential", "status"], { credentialStore: store })).resolves.toMatchObject({ stdout: "openai-compatible configured backend=native-windows\n" });
+    await expect(runCli(["credential", "status", "--provider", "openai-compatible"], { credentialStore: store })).resolves.toMatchObject({ stdout: "openai-compatible configured backend=native-windows\n" });
+    await expect(runCli(["credential", "status", "--provider", "other"], { credentialStore: store })).resolves.toMatchObject({ stderr: "unsupported credential provider\n", exitCode: 2 });
     await expect(runCli(["credential", "update"], { credentialStore: store, promptSecret: async () => "sk-test-updated" })).resolves.toMatchObject({ stdout: "credential updated\n" });
     await expect(runCli(["credential", "clear"], { credentialStore: store })).resolves.toMatchObject({ stdout: "credential cleared\n" });
 
