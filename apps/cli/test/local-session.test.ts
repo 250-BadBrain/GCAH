@@ -39,7 +39,7 @@ describe("embedded local session", () => {
       async inject(request) {
         requests.push(request);
         if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
-        if (request.url === "/api/runs") return { statusCode: 201, json: () => ({ id: "run-1", status: "COMPLETED" }) };
+        if (request.url === "/api/runs") return { statusCode: 201, json: () => ({ id: "run-1", status: "COMPLETED", stopReason: "COMPLETED" }) };
         if (request.url === "/api/runs/run-1/events?cursor=0") {
           return { statusCode: 200, json: () => ({ events: [{ type: "tool.result", summary: "patched src/app.ts" }] }) };
         }
@@ -58,7 +58,7 @@ describe("embedded local session", () => {
     }, {
       credentialStore: credentialStore(),
       createApp: async () => app
-    })).resolves.toMatchObject({ stdout: "Run run-1 COMPLETED\n[tool.result] patched src/app.ts\n" });
+    })).resolves.toMatchObject({ stdout: "Run run-1 COMPLETED stop=COMPLETED\n[tool.result] patched src/app.ts\n" });
     expect(requests).toEqual([
       { method: "POST", url: "/api/workspaces", payload: { path: "E:/project" } },
       { method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "fix it" } },

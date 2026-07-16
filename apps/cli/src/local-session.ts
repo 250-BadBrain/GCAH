@@ -81,16 +81,16 @@ export async function runEmbeddedLocalSession(options: EmbeddedLocalSessionOptio
   }
 }
 
-function renderLocalRun(run: { id: string; status: string }, eventsBody: unknown): string {
+function renderLocalRun(run: { id: string; status: string; stopReason: string | null }, eventsBody: unknown): string {
   const events = parseEvents(eventsBody);
-  const lines = [`Run ${run.id} ${run.status}`];
+  const lines = [`Run ${run.id} ${run.status}${run.stopReason === null ? "" : ` stop=${run.stopReason}`}`];
   for (const event of events) lines.push(`[${event.type}] ${event.summary}`);
   return `${lines.join("\n")}\n`;
 }
 
-function parseRun(value: unknown): { id: string; status: string } | null {
+function parseRun(value: unknown): { id: string; status: string; stopReason: string | null } | null {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.status !== "string") return null;
-  return { id: value.id, status: value.status };
+  return { id: value.id, status: value.status, stopReason: typeof value.stopReason === "string" ? value.stopReason : null };
 }
 
 function parseEvents(value: unknown): Array<{ type: string; summary: string; relatedEntityId: string | null }> {

@@ -35,6 +35,27 @@ node apps/cli/dist/src/bin.js credential update --provider openai-compatible
 node apps/cli/dist/src/bin.js credential clear --provider openai-compatible
 ```
 
+Recommended single-terminal workflow:
+
+```powershell
+node apps/cli/dist/src/bin.js local
+```
+
+The command prompts for workspace, base URL, model, and task when they are not already saved in the non-secret local profile at `%USERPROFILE%\.gcah\local-profile.json`. The profile stores only workspace, base URL, model, and validation preference; it never stores API keys. You can also provide the values directly:
+
+```powershell
+node apps/cli/dist/src/bin.js local `
+  --workspace E:\path\to\project `
+  --base-url https://your-openai-compatible-provider.example/v1 `
+  --model <MODEL_NAME> `
+  --validation pnpm-test `
+  --task "Fix the failing tests"
+```
+
+`--validation pnpm-test` is the only built-in validation preset. It runs the existing `pnpm test` script in the selected workspace after mutations and does not install dependencies or execute arbitrary shell strings. When the agent reaches `REQUIRE_APPROVAL`, the same terminal asks whether to approve once, approve for the session, or reject; the decision is sent through the existing local approval API and resumes the same AgentLoop.
+
+Lower-level two-terminal workflow:
+
 Start the local production server from the workspace root you intend to allow, or pass a controlled data directory:
 
 ```powershell
