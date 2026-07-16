@@ -2,7 +2,7 @@ import type { CredentialStore } from "@gcah/credentials";
 
 import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
 import { createHiddenInputPrompt, createRawModeLineReader } from "./hidden-input.js";
-import { createFileLocalProfileStore, type LocalProfile, type LocalProfileStore } from "./local-profile.js";
+import { createFileLocalProfileStore, type LocalProfileStore } from "./local-profile.js";
 import { createPromptApprovalDecider, runEmbeddedLocalSession } from "./local-session.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
@@ -78,13 +78,6 @@ async function defaultLocalSession(options: LocalSessionOptions, deps?: RunCliDe
     decideApproval: createPromptApprovalDecider(deps?.promptLine ?? defaultPromptLine)
   });
 }
-
-const nullLocalProfileStore: LocalProfileStore = {
-  async load() {
-    return null;
-  },
-  async save() {}
-};
 
 async function defaultPromptLine(): Promise<string> {
   return "";
