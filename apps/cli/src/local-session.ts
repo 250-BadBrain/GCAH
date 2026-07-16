@@ -2,6 +2,8 @@ import type { CredentialStore } from "@gcah/credentials";
 
 import { fail, ok, type CliResult } from "./output.js";
 
+export type LocalApprovalDecision = "approve_once" | "approve_session" | "reject";
+
 export interface EmbeddedLocalSessionOptions {
   workspacePath: string;
   baseUrl: string;
@@ -24,7 +26,18 @@ export interface EmbeddedLocalSessionDeps {
     model: string;
     allowedWorkspaceRoots: string[];
   }): Promise<InjectableApp>;
-  decideApproval?(input: { runId: string; actionId: string; summary: string }): Promise<"approve_once" | "approve_session" | "reject">;
+  decideApproval?(input: { runId: string; actionId: string; summary: string }): Promise<LocalApprovalDecision>;
+}
+
+export function createPromptApprovalDecider(
+  promptLine: (label: string) => Promise<string>
+): (input: { runId: string; actionId: string; summary: string }) => Promise<LocalApprovalDecision> {
+  return async (input) => {
+    const answer = (await promptLine(`Approval required for ${input.actionId}. approve once/session/reject? [o/s/r]`)).trim().toLowerCase();
+    if (answer === "o" || answer === "once" || answer === "approve" || answer === "approve once") return "approve_once";
+    if (answer === "s" || answer === "session" || answer === "approve session") return "approve_session";
+    return "reject";
+  };
 }
 
 export async function runEmbeddedLocalSession(options: EmbeddedLocalSessionOptions, deps: EmbeddedLocalSessionDeps): Promise<CliResult> {

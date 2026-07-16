@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { runEmbeddedLocalSession, type InjectableApp } from "../src/local-session.js";
+import { createPromptApprovalDecider, runEmbeddedLocalSession, type InjectableApp } from "../src/local-session.js";
 import type { CredentialStore } from "@gcah/credentials";
 
 function credentialStore(): CredentialStore {
@@ -18,6 +18,20 @@ function credentialStore(): CredentialStore {
 }
 
 describe("embedded local session", () => {
+  it("maps inline approval prompts to explicit approval decisions", async () => {
+    const prompts: string[] = [];
+    const answers = ["o", "session", ""];
+    const decide = createPromptApprovalDecider(async (label) => {
+      prompts.push(label);
+      return answers.shift() ?? "";
+    });
+
+    await expect(decide?.({ runId: "run-1", actionId: "action-1", summary: "approval required" })).resolves.toBe("approve_once");
+    await expect(decide?.({ runId: "run-1", actionId: "action-2", summary: "approval required" })).resolves.toBe("approve_session");
+    await expect(decide?.({ runId: "run-1", actionId: "action-3", summary: "approval required" })).resolves.toBe("reject");
+    expect(prompts[0]).toContain("action-1");
+  });
+
   it("registers a workspace, submits a run, renders persisted events, and closes the app", async () => {
     const requests: unknown[] = [];
     let closed = false;

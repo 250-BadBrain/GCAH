@@ -3,7 +3,7 @@ import type { CredentialStore } from "@gcah/credentials";
 import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
 import { createHiddenInputPrompt, createRawModeLineReader } from "./hidden-input.js";
 import { createFileLocalProfileStore, type LocalProfile, type LocalProfileStore } from "./local-profile.js";
-import { runEmbeddedLocalSession } from "./local-session.js";
+import { createPromptApprovalDecider, runEmbeddedLocalSession } from "./local-session.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
 export { createFetchTransport, createHiddenInputPrompt, createRawModeLineReader, sanitizeOutput, type CliResult };
@@ -45,6 +45,7 @@ export async function runCli(args: readonly string[], deps: RunCliDependencies =
 export async function runMain(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
   const result = await runCli(args, {
     promptSecret: createHiddenInputPrompt(),
+    promptLine: createDefaultPromptLine(),
     ...deps
   });
   return result;
@@ -70,7 +71,8 @@ async function defaultLocalSession(options: LocalSessionOptions, deps?: RunCliDe
   const { createLocalProductionApp } = await import("@gcah/server");
   return runEmbeddedLocalSession({ ...options, task: options.task }, {
     credentialStore: store,
-    createApp: async (input) => createLocalProductionApp(input)
+    createApp: async (input) => createLocalProductionApp(input),
+    decideApproval: createPromptApprovalDecider(deps?.promptLine ?? defaultPromptLine)
   });
 }
 
@@ -83,6 +85,18 @@ const nullLocalProfileStore: LocalProfileStore = {
 
 async function defaultPromptLine(): Promise<string> {
   return "";
+}
+
+function createDefaultPromptLine(): (label: string) => Promise<string> {
+  const read = createRawModeLineReader(process.stdin);
+  return async (label) => {
+    process.stderr.write(`${label}: `);
+    try {
+      return await read();
+    } finally {
+      process.stderr.write("\n");
+    }
+  };
 }
 
 async function runCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {
