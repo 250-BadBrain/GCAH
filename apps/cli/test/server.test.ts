@@ -4,6 +4,17 @@ import { runCli } from "../src/main.js";
 import type { CredentialStore } from "@gcah/credentials";
 
 describe("CLI server commands", () => {
+  it("starts the interactive local agent through an injectable local session", async () => {
+    const calls: string[][] = [];
+    await expect(runCli(["local", "--workspace", "E:/project", "--base-url", "https://gateway.example/v1", "--model", "DeepSeek-V3"], {
+      runLocalSession: async (options) => {
+        calls.push([options.workspacePath, options.baseUrl, options.model]);
+        return { stdout: "local session complete\n", stderr: "", exitCode: 0 };
+      }
+    })).resolves.toMatchObject({ stdout: "local session complete\n", exitCode: 0 });
+    expect(calls).toEqual([["E:/project", "https://gateway.example/v1", "DeepSeek-V3"]]);
+  });
+
   it("validates local production server start options and backend unavailable errors", async () => {
     await expect(runCli(["server", "start"])).resolves.toMatchObject({
       stderr: "missing server start options\n"

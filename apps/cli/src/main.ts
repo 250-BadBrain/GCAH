@@ -11,6 +11,13 @@ export interface RunCliDependencies {
   transport?: CliTransport;
   credentialStore?: CredentialStore;
   promptSecret?: () => Promise<string>;
+  runLocalSession?: (options: LocalSessionOptions) => Promise<CliResult>;
+}
+
+export interface LocalSessionOptions {
+  workspacePath: string;
+  baseUrl: string;
+  model: string;
 }
 
 export async function runCli(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
@@ -23,6 +30,7 @@ export async function runCli(args: readonly string[], deps: RunCliDependencies =
     if (group === "config" && command === "status") return configStatus(transport);
     if (group === "credential") return credentialCommand(command, { ...deps, args: rest });
     if (group === "server" && command === "start") return serverStart(rest, deps);
+    if (group === "local") return localCommand([command, ...rest].filter((value): value is string => value !== undefined), deps);
     return fail("unknown command\n");
   } catch {
     return fail("command failed\n");
@@ -35,6 +43,19 @@ export async function runMain(args: readonly string[], deps: RunCliDependencies 
     ...deps
   });
   return result;
+}
+
+async function localCommand(args: readonly string[], deps: RunCliDependencies): Promise<CliResult> {
+  const workspacePath = option(args, "--workspace");
+  const baseUrl = option(args, "--base-url");
+  const model = option(args, "--model");
+  if (workspacePath === null || baseUrl === null || model === null) return fail("missing local options\n");
+  const runner = deps.runLocalSession ?? defaultLocalSession;
+  return runner({ workspacePath, baseUrl, model });
+}
+
+async function defaultLocalSession(): Promise<CliResult> {
+  return fail("interactive local session is not implemented\n");
 }
 
 async function runCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {
