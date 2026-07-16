@@ -11,6 +11,8 @@ export interface RunCliDependencies {
   transport?: CliTransport;
   credentialStore?: CredentialStore;
   promptSecret?: () => Promise<string>;
+  promptLine?: (label: string) => Promise<string>;
+  localProfileStore?: LocalProfileStore;
   runLocalSession?: (options: LocalSessionOptions) => Promise<CliResult>;
 }
 
@@ -18,6 +20,17 @@ export interface LocalSessionOptions {
   workspacePath: string;
   baseUrl: string;
   model: string;
+}
+
+export interface LocalProfile {
+  workspacePath: string;
+  baseUrl: string;
+  model: string;
+}
+
+export interface LocalProfileStore {
+  load(): Promise<LocalProfile | null>;
+  save(profile: LocalProfile): Promise<void>;
 }
 
 export async function runCli(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
@@ -46,16 +59,31 @@ export async function runMain(args: readonly string[], deps: RunCliDependencies 
 }
 
 async function localCommand(args: readonly string[], deps: RunCliDependencies): Promise<CliResult> {
-  const workspacePath = option(args, "--workspace");
-  const baseUrl = option(args, "--base-url");
-  const model = option(args, "--model");
-  if (workspacePath === null || baseUrl === null || model === null) return fail("missing local options\n");
+  const profileStore = deps.localProfileStore ?? nullLocalProfileStore;
+  const profile = await profileStore.load();
+  const prompt = deps.promptLine ?? defaultPromptLine;
+  const workspacePath = option(args, "--workspace") ?? profile?.workspacePath ?? await prompt("Workspace");
+  const baseUrl = option(args, "--base-url") ?? profile?.baseUrl ?? await prompt("Base URL");
+  const model = option(args, "--model") ?? profile?.model ?? await prompt("Model");
+  if (workspacePath === "" || baseUrl === "" || model === "") return fail("missing local options\n");
+  await profileStore.save({ workspacePath, baseUrl, model });
   const runner = deps.runLocalSession ?? defaultLocalSession;
   return runner({ workspacePath, baseUrl, model });
 }
 
 async function defaultLocalSession(): Promise<CliResult> {
   return fail("interactive local session is not implemented\n");
+}
+
+const nullLocalProfileStore: LocalProfileStore = {
+  async load() {
+    return null;
+  },
+  async save() {}
+};
+
+async function defaultPromptLine(): Promise<string> {
+  return "";
 }
 
 async function runCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {
