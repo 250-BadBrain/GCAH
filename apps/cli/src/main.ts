@@ -23,6 +23,7 @@ export interface LocalSessionOptions {
   baseUrl: string;
   model: string;
   task?: string;
+  validation?: string;
 }
 
 export async function runCli(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
@@ -58,11 +59,13 @@ async function localCommand(args: readonly string[], deps: RunCliDependencies): 
   const workspacePath = option(args, "--workspace") ?? profile?.workspacePath ?? await prompt("Workspace");
   const baseUrl = option(args, "--base-url") ?? profile?.baseUrl ?? await prompt("Base URL");
   const model = option(args, "--model") ?? profile?.model ?? await prompt("Model");
+  const validation = option(args, "--validation") ?? profile?.validation ?? "pnpm-test";
   const task = option(args, "--task") ?? await prompt("Task");
   if (workspacePath === "" || baseUrl === "" || model === "") return fail("missing local options\n");
-  await profileStore.save({ workspacePath, baseUrl, model });
-  if (deps.runLocalSession !== undefined) return deps.runLocalSession({ workspacePath, baseUrl, model, task });
-  return defaultLocalSession({ workspacePath, baseUrl, model, task }, deps);
+  if (!isAllowedLocalValidation(validation)) return fail("unsupported local validation\n", 2);
+  await profileStore.save({ workspacePath, baseUrl, model, validation });
+  if (deps.runLocalSession !== undefined) return deps.runLocalSession({ workspacePath, baseUrl, model, task, validation });
+  return defaultLocalSession({ workspacePath, baseUrl, model, task, validation }, deps);
 }
 
 async function defaultLocalSession(options: LocalSessionOptions, deps?: RunCliDependencies): Promise<CliResult> {
@@ -97,6 +100,10 @@ function createDefaultPromptLine(): (label: string) => Promise<string> {
       process.stderr.write("\n");
     }
   };
+}
+
+function isAllowedLocalValidation(value: string): boolean {
+  return value === "pnpm-test";
 }
 
 async function runCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {

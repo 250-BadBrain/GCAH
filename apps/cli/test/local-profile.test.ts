@@ -12,9 +12,9 @@ describe("local profile", () => {
     const profilePath = join(root, "local-profile.json");
     const store = createFileLocalProfileStore(profilePath);
 
-    await store.save({ workspacePath: "E:/project", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder" });
+    await store.save({ workspacePath: "E:/project", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" });
 
-    await expect(store.load()).resolves.toEqual({ workspacePath: "E:/project", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder" });
+    await expect(store.load()).resolves.toEqual({ workspacePath: "E:/project", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" });
     const raw = await readFile(profilePath, "utf8");
     expect(raw).not.toContain("sk-");
     expect(raw).not.toMatch(/api[_-]?key/iu);

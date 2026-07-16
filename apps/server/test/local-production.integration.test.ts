@@ -15,6 +15,11 @@ describe("local production composition", () => {
     await mkdir(join(root, "src"), { recursive: true });
     await writeFile(join(root, "README.md"), "Make src/app.ts export fixed.\n", "utf8");
     await writeFile(join(root, "src", "app.ts"), "export const value = \"broken\";\n", "utf8");
+    await writeFile(join(root, "package.json"), `${JSON.stringify({
+      scripts: {
+        test: "node -e \"const fs=require('fs');process.exit(fs.readFileSync('src/app.ts','utf8').includes('fixed')?0:1)\""
+      }
+    }, null, 2)}\n`, "utf8");
     const brokenHash = sha256("export const value = \"broken\";\n");
     const almostHash = sha256("export const value = \"almost\";\n");
     const requests: Array<{ authorization: string | undefined; body: unknown }> = [];
@@ -38,7 +43,8 @@ describe("local production composition", () => {
       credentialStore: fakeStore("sk-prod-sentinel"),
       baseUrl: fake.url,
       model: "course-model",
-      allowedWorkspaceRoots: [root]
+      allowedWorkspaceRoots: [root],
+      validationCommand: { id: "test", executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 30000 }
     });
 
     try {

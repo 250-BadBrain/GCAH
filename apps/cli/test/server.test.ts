@@ -30,11 +30,17 @@ describe("CLI server commands", () => {
           saved.push(profile);
         }
       },
-      runLocalSession: async (options) => ({ stdout: `${options.workspacePath} ${options.model}\n`, stderr: "", exitCode: 0 })
-    })).resolves.toMatchObject({ stdout: "E:/prompted Qwen-Coder\n" });
+      runLocalSession: async (options) => ({ stdout: `${options.workspacePath} ${options.model} ${options.validation}\n`, stderr: "", exitCode: 0 })
+    })).resolves.toMatchObject({ stdout: "E:/prompted Qwen-Coder pnpm-test\n" });
     expect(prompts).toEqual(["Workspace", "Base URL", "Model", "Task"]);
     expect(JSON.stringify(saved)).not.toContain("sk-");
-    expect(saved).toEqual([{ workspacePath: "E:/prompted", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder" }]);
+    expect(saved).toEqual([{ workspacePath: "E:/prompted", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" }]);
+  });
+
+  it("rejects arbitrary local validation commands", async () => {
+    await expect(runCli(["local", "--workspace", "E:/project", "--base-url", "https://gateway.example/v1", "--model", "DeepSeek-V3", "--validation", "rm -rf"], {
+      runLocalSession: async () => ({ stdout: "should not run\n", stderr: "", exitCode: 0 })
+    })).resolves.toMatchObject({ stderr: "unsupported local validation\n", exitCode: 2 });
   });
 
   it("validates local production server start options and backend unavailable errors", async () => {

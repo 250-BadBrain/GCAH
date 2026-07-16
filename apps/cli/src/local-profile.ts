@@ -6,6 +6,7 @@ export interface LocalProfile {
   workspacePath: string;
   baseUrl: string;
   model: string;
+  validation?: string;
 }
 
 export interface LocalProfileStore {
@@ -36,5 +37,6 @@ function isLocalProfile(value: unknown): value is LocalProfile {
   const record = value as Record<string, unknown>;
   return typeof record.workspacePath === "string"
     && typeof record.baseUrl === "string"
-    && typeof record.model === "string";
+    && typeof record.model === "string"
+    && (record.validation === undefined || typeof record.validation === "string");
 }

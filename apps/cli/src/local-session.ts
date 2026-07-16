@@ -10,6 +10,7 @@ export interface EmbeddedLocalSessionOptions {
   model: string;
   task: string;
   dataDir?: string;
+  validation?: string;
 }
 
 export interface InjectableApp {
@@ -25,6 +26,7 @@ export interface EmbeddedLocalSessionDeps {
     baseUrl: string;
     model: string;
     allowedWorkspaceRoots: string[];
+    validationCommand?: { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number };
   }): Promise<InjectableApp>;
   decideApproval?(input: { runId: string; actionId: string; summary: string }): Promise<LocalApprovalDecision>;
 }
@@ -41,12 +43,14 @@ export function createPromptApprovalDecider(
 }
 
 export async function runEmbeddedLocalSession(options: EmbeddedLocalSessionOptions, deps: EmbeddedLocalSessionDeps): Promise<CliResult> {
+  const command = validationCommand(options.validation);
   const app = await deps.createApp({
     dataDir: options.dataDir ?? ".gcah",
     credentialStore: deps.credentialStore,
     baseUrl: options.baseUrl,
     model: options.model,
-    allowedWorkspaceRoots: [options.workspacePath]
+    allowedWorkspaceRoots: [options.workspacePath],
+    ...(command === undefined ? {} : { validationCommand: command })
   });
   try {
     const workspace = await app.inject({ method: "POST", url: "/api/workspaces", payload: { path: options.workspacePath } });
@@ -103,6 +107,11 @@ function findApproval(runId: string, value: unknown): { runId: string; actionId:
   if (event === undefined) return null;
   const actionId = event.relatedEntityId ?? event.summary.match(/action:[^\s]+/u)?.[0] ?? null;
   return actionId === null ? null : { runId, actionId, summary: event.summary };
+}
+
+function validationCommand(validation: string | undefined): { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number } | undefined {
+  if (validation === "pnpm-test") return { id: "test", executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 30000 };
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
