@@ -10,6 +10,7 @@ import {
   RunCommandArgsSchema,
   RunValidationArgsSchema,
   SupportedToolName,
+  ToolResultSchema,
   WriteArgsSchema
 } from "./tool-contracts.js";
 
@@ -243,19 +244,6 @@ export const SessionGrantSchema = z.object({
   createdAt: IsoTimestamp
 }).strict();
 
-export const ToolResultSchema = z.object({
-  id: EntityId,
-  actionId: EntityId,
-  status: z.enum(["OK", "ERROR"]),
-  exitCode: z.number().int().nullable(),
-  toolErrorCode: z.string().nullable(),
-  stdout: SensitiveOutputSchema,
-  stderr: SensitiveOutputSchema,
-  durationMs: z.number().int().nonnegative(),
-  sideEffectSummary: SensitiveOutputSchema,
-  createdAt: IsoTimestamp
-}).strict();
-
 export const ValidationResultSchema = z.object({
   id: EntityId,
   actionId: EntityId,
@@ -333,6 +321,8 @@ export const entitySchemas = {
   ConfigSnapshotSchema,
   CredentialStatusSchema
 } as const;
+
+export { ToolResultSchema };
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type Run = z.infer<typeof RunSchema>;

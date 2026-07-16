@@ -48,3 +48,18 @@ ul {
 section {
   min-width: 0;
 }
+
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+pre {
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #d8dce2;
+  border-radius: 6px;
+  background: #ffffff;
+}

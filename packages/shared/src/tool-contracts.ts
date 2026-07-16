@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { ToolResultSchema } from "./entities.js";
-
 export const SupportedToolName = z.enum([
   "list",
   "read",
@@ -17,6 +15,13 @@ export type SupportedToolName = z.infer<typeof SupportedToolName>;
 
 const RelativePath = z.string().min(1);
 const Sha256Hex = z.string().regex(/^[a-f0-9]{64}$/u);
+const EntityId = z.string().min(1);
+const IsoTimestamp = z.string().datetime({ offset: true });
+const SensitiveOutputSchema = z.string().max(4096).refine((value) => {
+  return !/(sk-[A-Za-z0-9_-]+|api[_-]?key\s*=|authorization:\s*bearer\s+|[A-Za-z]:[\\/]+Users[\\/]+|\/home\/)/iu.test(value);
+}, {
+  message: "output must be redacted before persistence"
+});
 
 export const ListArgsSchema = z.object({
   path: z.string().default(".")
@@ -88,5 +93,17 @@ export const ToolRequestSchema = z.discriminatedUnion("tool", [
 
 export type ToolRequest = z.infer<typeof ToolRequestSchema>;
 
-export { ToolResultSchema };
+export const ToolResultSchema = z.object({
+  id: EntityId,
+  actionId: EntityId,
+  status: z.enum(["OK", "ERROR"]),
+  exitCode: z.number().int().nullable(),
+  toolErrorCode: z.string().nullable(),
+  stdout: SensitiveOutputSchema,
+  stderr: SensitiveOutputSchema,
+  durationMs: z.number().int().nonnegative(),
+  sideEffectSummary: SensitiveOutputSchema,
+  createdAt: IsoTimestamp
+}).strict();
+
 export type { ToolResult } from "./entities.js";
