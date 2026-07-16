@@ -3,6 +3,7 @@ import type { CredentialStore } from "@gcah/credentials";
 import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
 import { createHiddenInputPrompt, createRawModeLineReader } from "./hidden-input.js";
 import { createFileLocalProfileStore, type LocalProfile, type LocalProfileStore } from "./local-profile.js";
+import { runEmbeddedLocalSession } from "./local-session.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
 export { createFetchTransport, createHiddenInputPrompt, createRawModeLineReader, sanitizeOutput, type CliResult };
@@ -21,6 +22,7 @@ export interface LocalSessionOptions {
   workspacePath: string;
   baseUrl: string;
   model: string;
+  task?: string;
 }
 
 export async function runCli(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
@@ -55,14 +57,21 @@ async function localCommand(args: readonly string[], deps: RunCliDependencies): 
   const workspacePath = option(args, "--workspace") ?? profile?.workspacePath ?? await prompt("Workspace");
   const baseUrl = option(args, "--base-url") ?? profile?.baseUrl ?? await prompt("Base URL");
   const model = option(args, "--model") ?? profile?.model ?? await prompt("Model");
+  const task = option(args, "--task") ?? await prompt("Task");
   if (workspacePath === "" || baseUrl === "" || model === "") return fail("missing local options\n");
   await profileStore.save({ workspacePath, baseUrl, model });
-  const runner = deps.runLocalSession ?? defaultLocalSession;
-  return runner({ workspacePath, baseUrl, model });
+  if (deps.runLocalSession !== undefined) return deps.runLocalSession({ workspacePath, baseUrl, model, task });
+  return defaultLocalSession({ workspacePath, baseUrl, model, task }, deps);
 }
 
-async function defaultLocalSession(): Promise<CliResult> {
-  return fail("interactive local session is not implemented\n");
+async function defaultLocalSession(options: LocalSessionOptions, deps?: RunCliDependencies): Promise<CliResult> {
+  if (options.task === undefined || options.task === "") return fail("missing local task\n");
+  const store = deps?.credentialStore ?? await createDefaultCredentialStore();
+  const { createLocalProductionApp } = await import("@gcah/server");
+  return runEmbeddedLocalSession({ ...options, task: options.task }, {
+    credentialStore: store,
+    createApp: async (input) => createLocalProductionApp(input)
+  });
 }
 
 const nullLocalProfileStore: LocalProfileStore = {

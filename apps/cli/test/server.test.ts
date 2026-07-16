@@ -18,7 +18,7 @@ describe("CLI server commands", () => {
   it("prompts for missing local options and saves a non-secret profile", async () => {
     const prompts: string[] = [];
     const saved: unknown[] = [];
-    const answers = ["E:/prompted", "https://gateway.example/v1", "Qwen-Coder"];
+    const answers = ["E:/prompted", "https://gateway.example/v1", "Qwen-Coder", "fix it"];
     await expect(runCli(["local"], {
       promptLine: async (label) => {
         prompts.push(label);
@@ -32,7 +32,7 @@ describe("CLI server commands", () => {
       },
       runLocalSession: async (options) => ({ stdout: `${options.workspacePath} ${options.model}\n`, stderr: "", exitCode: 0 })
     })).resolves.toMatchObject({ stdout: "E:/prompted Qwen-Coder\n" });
-    expect(prompts).toEqual(["Workspace", "Base URL", "Model"]);
+    expect(prompts).toEqual(["Workspace", "Base URL", "Model", "Task"]);
     expect(JSON.stringify(saved)).not.toContain("sk-");
     expect(saved).toEqual([{ workspacePath: "E:/prompted", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder" }]);
   });
