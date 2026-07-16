@@ -10,7 +10,9 @@ export interface OpenAiCompatibleTransportRequest {
   headers: Record<string, string>;
   body: {
     model: string;
-    messages: readonly unknown[];
+    messages: readonly OpenAiCompatibleMessage[];
+    response_format: { type: "json_object" };
+    temperature: number;
   };
   timeoutMs: number;
 }
@@ -21,6 +23,11 @@ export interface OpenAiCompatibleTransportResponse {
 }
 
 export type OpenAiCompatibleTransport = (request: OpenAiCompatibleTransportRequest) => Promise<OpenAiCompatibleTransportResponse>;
+
+export interface OpenAiCompatibleMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
 
 export interface OpenAiCompatibleLlmClientOptions {
   baseUrl: string;
@@ -47,7 +54,9 @@ export class OpenAiCompatibleLlmClient implements LlmClientPort {
           },
           body: {
             model: this.options.model,
-            messages
+            messages: normalizeMessages(messages),
+            response_format: { type: "json_object" },
+            temperature: 0
           },
           timeoutMs: this.options.timeoutMs ?? 30000
         });
@@ -77,6 +86,29 @@ export function createOpenAiCompatibleFetchTransport(fetchFn: typeof fetch = fet
   };
 }
 
+const SYSTEM_PROMPT = [
+  "You are the GCAH Coding Agent Harness action planner.",
+  "Return only valid JSON. Do not wrap it in markdown. Do not include prose.",
+  "Use the latest Feedback section to choose the next action. Do not repeat the same read action after its content is already shown.",
+  "For coding tasks, once you have read the requirements and the target source file, propose a patch or write action next instead of reading again.",
+  "For a simple file replacement, prefer write with the full desired file content.",
+  "Allowed responses are:",
+  "{\"kind\":\"tool\",\"tool\":\"list\",\"args\":{\"path\":\".\"},\"rationale\":\"...\"}",
+  "{\"kind\":\"tool\",\"tool\":\"read\",\"args\":{\"path\":\"README.md\"},\"rationale\":\"...\"}",
+  "{\"kind\":\"tool\",\"tool\":\"write\",\"args\":{\"path\":\"src/app.ts\",\"content\":\"...\"},\"rationale\":\"...\"}",
+  "{\"kind\":\"tool\",\"tool\":\"patch\",\"args\":{\"path\":\"src/app.ts\",\"baseSha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"unifiedDiff\":\"--- a/src/app.ts\\n+++ b/src/app.ts\\n@@\\n-old\\n+new\\n\"},\"rationale\":\"...\"}",
+  "{\"kind\":\"tool\",\"tool\":\"run_validation\",\"args\":{\"kind\":\"test\"},\"rationale\":\"...\"}",
+  "{\"kind\":\"finish\",\"summary\":\"...\",\"rationale\":\"...\"}"
+].join("\n");
+
+function normalizeMessages(messages: readonly unknown[]): readonly OpenAiCompatibleMessage[] {
+  if (messages.every(isOpenAiCompatibleMessage)) return messages;
+  return [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...messages.map((message) => ({ role: "user" as const, content: typeof message === "string" ? message : JSON.stringify(message) }))
+  ];
+}
+
 function parseResponse(body: unknown, providerName: string): LlmClientResult {
   if (!isRecord(body)) throw new OpenAiCompatibleError("PROTOCOL_ERROR", providerName);
   const choices = body.choices;
@@ -87,10 +119,8 @@ function parseResponse(body: unknown, providerName: string): LlmClientResult {
   if (!isRecord(message) || typeof message.content !== "string") {
     throw new OpenAiCompatibleError("PROTOCOL_ERROR", providerName);
   }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(message.content);
-  } catch {
+  const parsed = parseJsonObject(message.content);
+  if (parsed === null) {
     throw new OpenAiCompatibleError("PROTOCOL_ERROR", providerName);
   }
   const agentResponse = AgentResponseSchema.safeParse(parsed);
@@ -99,6 +129,50 @@ function parseResponse(body: unknown, providerName: string): LlmClientResult {
     response: agentResponse.data,
     usage: parseUsage(body.usage)
   };
+}
+
+function parseJsonObject(content: string): unknown | null {
+  try {
+    return JSON.parse(content);
+  } catch {
+    const extracted = extractFirstJsonObject(content);
+    if (extracted === null) return null;
+    try {
+      return JSON.parse(extracted);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractFirstJsonObject(content: string): string | null {
+  const start = content.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < content.length; index += 1) {
+    const char = content[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (char === "\"") {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return content.slice(start, index + 1);
+    }
+  }
+  return null;
 }
 
 function parseUsage(value: unknown): LlmUsage | null {
@@ -114,4 +188,9 @@ function parseUsage(value: unknown): LlmUsage | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isOpenAiCompatibleMessage(value: unknown): value is OpenAiCompatibleMessage {
+  if (!isRecord(value)) return false;
+  return (value.role === "system" || value.role === "user" || value.role === "assistant") && typeof value.content === "string";
 }

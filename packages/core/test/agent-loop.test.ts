@@ -127,6 +127,106 @@ describe("AgentLoop", () => {
       validationRunner: new SequencedValidationRunner([])
     });
     await loop.start({ runId: "run-2", workspaceId: "workspace-1", taskSummary: "inspect", configSnapshot: config(), maxSteps: 3 });
+    expect(String(client.messages[1]?.[0])).toContain("read ok");
+  });
+
+  it("feeds repeated tool actions back so the LLM can choose a different action", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "tool", tool: "read", args: { path: "README.md" }, rationale: "inspect" }, usage: null },
+      { response: { kind: "tool", tool: "read", args: { path: "README.md" }, rationale: "inspect again" }, usage: null },
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "OK", summary: "read ok" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await loop.start({ runId: "run-2b", workspaceId: "workspace-1", taskSummary: "inspect", configSnapshot: config(), maxSteps: 4 });
+
+    expect(String(client.messages[2]?.[0])).toContain("Repeated the same read action");
+  });
+
+  it("keeps recent tool observations across turns for multi-file tasks", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "tool", tool: "read", args: { path: "README.md" }, rationale: "read task" }, usage: null },
+      { response: { kind: "tool", tool: "read", args: { path: "src/calculator.ts" }, rationale: "read code" }, usage: null },
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+    const toolGateway: ToolGatewayPort = {
+      execute: async (request) => {
+        const args = request.args as { path: string };
+        return args.path === "README.md"
+          ? { status: "OK", summary: "Requirements: add returns a + b" }
+          : { status: "OK", summary: "function add() { return a - b; }" };
+      }
+    };
+
+    const loop = new AgentLoop({ clock, unitOfWork, llm: client, toolGateway, validationRunner: new SequencedValidationRunner([]) });
+    await loop.start({ runId: "run-2bb", workspaceId: "workspace-1", taskSummary: "fix calculator", configSnapshot: config(), maxSteps: 4 });
+
+    expect(String(client.messages[2]?.[0])).toContain("Requirements: add returns a + b");
+    expect(String(client.messages[2]?.[0])).toContain("function add() { return a - b; }");
+  });
+
+  it("pauses on tool approval requirements and resumes after approval", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "tool", tool: "write", args: { path: "src/app.ts", content: "fixed" }, rationale: "mutate" }, usage: null },
+      { response: { kind: "tool", tool: "write", args: { path: "src/app.ts", content: "fixed" }, rationale: "mutate after approval" }, usage: null },
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+    let calls = 0;
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: {
+        execute: async () => {
+          calls += 1;
+          return calls === 1
+            ? { status: "ERROR", summary: "REQUIRE_APPROVAL NO_GRANT" }
+            : { status: "OK", summary: "write ok" };
+        }
+      },
+      validationRunner: new SequencedValidationRunner([validation("PASS", "validation-approval")]),
+      approval: { consumeApproval: async () => "approved" }
+    });
+
+    await expect(loop.start({ runId: "run-2c", workspaceId: "workspace-1", taskSummary: "write", configSnapshot: config(), maxSteps: 5 })).resolves.toMatchObject({ status: "WAITING_APPROVAL" });
+    const waitingEvents = await unitOfWork.repositories.events.listAfterCursor("run-2c", 0);
+    expect(waitingEvents.some((event) => event.type === "approval.required" && event.summary.includes("action:run-2c:1"))).toBe(true);
+
+    await expect(loop.continueAfterApproval("run-2c")).resolves.toMatchObject({ status: "COMPLETED" });
+    expect(String(client.messages[1]?.[0])).toContain("Approval is required");
+  });
+
+  it("feeds recoverable tool errors back instead of stopping immediately", async () => {
+    const clock = new FakeClock();
+    const unitOfWork = createTestUnitOfWork();
+    const client = new ScriptedClient([
+      { response: { kind: "tool", tool: "write", args: { path: "src/app.ts", content: "fixed" }, rationale: "try write" }, usage: null },
+      { response: { kind: "finish", summary: "done", rationale: "complete" }, usage: null }
+    ]);
+    const loop = new AgentLoop({
+      clock,
+      unitOfWork,
+      llm: client,
+      toolGateway: { execute: async () => ({ status: "ERROR", summary: "TARGET_EXISTS" }) },
+      validationRunner: new SequencedValidationRunner([])
+    });
+
+    await loop.start({ runId: "run-2d", workspaceId: "workspace-1", taskSummary: "write existing file", configSnapshot: config(), maxSteps: 3 });
+
+    expect(String(client.messages[1]?.[0])).toContain("Tool write failed with TARGET_EXISTS");
   });
 
   it("stops when the injected tool gateway denies or rejects an action", async () => {
@@ -139,7 +239,7 @@ describe("AgentLoop", () => {
       clock,
       unitOfWork,
       llm: client,
-      toolGateway: { execute: async () => ({ status: "ERROR", summary: "DENY policy" }) },
+      toolGateway: { execute: async () => ({ status: "ERROR", summary: "DANGEROUS_ACTION_DENIED command.blocked" }) },
       validationRunner: new SequencedValidationRunner([])
     });
 
@@ -426,7 +526,8 @@ describe("AgentLoop", () => {
     await expect(loop.start({ runId: "run-8", workspaceId: "workspace-1", taskSummary: "port throw", configSnapshot: config(), maxSteps: 2 })).rejects.toThrow(/network/);
     await expect(unitOfWork.repositories.runs.getById("run-8")).resolves.toMatchObject({ status: "FAILED", stopReason: "UNFIXABLE_FAILURE" });
     const events = await unitOfWork.repositories.events.listAfterCursor("run-8", 0);
-    expect(events.at(-1)).toMatchObject({ type: "run.failed", summary: "Injected port failed" });
+    expect(events.at(-1)).toMatchObject({ type: "run.failed", summary: "Injected port failed: redacted" });
+    expect(events.at(-1)?.summary).not.toContain("sk-abc");
   });
 
   it("redacts tool output before persisting events", async () => {

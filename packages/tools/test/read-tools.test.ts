@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -41,6 +42,10 @@ function gatewayFor(executor: LocalExecutor): ReturnType<typeof createToolGatewa
   });
 }
 
+function sha(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 describe("read-only tools", () => {
   it("lists and reads bounded workspace files through the local executor", async () => {
     const root = await workspace();
@@ -62,7 +67,7 @@ describe("read-only tools", () => {
     });
     await expect(gateway.execute({ tool: "read", args: { path: "big.txt" } })).resolves.toMatchObject({
       status: "OK",
-      summary: "xxxxxxxxxxxxxxxx\n[truncated]"
+      summary: `sha256=${sha("x".repeat(32))}\nxxxxxxxxxxxxxxxx\n[truncated]`
     });
   });
 

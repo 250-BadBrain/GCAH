@@ -37,7 +37,11 @@ const MUTATION_TOOLS = new Set<ToolRequest["tool"]>(["write", "patch", "delete",
 
 export class AgentLoop {
   private readonly feedback = new FeedbackQueue();
+  private readonly recentObservations: Array<{ sourceId: string; category: string; summary: string }> = [];
   private readonly validation: ValidationService;
+  private lastToolActionKey: string | null = null;
+  private repeatedToolActionCount = 0;
+  private readonly toolActionCounts = new Map<string, number>();
   private readonly paused = new Map<string, {
     input: AgentLoopStartInput;
     tracker: BudgetTracker;
@@ -57,7 +61,7 @@ export class AgentLoop {
     try {
       return await this.runUntilPauseOrTerminal(input, run, tracker, mutationValidation, 1);
     } catch (error) {
-      await this.failRun(run, "Injected port failed");
+      await this.failRun(run, injectedPortFailureSummary(error));
       throw error;
     }
   }
@@ -78,7 +82,7 @@ export class AgentLoop {
       const elapsedStop = tracker.checkElapsed(sequence);
       if (elapsedStop !== null) return this.stop(run, elapsedStop.reason, elapsedStop.detail);
 
-      const feedback = this.feedback.consumeOnce();
+      const feedback = [...this.recentObservations, ...this.feedback.consumeOnce()];
       const context = buildLoopContext({
         taskSummary: input.taskSummary,
         configSnapshot: input.configSnapshot,
@@ -132,11 +136,34 @@ export class AgentLoop {
       }
 
       const action = await this.persistToolAction(run.id, step.id, sequence, parsed.response);
+      this.recordToolActionFeedback(action.id, parsed.response.tool, parsed.response.args);
       const toolResult = await this.deps.toolGateway.execute({ tool: parsed.response.tool, args: parsed.response.args });
       const postToolElapsedStop = tracker.checkElapsed(sequence);
       if (postToolElapsedStop !== null) return this.stop(run, postToolElapsedStop.reason, postToolElapsedStop.detail);
-      await this.appendEvent(run.id, step.id, "tool.result", safeEventSummary(toolResult.summary, "tool output redacted"), action.id);
-      if (toolResult.status === "ERROR") return this.stop(run, "POLICY_DENIED");
+      const toolSummary = safeEventSummary(toolResult.summary, "tool output redacted");
+      await this.appendEvent(run.id, step.id, "tool.result", toolSummary, action.id);
+      this.rememberObservation({ sourceId: action.id, category: "tool_result", summary: toolSummary });
+      if (toolResult.status === "ERROR" && toolResult.summary.startsWith("REQUIRE_APPROVAL")) {
+        run = transitionRun(run, { id: `approval:${sequence}`, type: "wait_for_approval", at: this.deps.clock.nowIso() });
+        await this.deps.unitOfWork.repositories.runs.update(run);
+        this.paused.set(run.id, { input, tracker, mutationValidation, nextSequence: sequence + 1 });
+        this.feedback.enqueueManual({
+          sourceId: `approval:${action.id}`,
+          category: "approval_required",
+          summary: `Approval is required for action ${action.id}. After approval, repeat the same intended action.`
+        });
+        await this.appendEvent(run.id, step.id, "approval.required", `approval required for ${action.id}`, action.id);
+        return run;
+      }
+      if (toolResult.status === "ERROR") {
+        if (isTerminalToolError(toolResult.summary)) return this.stop(run, "POLICY_DENIED");
+        this.feedback.enqueueManual({
+          sourceId: `tool-error:${action.id}`,
+          category: "tool_error",
+          summary: `Tool ${parsed.response.tool} failed with ${toolSummary}. Choose a different valid action to recover.`
+        });
+        continue;
+      }
 
       if (MUTATION_TOOLS.has(parsed.response.tool)) {
         const request: ToolRequest = {
@@ -178,7 +205,7 @@ export class AgentLoop {
     try {
       decision = await this.deps.approval?.consumeApproval?.(runId);
     } catch (error) {
-      await this.failRun(run, "Injected port failed");
+      await this.failRun(run, injectedPortFailureSummary(error));
       throw error;
     }
     if (decision === "rejected") {
@@ -191,7 +218,7 @@ export class AgentLoop {
       try {
         return await this.runUntilPauseOrTerminal(paused.input, resumed, paused.tracker, paused.mutationValidation, paused.nextSequence);
       } catch (error) {
-        await this.failRun(resumed, "Injected port failed");
+        await this.failRun(resumed, injectedPortFailureSummary(error));
         throw error;
       }
     }
@@ -205,7 +232,7 @@ export class AgentLoop {
     try {
       return await this.runUntilPauseOrTerminal(paused.input, resumed, paused.tracker, paused.mutationValidation, paused.nextSequence);
     } catch (error) {
-      await this.failRun(resumed, "Injected port failed");
+      await this.failRun(resumed, injectedPortFailureSummary(error));
       throw error;
     }
   }
@@ -292,6 +319,35 @@ export class AgentLoop {
     return persisted;
   }
 
+  private recordToolActionFeedback(actionId: string, tool: ToolRequest["tool"], args: ToolRequest["args"]): void {
+    const key = `${tool}:${JSON.stringify(args)}`;
+    const count = (this.toolActionCounts.get(key) ?? 0) + 1;
+    this.toolActionCounts.set(key, count);
+    if (key === this.lastToolActionKey) {
+      this.repeatedToolActionCount += 1;
+      this.feedback.enqueueManual({
+        sourceId: `repeat:${actionId}`,
+        category: "repeated_action",
+        summary: `Repeated the same ${tool} action ${this.repeatedToolActionCount + 1} times. Do not repeat it again; use the previous tool result to choose a different next action.`
+      });
+    } else {
+      this.lastToolActionKey = key;
+      this.repeatedToolActionCount = 0;
+    }
+    if (count > 1) {
+      this.feedback.enqueueManual({
+        sourceId: `repeat-any:${actionId}`,
+        category: "repeated_action",
+        summary: `The ${tool} action with the same arguments has already run ${count} times in this run. Do not run it again unless the file changed; use the remembered tool results to patch or finish.`
+      });
+    }
+  }
+
+  private rememberObservation(observation: { sourceId: string; category: string; summary: string }): void {
+    this.recentObservations.push(observation);
+    while (this.recentObservations.length > 6) this.recentObservations.shift();
+  }
+
   private async persistFinishAction(runId: string, stepId: string, sequence: number, summary: string, rationale: string): Promise<Action> {
     const at = this.deps.clock.nowIso();
     const action: Action = {
@@ -359,4 +415,18 @@ function safeEventSummary(value: string, replacement: string): string {
   return /(sk-[A-Za-z0-9_-]+|api[_-]?key\s*=|authorization:\s*bearer\s+|[A-Za-z]:[\\/]+Users[\\/]+|\/home\/)/iu.test(value)
     ? replacement
     : value.slice(0, 4096);
+}
+
+function injectedPortFailureSummary(error: unknown): string {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    return safeEventSummary(`Injected port failed: ${String(error.code)}`, "Injected port failed: redacted");
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return safeEventSummary(`Injected port failed: ${message}`, "Injected port failed: redacted");
+}
+
+function isTerminalToolError(summary: string): boolean {
+  return summary.startsWith("DANGEROUS_ACTION_DENIED")
+    || summary === "GATEWAY_AUTHORIZATION_REQUIRED"
+    || summary === "PATH_BOUNDARY_VIOLATION";
 }

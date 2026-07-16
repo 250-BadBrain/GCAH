@@ -3,10 +3,10 @@
   "compilerOptions": {
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true,
     "noEmit": false
   },
   "exclude": [
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "dist"
   ]
 }

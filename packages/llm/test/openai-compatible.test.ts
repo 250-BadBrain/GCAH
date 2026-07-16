@@ -49,11 +49,39 @@ describe("OpenAiCompatibleLlmClient", () => {
       },
       body: {
         model: "deepseek-course",
-        messages: [{ role: "user", content: "hello" }]
+        messages: [{ role: "user", content: "hello" }],
+        response_format: { type: "json_object" },
+        temperature: 0
       },
       timeoutMs: 30000
     }]);
     expect(JSON.stringify(requests[0]?.body)).not.toContain("sk-test-secret");
+  });
+
+  it("normalizes loop text context into OpenAI chat messages with JSON-only instructions", async () => {
+    const requests: Parameters<OpenAiCompatibleTransport>[0][] = [];
+    const client = new OpenAiCompatibleLlmClient({
+      baseUrl: "https://course-gateway.example/v1",
+      model: "deepseek-course",
+      providerName: "course",
+      credentialResolver: resolver("sk-test-secret"),
+      transport: async (request) => {
+        requests.push(request);
+        return {
+          status: 200,
+          body: {
+            choices: [{ message: { content: JSON.stringify({ kind: "finish", summary: "done", rationale: "complete" }) } }]
+          }
+        };
+      }
+    });
+
+    await client.complete(["Task: modify src/app.ts"]);
+
+    expect(requests[0]?.body.messages).toEqual([
+      expect.objectContaining({ role: "system", content: expect.stringContaining("Return only valid JSON") }),
+      { role: "user", content: "Task: modify src/app.ts" }
+    ]);
   });
 
   it("provides a default fetch-backed transport", async () => {
@@ -123,6 +151,29 @@ describe("OpenAiCompatibleLlmClient", () => {
     });
 
     await expect(client.complete([])).resolves.toMatchObject({ usage: null });
+  });
+
+  it("extracts a valid action JSON object from provider prose or markdown wrappers", async () => {
+    const client = new OpenAiCompatibleLlmClient({
+      baseUrl: "https://gateway.example/",
+      model: "neutral-model",
+      providerName: "course",
+      credentialResolver: resolver("sk-test-secret"),
+      transport: async () => ({
+        status: 200,
+        body: {
+          choices: [{
+            message: {
+              content: "```json\n{\"kind\":\"tool\",\"tool\":\"write\",\"args\":{\"path\":\"src/app.ts\",\"content\":\"fixed\"},\"rationale\":\"update file\"}\n```"
+            }
+          }]
+        }
+      })
+    });
+
+    await expect(client.complete([])).resolves.toMatchObject({
+      response: { kind: "tool", tool: "write", args: { path: "src/app.ts", content: "fixed" } }
+    });
   });
 
   it("stabilizes network and malformed response failures", async () => {

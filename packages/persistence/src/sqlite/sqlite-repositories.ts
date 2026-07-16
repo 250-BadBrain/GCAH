@@ -174,7 +174,7 @@ export function openSqliteRepositories(input: OpenSqliteRepositoriesInput): Sqli
     },
     config: {
       async createSnapshot(snapshot) {
-        db.prepare("INSERT INTO config_snapshots(id, json) VALUES (?, ?)").run(snapshot.id, encode(snapshot));
+        db.prepare("INSERT INTO config_snapshots(id, json) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET json = excluded.json").run(snapshot.id, encode(snapshot));
         return clone(snapshot);
       },
       async getSnapshot(id) {

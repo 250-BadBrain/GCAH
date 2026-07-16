@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.5.0",
   "scripts": {
-    "build": "tsc -p packages/shared/tsconfig.build.json --pretty false && tsc -p packages/core/tsconfig.build.json --pretty false && tsc -p packages/governance/tsconfig.build.json --pretty false && tsc -p packages/persistence/tsconfig.build.json --pretty false && tsc -p packages/tools/tsconfig.build.json --pretty false && tsc -p packages/credentials/tsconfig.build.json --pretty false && tsc -p packages/llm/tsconfig.build.json --pretty false && tsc -p apps/server/tsconfig.build.json --pretty false && tsc -p apps/cli/tsconfig.build.json --pretty false && tsc -p apps/webui/tsconfig.build.json --pretty false && pnpm --filter @gcah/webui build && node scripts/mark-cli-bin-executable.mjs",
+    "build": "tsc -p packages/shared/tsconfig.build.json --pretty false && tsc -p packages/core/tsconfig.build.json --pretty false && tsc -p packages/governance/tsconfig.build.json --pretty false && tsc -p packages/persistence/tsconfig.build.json --pretty false && node scripts/copy-persistence-assets.mjs && tsc -p packages/tools/tsconfig.build.json --pretty false && tsc -p packages/credentials/tsconfig.build.json --pretty false && tsc -p packages/llm/tsconfig.build.json --pretty false && tsc -p apps/server/tsconfig.build.json --pretty false && tsc -p apps/cli/tsconfig.build.json --pretty false && tsc -p apps/webui/tsconfig.build.json --pretty false && pnpm --filter @gcah/webui build && node scripts/mark-cli-bin-executable.mjs",
     "demo:mechanisms": "tsc -p scripts/tsconfig.demo.json --pretty false && node scripts/dist/demo-mechanisms.js",
     "demo:web": "pnpm build && pnpm exec tsx scripts/demo-web.ts",
     "test:ci-contract": "vitest run scripts/ci-contract.test.ts",

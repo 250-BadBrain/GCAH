@@ -1280,6 +1280,8 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 | GitLab/GitHub CI | T25 |
 | Docker/self-hosted/course delivery | T26 |
 | Cloudflare Pages/Workers/Wrangler, D1 migration, manual domain/HTTPS steps, final security | S02, T18d, T27 |
+| Local production real-key smoke path and runtime hardening | T28 |
+| Single-terminal interactive local agent UX | T29 |
 
 ## 7. Principal execution risks and gates
 
@@ -1295,3 +1297,53 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 Plan status: **Rolling execution approved: PR-02 through PR-10**
 
 Approval scope: PR-01 is complete and merged. Human rolling authorization now covers PR-02 through PR-10, corresponding to T03 through T27 in this plan. Each PR must still be implemented, tested, reviewed, merged, and cleaned up independently. After one PR completes successfully, the next PR may begin without separate per-PR approval. External deployment, real credentials, remote push/release, Cloudflare login/resources, DNS/domain/HTTPS changes, paid operations, and other explicitly restricted external actions remain outside this authorization. Mandatory pause conditions still apply. Current continuation point: PR-02 `core-domain`.
+
+---
+
+## 8. Post-final usability supplements
+
+### Task T28: Local production real-provider stabilization
+
+**Goal:** Make the local production composition usable with a real OpenAI-compatible course provider while preserving credential safety and public-demo Mock-only boundaries.
+
+**PR/worktree:** Post-final hotfix on `main`; follow-up work must start from a clean successor commit.
+
+**Implemented scope:** Runtime package exports now resolve built JS artifacts; build copies SQLite migrations; local production registers validation tooling; OpenAI-compatible requests use chat-message format, JSON mode, and safe JSON-object extraction; AgentLoop records safe injected-port failure codes, feeds tool results/recoverable errors/recent observations back to the LLM, pauses on `REQUIRE_APPROVAL`, resumes after approval, and distinguishes terminal policy errors; read tool exposes file SHA-256; patch tool handles one-line and context unified hunks; SQLite config snapshots are idempotent.
+
+**Evidence:** Real course-provider smoke tests modified `E:\Desktop\gcah-smoke-project\src\app.ts` from `broken` to `fixed`; a multi-file calculator task read README/source and generated valid patches. Automated evidence includes focused `core`, `llm`, `persistence`, `server`, and `tools` tests plus `pnpm build` and `git diff --check`.
+
+**Status:** In progress until committed. **Commit:** —.
+
+### Task T29: Interactive local agent CLI / TUI
+
+**Goal:** Add a single-terminal local agent entrypoint so users can configure credentials/model, select a workspace, submit tasks, watch events, approve or reject actions, and continue working without manually starting a server or copying run IDs between terminals.
+
+**Dependencies:** T20, T21, T28.
+
+**Recommended PR/worktree:** PR-11 / `feat/interactive-local-agent` at `E:/Desktop/GCAH-interactive-local-agent`.
+
+**User command:** `gcah local` once a package bin alias exists, and `node apps/cli/dist/src/bin.js local` during source-tree testing.
+
+**T29a — Interactive command skeleton.** Add `local` CLI command that starts an embedded local production app in-process or on an ephemeral localhost port, shuts it down on exit/Ctrl+C, and does not require a second terminal.
+
+**T29b — Credential onboarding.** Reuse `CredentialStore` and hidden input to check, set, update, and clear the `openai-compatible` key without accepting a key as a command-line argument or printing plaintext.
+
+**T29c — Non-secret local profile.** Store provider/base URL/model/last workspace and validation preference in a non-secret profile. The profile must never contain API keys or credential material.
+
+**T29d — Workspace selection and fence.** Prompt for or accept a workspace path, canonicalize it with `realpath`, register it through the existing workspace route/composition, and enforce the current workspace fence.
+
+**T29e — Task loop and event rendering.** Let the user enter repeated tasks, submit each run through the existing local production path, stream or poll persisted events, and render run status, action proposals, governance decisions, tool results, validation results, feedback, and stop reasons.
+
+**T29f — Inline approvals.** When `approval.required` appears, show normalized action context and prompt for approve-once, approve-session, or reject. Approval must call the existing approval API/service and resume the same AgentLoop path.
+
+**T29g — Validation configuration.** Replace the hard-coded smoke validator for interactive local mode with a controlled validation command option such as `pnpm test`, using structured command templates and never arbitrary shell string execution.
+
+**T29h — Final report.** At run termination, summarize final status, stop reason, changed/read files where available, validation outcome, and next actions without exposing secrets.
+
+**T29i — Tests.** Add automated tests with fake credential store, fake OpenAI-compatible HTTP transport/server, temporary workspaces, scripted prompt input, and captured stdout/stderr proving embedded local startup/shutdown, hidden credential flow, profile non-secret storage, workspace registration, formal AgentLoop invocation, event rendering, inline approval and resume, validation failure feedback, and public-demo Mock-only separation.
+
+**Acceptance:** A teacher can run one local command, configure a course-provider API key/model, open a workspace, submit a coding task, approve a mutation, watch the agent modify files and validate, then submit another task in the same terminal. Default CI remains Mock/fake-provider only and never requires a real API key or real network call.
+
+**Non-goals:** No Cloudflare login/deployment, no remote push/release, no public-demo real-key path, no arbitrary shell, no dependency installation automation, no multi-workspace concurrent run orchestration.
+
+**Status:** Approved for execution by human request on 2026-07-17. **Commit:** —.

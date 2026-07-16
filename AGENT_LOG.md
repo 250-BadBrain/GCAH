@@ -1502,3 +1502,37 @@
   - `pnpm build` exited 0.
   - `git diff --check` exited 0.
 - Commit: `b0bb65c` (`docs: record release evidence reviewer override`).
+
+## 2026-07-17 - T28/T29 Planning and Local Production Stabilization
+
+- Scope: post-final local production real-provider hardening and T29 interactive local agent planning.
+- Agent: OpenAI Codex.
+- Branch/worktree: `main` at `E:/Desktop/GCAH` for already-applied local production fixes; planned T29 worktree `E:/Desktop/GCAH-interactive-local-agent` on `feat/interactive-local-agent`.
+- Human context:
+  - User configured a course-provided OpenAI-compatible key in Windows Credential Manager.
+  - Real provider testing used `https://njusehub.info/v1` and `DeepSeek-V3`.
+  - User observed that the current server-plus-second-terminal CLI UX is much less usable than tools such as opencode and requested T29 planning plus execution.
+- Local production findings fixed before T29:
+  - Runtime package exports pointed at TypeScript source or declaration-only outputs, causing Node module load failures.
+  - SQLite migration SQL was missing from build output.
+  - OpenAI-compatible requests needed chat message normalization, JSON-object extraction, JSON mode, and lower temperature.
+  - AgentLoop needed recent observation feedback, repeated-action feedback, recoverable tool-error feedback, safer injected-port failure summaries, and real pause/resume behavior on `REQUIRE_APPROVAL`.
+  - Local production composition needed validation tool registration.
+  - SQLite config snapshots needed idempotent persistence.
+  - Read results needed file SHA-256 for patch actions.
+  - Patch needed support for files without trailing newline and standard multi-line context hunks.
+- Manual real-provider evidence:
+  - Simple smoke workspace was changed by the real model/tool chain from `export const value = "broken";` to `export const value = "fixed";`.
+  - Complex calculator workspace read README/source and generated correct calculator patches; remaining UX/product issue is interactive local workflow and configurable validation.
+- Focused validation evidence run during stabilization:
+  - `pnpm --filter @gcah/core test` exited 0 after 44 tests.
+  - `pnpm --filter @gcah/llm test` exited 0 after 8 tests.
+  - `pnpm --filter @gcah/persistence test` exited 0 after 15 tests.
+  - `pnpm --filter @gcah/server test` exited 0 after 24 tests.
+  - `pnpm --filter @gcah/tools test` exited 0 after 18 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- T29 plan:
+  - Added PLAN section for `T29 — Interactive local agent CLI / TUI`.
+  - Scope covers single-terminal `gcah local` / `node apps/cli/dist/src/bin.js local`, credential onboarding, non-secret profile, workspace selection, embedded local production app, event rendering, inline approvals, validation command configuration, final reporting, and fake-provider tests.
+  - Explicitly excludes real Cloudflare operations, real-key public demo, arbitrary shell, dependency installation automation, remote push/release, and multi-workspace concurrent orchestration.

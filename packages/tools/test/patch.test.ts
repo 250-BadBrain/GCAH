@@ -61,6 +61,68 @@ describe("patch tool", () => {
     expect(executor.validationRequired).toBe(true);
   });
 
+  it("applies a one-line diff to files without a trailing newline", async () => {
+    const { root, gateway } = await createExecutor();
+    await writeFile(join(root, "src", "file.txt"), "old");
+
+    await expect(gateway.execute({
+      tool: "patch",
+      args: {
+        path: "src/file.txt",
+        baseSha256: sha("old"),
+        unifiedDiff: "--- a/src/file.txt\n+++ b/src/file.txt\n@@ -1 +1 @@\n-old\n+new"
+      }
+    })).resolves.toMatchObject({ status: "OK" });
+    await expect(readFile(join(root, "src", "file.txt"), "utf8")).resolves.toBe("new");
+  });
+
+  it("applies a multi-line hunk with context lines", async () => {
+    const { root, gateway } = await createExecutor();
+    const current = [
+      "export function add(a: number, b: number): number {",
+      "  return a - b;",
+      "}",
+      "",
+      "export function multiply(a: number, b: number): number {",
+      "  return a + b;",
+      "}",
+      "",
+      "export function formatResult(value: number): string {",
+      "  return `Value: ${value}`;",
+      "}",
+      ""
+    ].join("\n");
+    await writeFile(join(root, "src", "file.txt"), current);
+
+    await expect(gateway.execute({
+      tool: "patch",
+      args: {
+        path: "src/file.txt",
+        baseSha256: sha(current),
+        unifiedDiff: [
+          "--- a/src/file.txt",
+          "+++ b/src/file.txt",
+          "@@ -1,11 +1,11 @@",
+          " export function add(a: number, b: number): number {",
+          "-  return a - b;",
+          "+  return a + b;",
+          " }",
+          " ",
+          " export function multiply(a: number, b: number): number {",
+          "-  return a + b;",
+          "+  return a * b;",
+          " }",
+          " ",
+          " export function formatResult(value: number): string {",
+          "-  return `Value: ${value}`;",
+          "+  return `Result: ${value}`;",
+          " }"
+        ].join("\n")
+      }
+    })).resolves.toMatchObject({ status: "OK" });
+    await expect(readFile(join(root, "src", "file.txt"), "utf8")).resolves.toContain("return a * b;");
+  });
+
   it("rejects stale base without changing bytes", async () => {
     const { root, gateway } = await createExecutor();
     await expect(gateway.execute({

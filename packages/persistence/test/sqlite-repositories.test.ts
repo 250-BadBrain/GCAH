@@ -6,7 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 
 import { openSqliteRepositories } from "../src/index.js";
-import { FakeClock, repositoryContract, run, timestamp } from "./repository-contract.js";
+import { configSnapshot, FakeClock, repositoryContract, run, timestamp } from "./repository-contract.js";
 
 repositoryContract({
   name: "sqlite",
@@ -70,6 +70,18 @@ describe("sqlite repositories", () => {
       }));
     } finally {
       db.close();
+    }
+  });
+
+  it("allows deterministic config snapshots to be saved repeatedly", async () => {
+    const store = await openSqliteRepositories({ dataDir: await mkdtemp(join(tmpdir(), "gcah-sqlite-")), clock: new FakeClock() });
+    try {
+      await store.repositories.config.createSnapshot(configSnapshot());
+      await store.repositories.config.createSnapshot(configSnapshot());
+
+      await expect(store.repositories.config.getSnapshot("config-1")).resolves.toEqual(configSnapshot());
+    } finally {
+      store.close();
     }
   });
 });

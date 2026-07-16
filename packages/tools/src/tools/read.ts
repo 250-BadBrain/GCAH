@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import type { LocalExecutor } from "../executor/local-executor.js";
@@ -9,10 +10,11 @@ export function registerReadTool(executor: LocalExecutor): void {
     async execute(request) {
       const args = request.args as { path: string };
       const target = await executor.fence.resolveExistingTarget(args.path);
-      const output = boundOutput(await readFile(target.absolutePath, "utf8"), executor.outputLimitBytes);
+      const content = await readFile(target.absolutePath, "utf8");
+      const output = boundOutput(content, executor.outputLimitBytes);
       return {
         status: "OK",
-        summary: output.text
+        summary: `sha256=${createHash("sha256").update(content).digest("hex")}\n${output.text}`
       };
     }
   });

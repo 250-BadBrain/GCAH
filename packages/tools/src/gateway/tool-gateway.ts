@@ -94,8 +94,8 @@ export function createToolGateway(options: ToolGatewayOptions): ToolGatewayPort 
       try {
         return await definition.execute({ tool: request.tool, args: normalized.args }, { authorized: true });
       } catch (executionError) {
-        const code = executionError instanceof Error && "code" in executionError && typeof executionError.code === "string"
-          ? executionError.code
+        const code = executionError instanceof Error
+          ? ("code" in executionError && typeof executionError.code === "string" ? executionError.code : executionError.message)
           : "TOOL_EXECUTION_FAILED";
         return error(code);
       }
