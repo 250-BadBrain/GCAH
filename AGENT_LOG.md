@@ -1536,3 +1536,34 @@
   - Added PLAN section for `T29 — Interactive local agent CLI / TUI`.
   - Scope covers single-terminal `gcah local` / `node apps/cli/dist/src/bin.js local`, credential onboarding, non-secret profile, workspace selection, embedded local production app, event rendering, inline approvals, validation command configuration, final reporting, and fake-provider tests.
   - Explicitly excludes real Cloudflare operations, real-key public demo, arbitrary shell, dependency installation automation, remote push/release, and multi-workspace concurrent orchestration.
+
+## 2026-07-17 - T29 Interactive Local Agent Implementation
+
+- Scope: T29 single-terminal local agent CLI / TUI foundation.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/interactive-local-agent` at `E:/Desktop/GCAH-interactive-local-agent`.
+- Base commit: `9113ef0`.
+- Commits:
+  - `0a7e342` (`feat: add local cli session entrypoint`)
+  - `bf2c9d7` (`feat: prompt for local agent profile`)
+  - `665070e` (`feat: persist local agent profile`)
+  - `65df5c9` (`feat: run embedded local agent session`)
+  - `334146a` (`feat: approve local agent actions inline`)
+  - `3f68dd6` (`feat: prompt for local agent approvals`)
+  - `16f7fcd` (`feat: configure local agent validation`)
+  - `5be9d75` (`docs: document interactive local agent`)
+- Implemented:
+  - Added `local` CLI entrypoint for single-terminal local production use.
+  - Added non-secret local profile storage for workspace, base URL, model, and validation preference.
+  - Added embedded local production app session path that registers workspaces, submits runs through REST, reads persisted events, and closes the app.
+  - Added inline approval prompt that calls the existing approval API with `approve_once`, `approve_session`, or `reject`.
+  - Added controlled `pnpm-test` validation preset for interactive local mode and wired it into local production validation/tool command templates.
+  - Added terminal run rendering with stop reason and README usage instructions.
+- Focused validation completed before full verification:
+  - `pnpm --filter @gcah/cli test` exited 0 after 21 tests.
+  - `pnpm --filter @gcah/server test -- local-production.integration.test.ts` exited 0 after 2 tests.
+  - `pnpm exec tsc --noEmit -p apps/cli/tsconfig.json --pretty false` exited 0.
+  - `pnpm exec tsc --noEmit -p apps/server/tsconfig.json --pretty false` exited 0.
+  - `git diff --check` exited 0 for the working changes present before this log update.
+- Pending:
+  - Full `pnpm verify`, `pnpm build`, final `git diff --check`, independent review, and merge.
