@@ -1552,6 +1552,8 @@
   - `3f68dd6` (`feat: prompt for local agent approvals`)
   - `16f7fcd` (`feat: configure local agent validation`)
   - `5be9d75` (`docs: document interactive local agent`)
+  - `1e1ed1e` (`docs: record interactive local agent progress`)
+  - `9194ffb` (`chore: clean local cli lint`)
 - Implemented:
   - Added `local` CLI entrypoint for single-terminal local production use.
   - Added non-secret local profile storage for workspace, base URL, model, and validation preference.
@@ -1566,4 +1568,19 @@
   - `pnpm exec tsc --noEmit -p apps/server/tsconfig.json --pretty false` exited 0.
   - `git diff --check` exited 0 for the working changes present before this log update.
 - Pending:
-  - Full `pnpm verify`, `pnpm build`, final `git diff --check`, independent review, and merge.
+  - Independent review and merge.
+
+## 2026-07-17 - T29 Verification Evidence
+
+- Scope: T29 local verification after implementation.
+- Branch/worktree: `feat/interactive-local-agent` at `E:/Desktop/GCAH-interactive-local-agent`.
+- Verification:
+  - `pnpm verify` was attempted with a 30 second timeout per user instruction; the monolithic command exceeded the timeout after lint startup and was split into equivalent component commands.
+  - `pnpm lint` exited 0.
+  - `pnpm typecheck` exited 0.
+  - `pnpm test` exited 0 with 77 files and 184 tests.
+  - `pnpm build` exited 0.
+  - `git diff --check` exited 0.
+- Notes:
+  - No real API key was read, displayed, logged, or used during automated verification.
+  - No Cloudflare login, deployment, DNS, remote push, or release operation was performed.
