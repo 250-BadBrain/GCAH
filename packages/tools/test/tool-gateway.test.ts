@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createToolGateway, ToolRegistry } from "../src/index.js";
 import type { ApprovalService, GovernanceDecision, GovernanceEngine, NormalizedAction } from "@gcah/governance";
-import type { Action, RunEvent } from "@gcah/shared";
+import type { RunEvent } from "@gcah/shared";
 
 function governance(result: GovernanceDecision["result"], trace: string[]): GovernanceEngine {
   return {
@@ -49,13 +49,6 @@ describe("ToolGateway", () => {
         transaction: async (work) => {
           trace.push("transaction");
           return work({
-            actions: {
-              create: async (action: Action) => {
-                trace.push(`action:${action.toolName}`);
-                return action;
-              },
-              listByStep: async () => []
-            },
             events: {
               append: async (event: Omit<RunEvent, "cursor"> & { cursor?: number }) => {
                 trace.push(`event:${event.type}`);
@@ -78,7 +71,6 @@ describe("ToolGateway", () => {
     expect(trace).toEqual([
       "governance:read",
       "transaction",
-      "action:read",
       "event:governance.decision",
       "execute:read"
     ]);
@@ -101,7 +93,6 @@ describe("ToolGateway", () => {
         unitOfWork: {
           repositories: {} as never,
           transaction: async (work) => work({
-            actions: { create: async (action: Action) => action, listByStep: async () => [] },
             events: { append: async (event: Omit<RunEvent, "cursor"> & { cursor?: number }) => ({ ...event, cursor: 1 }), listAfterCursor: async () => [] }
           } as never)
         },

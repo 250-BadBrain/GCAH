@@ -8,3 +8,6 @@ export { sha256File } from "./tools/file-hash.js";
 export { matchCommandTemplate, type CommandMatch, type CommandTemplate } from "./command/template.js";
 export { CommandValidationRunner } from "./tools/validation-runner.js";
 export { DemoValidationRunner, type DemoValidationPreset } from "./validation/demo-validation-runner.js";
+export { LocalExecutor } from "./executor/local-executor.js";
+export { registerReadTools } from "./tools/read-tools.js";
+export { registerMutationTools } from "./tools/mutation-tools.js";
