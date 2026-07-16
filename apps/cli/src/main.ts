@@ -2,6 +2,7 @@ import type { CredentialStore } from "@gcah/credentials";
 
 import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
 import { createHiddenInputPrompt, createRawModeLineReader } from "./hidden-input.js";
+import { createFileLocalProfileStore, type LocalProfile, type LocalProfileStore } from "./local-profile.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
 export { createFetchTransport, createHiddenInputPrompt, createRawModeLineReader, sanitizeOutput, type CliResult };
@@ -20,17 +21,6 @@ export interface LocalSessionOptions {
   workspacePath: string;
   baseUrl: string;
   model: string;
-}
-
-export interface LocalProfile {
-  workspacePath: string;
-  baseUrl: string;
-  model: string;
-}
-
-export interface LocalProfileStore {
-  load(): Promise<LocalProfile | null>;
-  save(profile: LocalProfile): Promise<void>;
 }
 
 export async function runCli(args: readonly string[], deps: RunCliDependencies = {}): Promise<CliResult> {
@@ -59,7 +49,7 @@ export async function runMain(args: readonly string[], deps: RunCliDependencies 
 }
 
 async function localCommand(args: readonly string[], deps: RunCliDependencies): Promise<CliResult> {
-  const profileStore = deps.localProfileStore ?? nullLocalProfileStore;
+  const profileStore = deps.localProfileStore ?? createFileLocalProfileStore();
   const profile = await profileStore.load();
   const prompt = deps.promptLine ?? defaultPromptLine;
   const workspacePath = option(args, "--workspace") ?? profile?.workspacePath ?? await prompt("Workspace");
