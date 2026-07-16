@@ -52,4 +52,47 @@ describe("embedded local session", () => {
     ]);
     expect(closed).toBe(true);
   });
+
+  it("approves a pending action inline and renders resumed events", async () => {
+    const requests: unknown[] = [];
+    const app: InjectableApp = {
+      async inject(request) {
+        requests.push(request);
+        if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
+        if (request.url === "/api/runs") return { statusCode: 201, json: () => ({ id: "run-approval", status: "WAITING_APPROVAL" }) };
+        if (request.url === "/api/runs/run-approval/approvals/action:run-approval:1") {
+          return { statusCode: 200, json: () => ({ id: "run-approval", status: "COMPLETED" }) };
+        }
+        if (request.url === "/api/runs/run-approval/events?cursor=0") {
+          return {
+            statusCode: 200,
+            json: () => ({
+              events: [
+                { type: "approval.required", summary: "approval required for action:run-approval:1", relatedEntityId: "action:run-approval:1" },
+                { type: "run.completed", summary: "done", relatedEntityId: null }
+              ]
+            })
+          };
+        }
+        return { statusCode: 404, json: () => ({}) };
+      },
+      async close() {}
+    };
+
+    await expect(runEmbeddedLocalSession({
+      workspacePath: "E:/project",
+      baseUrl: "https://gateway.example/v1",
+      model: "Qwen-Coder",
+      task: "fix it"
+    }, {
+      credentialStore: credentialStore(),
+      createApp: async () => app,
+      decideApproval: async () => "approve_once"
+    })).resolves.toMatchObject({ stdout: expect.stringContaining("Run run-approval COMPLETED") });
+    expect(requests).toContainEqual({
+      method: "POST",
+      url: "/api/runs/run-approval/approvals/action:run-approval:1",
+      payload: { decision: "approve_once", reason: "local interactive approval" }
+    });
+  });
 });

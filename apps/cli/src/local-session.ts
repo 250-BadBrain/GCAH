@@ -24,6 +24,7 @@ export interface EmbeddedLocalSessionDeps {
     model: string;
     allowedWorkspaceRoots: string[];
   }): Promise<InjectableApp>;
+  decideApproval?(input: { runId: string; actionId: string; summary: string }): Promise<"approve_once" | "approve_session" | "reject">;
 }
 
 export async function runEmbeddedLocalSession(options: EmbeddedLocalSessionOptions, deps: EmbeddedLocalSessionDeps): Promise<CliResult> {
@@ -41,8 +42,22 @@ export async function runEmbeddedLocalSession(options: EmbeddedLocalSessionOptio
     if (submitted.statusCode >= 300) return fail("local run submit failed\n");
     const run = parseRun(submitted.json());
     if (run === null) return fail("local run submit failed\n");
-    const events = await app.inject({ method: "GET", url: `/api/runs/${run.id}/events?cursor=0` });
+    let events = await app.inject({ method: "GET", url: `/api/runs/${run.id}/events?cursor=0` });
     if (events.statusCode >= 300) return fail("local event fetch failed\n");
+    const approval = findApproval(run.id, events.json());
+    if (run.status === "WAITING_APPROVAL" && approval !== null && deps.decideApproval !== undefined) {
+      const decision = await deps.decideApproval(approval);
+      const approved = await app.inject({
+        method: "POST",
+        url: `/api/runs/${run.id}/approvals/${approval.actionId}`,
+        payload: { decision, reason: "local interactive approval" }
+      });
+      if (approved.statusCode >= 300) return fail("local approval failed\n");
+      const resumed = parseRun(approved.json()) ?? run;
+      events = await app.inject({ method: "GET", url: `/api/runs/${run.id}/events?cursor=0` });
+      if (events.statusCode >= 300) return fail("local event fetch failed\n");
+      return ok(renderLocalRun(resumed, events.json()));
+    }
     return ok(renderLocalRun(run, events.json()));
   } finally {
     await app.close();
@@ -61,13 +76,20 @@ function parseRun(value: unknown): { id: string; status: string } | null {
   return { id: value.id, status: value.status };
 }
 
-function parseEvents(value: unknown): Array<{ type: string; summary: string }> {
+function parseEvents(value: unknown): Array<{ type: string; summary: string; relatedEntityId: string | null }> {
   if (!isRecord(value) || !Array.isArray(value.events)) return [];
   return value.events.flatMap((event) =>
     isRecord(event) && typeof event.type === "string" && typeof event.summary === "string"
-      ? [{ type: event.type, summary: event.summary }]
+      ? [{ type: event.type, summary: event.summary, relatedEntityId: typeof event.relatedEntityId === "string" ? event.relatedEntityId : null }]
       : []
   );
+}
+
+function findApproval(runId: string, value: unknown): { runId: string; actionId: string; summary: string } | null {
+  const event = parseEvents(value).find((candidate) => candidate.type === "approval.required");
+  if (event === undefined) return null;
+  const actionId = event.relatedEntityId ?? event.summary.match(/action:[^\s]+/u)?.[0] ?? null;
+  return actionId === null ? null : { runId, actionId, summary: event.summary };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
