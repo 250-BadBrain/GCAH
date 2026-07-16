@@ -61,7 +61,9 @@ export function createRawModeLineReader(input: EventEmitter): () => Promise<stri
     };
     const cleanup = (): void => {
       input.off("data", onData);
+      if ("pause" in input && typeof input.pause === "function") input.pause();
     };
+    if ("resume" in input && typeof input.resume === "function") input.resume();
     input.on("data", onData);
   });
 }

@@ -45,6 +45,23 @@ describe("CLI hidden input and entrypoint", () => {
     await expect(promise).resolves.toBe("sk-bag");
   });
 
+  it("resumes and pauses stream input around a hidden read", async () => {
+    const input = new EventEmitter() as EventEmitter & { pause(): void; resume(): void };
+    const calls: string[] = [];
+    input.resume = () => {
+      calls.push("resume");
+    };
+    input.pause = () => {
+      calls.push("pause");
+    };
+    const promise = createRawModeLineReader(input)();
+
+    input.emit("data", Buffer.from("secret\r"));
+
+    await expect(promise).resolves.toBe("secret");
+    expect(calls).toEqual(["resume", "pause"]);
+  });
+
   it("runs argv through the executable entrypoint dependencies", async () => {
     let stored = "";
     const store: CredentialStore = {
