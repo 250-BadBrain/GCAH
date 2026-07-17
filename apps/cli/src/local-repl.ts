@@ -1,0 +1,228 @@
+import type { CredentialStore } from "@gcah/credentials";
+
+import type { InjectableApp, LocalApprovalDecision } from "./local-session.js";
+import { ok, type CliResult } from "./output.js";
+
+export interface LocalReplOptions {
+  workspacePath: string;
+  baseUrl: string;
+  model: string;
+  validation?: string;
+  dataDir?: string;
+}
+
+export interface LocalReplProfileStore {
+  save(profile: { workspacePath: string; baseUrl: string; model: string; validation?: string }): Promise<void>;
+}
+
+export interface LocalReplDeps {
+  credentialStore: CredentialStore;
+  createApp(input: {
+    dataDir: string;
+    credentialStore: CredentialStore;
+    baseUrl: string;
+    model: string;
+    allowedWorkspaceRoots: string[];
+    validationCommand?: { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number };
+  }): Promise<InjectableApp>;
+  promptLine(label: string): Promise<string>;
+  profileStore?: LocalReplProfileStore;
+}
+
+interface ReplState {
+  workspacePath: string;
+  baseUrl: string;
+  model: string;
+  validation: string | undefined;
+  currentRunId: string | null;
+}
+
+export async function runLocalRepl(options: LocalReplOptions, deps: LocalReplDeps): Promise<CliResult> {
+  const state: ReplState = {
+    workspacePath: options.workspacePath,
+    baseUrl: options.baseUrl,
+    model: options.model,
+    validation: options.validation,
+    currentRunId: null
+  };
+  const app = await deps.createApp({
+    dataDir: options.dataDir ?? ".gcah",
+    credentialStore: deps.credentialStore,
+    baseUrl: options.baseUrl,
+    model: options.model,
+    allowedWorkspaceRoots: [options.workspacePath],
+    ...(validationCommand(options.validation) === undefined ? {} : { validationCommand: validationCommand(options.validation)! })
+  });
+  const lines = [
+    "GCAH local interactive session",
+    "Type /help for commands. Type /exit to quit."
+  ];
+  try {
+    lines.push(await registerWorkspace(app, state.workspacePath));
+    while (true) {
+      const input = (await deps.promptLine("gcah>")).trim();
+      if (input === "") continue;
+      if (input.startsWith("/")) {
+        const result = await handleCommand(input, state, app, deps.profileStore);
+        lines.push(...result.lines);
+        if (result.exit) break;
+        continue;
+      }
+      lines.push(...await runTask(app, state, input, deps.promptLine));
+    }
+  } finally {
+    await app.close();
+  }
+  return ok(`${lines.join("\n")}\n`);
+}
+
+async function handleCommand(input: string, state: ReplState, app: InjectableApp, profileStore: LocalReplProfileStore | undefined): Promise<{ lines: string[]; exit: boolean }> {
+  const [command, ...args] = input.split(/\s+/u);
+  if (command === "/exit" || command === "/quit") return { lines: ["bye"], exit: true };
+  if (command === "/help") {
+    return {
+      lines: ["commands: /help /status /workspace <path> /model <name> /base-url <url> /validation pnpm-test /events [run-id] /clear /exit"],
+      exit: false
+    };
+  }
+  if (command === "/status") {
+    return { lines: [`workspace=${state.workspacePath} model=${state.model} validation=${state.validation ?? "none"} active=${state.currentRunId ?? "none"}`], exit: false };
+  }
+  if (command === "/workspace") {
+    const path = args.join(" ");
+    if (path === "") return { lines: ["usage: /workspace <path>"], exit: false };
+    state.workspacePath = path;
+    await profileStore?.save(profile(state));
+    return { lines: [await registerWorkspace(app, state.workspacePath)], exit: false };
+  }
+  if (command === "/model") {
+    const model = args.join(" ");
+    if (model === "") return { lines: ["usage: /model <name>"], exit: false };
+    state.model = model;
+    await profileStore?.save(profile(state));
+    return { lines: [`model=${state.model}`], exit: false };
+  }
+  if (command === "/base-url") {
+    const baseUrl = args.join(" ");
+    if (baseUrl === "") return { lines: ["usage: /base-url <url>"], exit: false };
+    state.baseUrl = baseUrl;
+    await profileStore?.save(profile(state));
+    return { lines: [`base-url=${state.baseUrl}`], exit: false };
+  }
+  if (command === "/validation") {
+    const validation = args[0] ?? "";
+    if (validation !== "pnpm-test") return { lines: ["unsupported validation; allowed: pnpm-test"], exit: false };
+    state.validation = validation;
+    await profileStore?.save(profile(state));
+    return { lines: [`validation=${validation}`], exit: false };
+  }
+  if (command === "/events") {
+    const runId = args[0] ?? state.currentRunId;
+    if (runId === null) return { lines: ["no run selected"], exit: false };
+    const response = await app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
+    return { lines: response.statusCode >= 300 ? ["event fetch failed"] : renderEvents(response.json()), exit: false };
+  }
+  if (command === "/clear") return { lines: ["screen cleared"], exit: false };
+  return { lines: [`unknown command: ${command}`], exit: false };
+}
+
+async function runTask(app: InjectableApp, state: ReplState, task: string, promptLine: (label: string) => Promise<string>): Promise<string[]> {
+  const submitted = await app.inject({ method: "POST", url: "/api/runs", payload: { workspacePath: state.workspacePath, task } });
+  if (submitted.statusCode >= 300) return [`run submit failed: ${safeSummary(submitted.json())}`];
+  let run = parseRun(submitted.json());
+  if (run === null) return ["run submit failed: malformed response"];
+  state.currentRunId = run.id;
+  const lines = [`Run ${run.id} ${run.status}${run.stopReason === null ? "" : ` stop=${run.stopReason}`}`];
+  lines.push(...await fetchRenderedEvents(app, run.id));
+  if (run.status === "WAITING_APPROVAL") {
+    const approval = findApproval(lines);
+    if (approval !== null) {
+      const decision = await promptApproval(promptLine);
+      const approved = await app.inject({
+        method: "POST",
+        url: `/api/runs/${run.id}/approvals/${approval}`,
+        payload: { decision, reason: "local repl approval" }
+      });
+      if (approved.statusCode >= 300) return [...lines, `approval failed: ${safeSummary(approved.json())}`];
+      run = parseRun(approved.json()) ?? run;
+      lines.push(`approval ${decision}`);
+      lines.push(`Run ${run.id} ${run.status}${run.stopReason === null ? "" : ` stop=${run.stopReason}`}`);
+      lines.push(...await fetchRenderedEvents(app, run.id));
+    }
+  }
+  lines.push(summaryFor(run, lines));
+  return lines;
+}
+
+async function registerWorkspace(app: InjectableApp, path: string): Promise<string> {
+  const response = await app.inject({ method: "POST", url: "/api/workspaces", payload: { path } });
+  if (response.statusCode >= 300) return `workspace registration failed: ${safeSummary(response.json())}`;
+  return `workspace=${path}`;
+}
+
+async function fetchRenderedEvents(app: InjectableApp, runId: string): Promise<string[]> {
+  const events = await app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
+  if (events.statusCode >= 300) return ["event fetch failed"];
+  return renderEvents(events.json());
+}
+
+function renderEvents(value: unknown): string[] {
+  if (!isRecord(value) || !Array.isArray(value.events)) return [];
+  return value.events.flatMap((event) => {
+    if (!isRecord(event) || typeof event.type !== "string" || typeof event.summary !== "string") return [];
+    return [`[${event.type}] ${clip(safeText(event.summary))}`];
+  });
+}
+
+async function promptApproval(promptLine: (label: string) => Promise<string>): Promise<LocalApprovalDecision> {
+  const answer = (await promptLine("approve once [o], approve session [s], reject [r]:")).trim().toLowerCase();
+  if (answer === "o" || answer === "once") return "approve_once";
+  if (answer === "s" || answer === "session") return "approve_session";
+  return "reject";
+}
+
+function findApproval(lines: string[]): string | null {
+  const joined = lines.join("\n");
+  return joined.match(/action:[^\s\]]+/u)?.[0] ?? null;
+}
+
+function summaryFor(run: { status: string; stopReason: string | null }, lines: string[]): string {
+  const last = [...lines].reverse().find((line: string) => line.startsWith("[tool.result]") || line.startsWith("[validation."));
+  if (run.status === "COMPLETED" || run.stopReason === "COMPLETED") return "summary: completed";
+  if (run.stopReason === "BUDGET_EXHAUSTED") return `summary: budget exhausted${last === undefined ? "" : `; last=${last}`}`;
+  if (run.stopReason === "UNFIXABLE_FAILURE") return `summary: model or tool protocol failed${last === undefined ? "" : `; last=${last}`}`;
+  return `summary: ${run.status}${run.stopReason === null ? "" : ` ${run.stopReason}`}`;
+}
+
+function parseRun(value: unknown): { id: string; status: string; stopReason: string | null } | null {
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.status !== "string") return null;
+  return { id: value.id, status: value.status, stopReason: typeof value.stopReason === "string" ? value.stopReason : null };
+}
+
+function validationCommand(validation: string | undefined): { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number } | undefined {
+  if (validation === "pnpm-test") return { id: "test", executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 30000 };
+  return undefined;
+}
+
+function profile(state: ReplState): { workspacePath: string; baseUrl: string; model: string; validation?: string } {
+  return { workspacePath: state.workspacePath, baseUrl: state.baseUrl, model: state.model, ...(state.validation === undefined ? {} : { validation: state.validation }) };
+}
+
+function safeSummary(value: unknown): string {
+  return clip(safeText(JSON.stringify(value)));
+}
+
+function safeText(value: string): string {
+  return value
+    .replace(/sk-[A-Za-z0-9_-]+/gu, "<redacted>")
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gu, "Bearer <redacted>")
+    .replace(/api[_-]?key\s*=\s*[^\s]+/giu, "<redacted>");
+}
+
+function clip(value: string): string {
+  return value.length > 500 ? `${value.slice(0, 500)}...` : value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

@@ -1529,4 +1529,6 @@ Acceptance:
 
 **Non-goals:** No full-screen curses UI, no remote push/PR/release, no Cloudflare login/deployment, no arbitrary shell, no automatic dependency installation, no multi-workspace concurrent agent execution, no background daemon, and no public-demo real-key path.
 
-**Status:** Planned by human request on 2026-07-17. **Commit:** —.
+**Status:** Implemented in branch `feat/local-agent-repl`; reviewer gate skipped by human instruction. Local verification passed. **Commit:** current T30 implementation commit on this branch.
+
+**Implementation note:** This implementation provides the persistent `gcah>` REPL, repeated prompts, slash commands, persisted event rendering, inline approval routing, and clearer summaries. The existing local production `/api/runs` endpoint still executes each AgentLoop synchronously, so events are rendered from persisted repository state after each run returns rather than streamed concurrently while the run is executing. A future server-side async run endpoint would be required for true real-time event streaming during long provider calls.

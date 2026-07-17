@@ -1584,3 +1584,24 @@
 - Notes:
   - No real API key was read, displayed, logged, or used during automated verification.
   - No Cloudflare login, deployment, DNS, remote push, or release operation was performed.
+
+## 2026-07-17 - T30 Persistent Local Agent REPL
+
+- Scope: T30 opencode-style persistent local terminal session.
+- Agent: OpenAI Codex.
+- Branch/worktree: `feat/local-agent-repl` at `E:/Desktop/GCAH-local-agent-repl`.
+- Base commit: `43e7e52`.
+- Implemented:
+  - Added `apps/cli/src/local-repl.ts` with a persistent `gcah>` loop.
+  - `gcah local` without `--task` now enters REPL mode; `--task` remains one-shot mode for scripts.
+  - Added slash commands: `/help`, `/status`, `/workspace`, `/model`, `/base-url`, `/validation`, `/events`, `/clear`, `/exit`, and `/quit`.
+  - Added repeated task submission through the existing local production app injection path.
+  - Added persisted event rendering, bounded/redacted terminal output, inline approval DTO submission, and clearer final summaries for common stop reasons.
+  - Updated README with REPL usage, troubleshooting, and `.gcah/` runtime data guidance.
+- Focused validation before final full verification:
+  - `pnpm --filter @gcah/cli test -- local-repl.test.ts server.test.ts local-session.test.ts` exited 0.
+  - `pnpm exec tsc --noEmit -p apps/cli/tsconfig.json --pretty false` exited 0.
+  - `pnpm --filter @gcah/cli test` exited 0 after 11 files and 23 tests.
+- Limitations:
+  - Current local production `/api/runs` still executes synchronously, so REPL renders repository-backed events after each run returns rather than true concurrent live streaming. The REPL remains persistent and supports repeated prompts without restarting.
+  - T30g protocol-repair is not yet implemented in AgentLoop; provider `PROTOCOL_ERROR` is summarized clearly but not repaired.

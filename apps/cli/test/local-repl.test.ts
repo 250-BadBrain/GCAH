@@ -1,0 +1,98 @@
+import { describe, expect, it } from "vitest";
+
+import { runLocalRepl, type LocalReplDeps } from "../src/local-repl.js";
+import type { CredentialStore } from "@gcah/credentials";
+import type { InjectableApp } from "../src/local-session.js";
+
+function credentialStore(): CredentialStore {
+  return {
+    async status(provider) {
+      return { available: true, provider, source: "os", backend: "fake", updatedAt: null };
+    },
+    async set() {},
+    async update() {},
+    async clear() {},
+    async withCredential(_provider, callback) {
+      return callback("sk-test-secret");
+    }
+  };
+}
+
+describe("local REPL", () => {
+  it("runs repeated tasks, renders persisted events, supports status, and exits cleanly", async () => {
+    const requests: unknown[] = [];
+    let closed = false;
+    const app: InjectableApp = {
+      async inject(request) {
+        requests.push(request);
+        if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
+        if (request.url === "/api/runs" && isTask(request.payload, "first")) return { statusCode: 201, json: () => ({ id: "run-1", status: "COMPLETED", stopReason: "COMPLETED" }) };
+        if (request.url === "/api/runs" && isTask(request.payload, "second")) return { statusCode: 201, json: () => ({ id: "run-2", status: "STOPPED", stopReason: "BUDGET_EXHAUSTED" }) };
+        if (request.url === "/api/runs/run-1/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "tool.result", summary: "patched sk-test-secret" }] }) };
+        if (request.url === "/api/runs/run-2/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "validation.fail", summary: "command failed 1" }] }) };
+        return { statusCode: 404, json: () => ({ error: "missing" }) };
+      },
+      async close() {
+        closed = true;
+      }
+    };
+    const inputs = ["first", "/status", "second", "/exit"];
+    const deps: LocalReplDeps = {
+      credentialStore: credentialStore(),
+      createApp: async () => app,
+      promptLine: async () => inputs.shift() ?? "/exit"
+    };
+
+    const result = await runLocalRepl({ workspacePath: "E:/project", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" }, deps);
+
+    expect(result.stdout).toContain("GCAH local interactive session");
+    expect(result.stdout).toContain("Run run-1 COMPLETED stop=COMPLETED");
+    expect(result.stdout).toContain("[tool.result] patched <redacted>");
+    expect(result.stdout).toContain("workspace=E:/project model=Qwen-Coder validation=pnpm-test active=run-1");
+    expect(result.stdout).toContain("Run run-2 STOPPED stop=BUDGET_EXHAUSTED");
+    expect(result.stdout).toContain("summary: budget exhausted");
+    expect(closed).toBe(true);
+    expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "first" } });
+    expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "second" } });
+  });
+
+  it("approves waiting runs through the existing approval endpoint", async () => {
+    const requests: unknown[] = [];
+    const app: InjectableApp = {
+      async inject(request) {
+        requests.push(request);
+        if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
+        if (request.url === "/api/runs") return { statusCode: 201, json: () => ({ id: "run-approval", status: "WAITING_APPROVAL", stopReason: null }) };
+        if (request.url === "/api/runs/run-approval/events?cursor=0") {
+          return { statusCode: 200, json: () => ({ events: [{ type: "approval.required", summary: "approval required for action:run-approval:1" }] }) };
+        }
+        if (request.url === "/api/runs/run-approval/approvals/action:run-approval:1") return { statusCode: 200, json: () => ({ id: "run-approval", status: "COMPLETED", stopReason: "COMPLETED" }) };
+        return { statusCode: 404, json: () => ({}) };
+      },
+      async close() {}
+    };
+    const inputs = ["mutate", "o", "/exit"];
+
+    const result = await runLocalRepl({
+      workspacePath: "E:/project",
+      baseUrl: "https://gateway.example/v1",
+      model: "Qwen-Coder",
+      validation: "pnpm-test"
+    }, {
+      credentialStore: credentialStore(),
+      createApp: async () => app,
+      promptLine: async () => inputs.shift() ?? "/exit"
+    });
+
+    expect(result.stdout).toContain("approval approve_once");
+    expect(requests).toContainEqual({
+      method: "POST",
+      url: "/api/runs/run-approval/approvals/action:run-approval:1",
+      payload: { decision: "approve_once", reason: "local repl approval" }
+    });
+  });
+});
+
+function isTask(value: unknown, task: string): boolean {
+  return typeof value === "object" && value !== null && "task" in value && value.task === task;
+}

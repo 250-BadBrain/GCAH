@@ -3,6 +3,7 @@ import type { CredentialStore } from "@gcah/credentials";
 import { createFetchTransport, defaultTransport, type CliTransport } from "./client.js";
 import { createHiddenInputPrompt, createRawModeLineReader } from "./hidden-input.js";
 import { createFileLocalProfileStore, type LocalProfileStore } from "./local-profile.js";
+import { runLocalRepl } from "./local-repl.js";
 import { createPromptApprovalDecider, runEmbeddedLocalSession } from "./local-session.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
 
@@ -16,6 +17,7 @@ export interface RunCliDependencies {
   promptLine?: (label: string) => Promise<string>;
   localProfileStore?: LocalProfileStore;
   runLocalSession?: (options: LocalSessionOptions) => Promise<CliResult>;
+  runLocalRepl?: (options: LocalSessionOptions) => Promise<CliResult>;
 }
 
 export interface LocalSessionOptions {
@@ -60,10 +62,14 @@ async function localCommand(args: readonly string[], deps: RunCliDependencies): 
   const baseUrl = option(args, "--base-url") ?? profile?.baseUrl ?? await prompt("Base URL");
   const model = option(args, "--model") ?? profile?.model ?? await prompt("Model");
   const validation = option(args, "--validation") ?? profile?.validation ?? "pnpm-test";
-  const task = option(args, "--task") ?? await prompt("Task");
+  const task = option(args, "--task") ?? undefined;
   if (workspacePath === "" || baseUrl === "" || model === "") return fail("missing local options\n");
   if (!isAllowedLocalValidation(validation)) return fail("unsupported local validation\n", 2);
   await profileStore.save({ workspacePath, baseUrl, model, validation });
+  if (task === undefined) {
+    if (deps.runLocalRepl !== undefined) return deps.runLocalRepl({ workspacePath, baseUrl, model, validation });
+    return defaultLocalRepl({ workspacePath, baseUrl, model, validation }, deps, profileStore);
+  }
   if (deps.runLocalSession !== undefined) return deps.runLocalSession({ workspacePath, baseUrl, model, task, validation });
   return defaultLocalSession({ workspacePath, baseUrl, model, task, validation }, deps);
 }
@@ -76,6 +82,17 @@ async function defaultLocalSession(options: LocalSessionOptions, deps?: RunCliDe
     credentialStore: store,
     createApp: async (input) => createLocalProductionApp(input),
     decideApproval: createPromptApprovalDecider(deps?.promptLine ?? defaultPromptLine)
+  });
+}
+
+async function defaultLocalRepl(options: LocalSessionOptions, deps: RunCliDependencies, profileStore: LocalProfileStore): Promise<CliResult> {
+  const store = deps.credentialStore ?? await createDefaultCredentialStore();
+  const { createLocalProductionApp } = await import("@gcah/server");
+  return runLocalRepl(options, {
+    credentialStore: store,
+    createApp: async (input) => createLocalProductionApp(input),
+    promptLine: deps.promptLine ?? defaultPromptLine,
+    profileStore
   });
 }
 
