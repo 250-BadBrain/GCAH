@@ -28,7 +28,7 @@ describe("local REPL", () => {
         if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
         if (request.url === "/api/runs" && isTask(request.payload, "first")) return { statusCode: 201, json: () => ({ id: "run-1", status: "COMPLETED", stopReason: "COMPLETED" }) };
         if (request.url === "/api/runs" && isTask(request.payload, "second")) return { statusCode: 201, json: () => ({ id: "run-2", status: "STOPPED", stopReason: "BUDGET_EXHAUSTED" }) };
-        if (request.url === "/api/runs/run-1/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "tool.result", summary: "patched sk-test-secret" }] }) };
+        if (request.url === "/api/runs/run-1/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "tool.result", summary: "sha256=abc123\nexport const secret = 'sk-test-secret';" }] }) };
         if (request.url === "/api/runs/run-2/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "validation.fail", summary: "command failed 1" }] }) };
         return { statusCode: 404, json: () => ({ error: "missing" }) };
       },
@@ -52,10 +52,13 @@ describe("local REPL", () => {
     expect(result.stdout).toBe("");
     expect(written).toContain("GCAH local interactive session");
     expect(written).toContain("Run run-1 COMPLETED stop=COMPLETED");
-    expect(written).toContain("[tool.result] patched <redacted>");
-    expect(written).toContain("workspace=E:/project model=Qwen-Coder validation=pnpm-test active=run-1");
+    expect(written).toContain("Tool: read file");
+    expect(written).toContain("Status:");
+    expect(written).toContain("  workspace:  E:/project");
+    expect(written).toContain("  model:      Qwen-Coder");
     expect(written).toContain("Run run-2 STOPPED stop=BUDGET_EXHAUSTED");
-    expect(written).toContain("summary: budget exhausted; last=[validation.fail] command failed 1");
+    expect(written).toContain("Validation failed: command failed 1");
+    expect(written).toContain("summary: budget exhausted; last=Validation failed: command failed 1");
     expect(closed).toBe(true);
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "first" } });
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "second" } });
@@ -100,6 +103,34 @@ describe("local REPL", () => {
       url: "/api/runs/run-approval/approvals/action:run-approval:1",
       payload: { decision: "approve_once", reason: "local repl approval" }
     });
+  });
+
+  it("renders help as multiple lines and clear as a terminal control sequence", async () => {
+    const written: string[] = [];
+    const inputs = ["/help", "/clear", "/exit"];
+    await runLocalRepl({
+      workspacePath: "E:/project",
+      baseUrl: "https://gateway.example/v1",
+      model: "Qwen-Coder",
+      validation: "pnpm-test"
+    }, {
+      credentialStore: credentialStore(),
+      createApp: async () => ({
+        async inject(request) {
+          if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
+          return { statusCode: 404, json: () => ({}) };
+        },
+        async close() {}
+      }),
+      promptLine: async () => inputs.shift() ?? "/exit",
+      writeLine: (line) => {
+        written.push(line);
+      }
+    });
+
+    expect(written).toContain("Commands:");
+    expect(written).toContain("  /status               Show workspace, model, validation, and current run.");
+    expect(written).toContain("\u001b[2J\u001b[H");
   });
 
   it("recreates the embedded app when the workspace changes", async () => {

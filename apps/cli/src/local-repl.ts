@@ -99,12 +99,33 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
   if (command === "/exit" || command === "/quit") return { lines: ["bye"], exit: true };
   if (command === "/help") {
     return {
-      lines: ["commands: /help /status /workspace <path> /model <name> /base-url <url> /validation pnpm-test /events [run-id] /clear /exit"],
+      lines: [
+        "Commands:",
+        "  /help                 Show this help.",
+        "  /status               Show workspace, model, validation, and current run.",
+        "  /workspace <path>     Switch workspace and save it to the local profile.",
+        "  /model <name>         Change model for future runs.",
+        "  /base-url <url>       Change OpenAI-compatible endpoint for future runs.",
+        "  /validation pnpm-test Use the pnpm test validation preset.",
+        "  /events [run-id]      Show the current or selected run timeline.",
+        "  /clear                Clear the terminal screen.",
+        "  /exit, /quit          Exit the local session."
+      ],
       exit: false
     };
   }
   if (command === "/status") {
-    return { lines: [`workspace=${state.workspacePath} model=${state.model} validation=${state.validation ?? "none"} active=${state.currentRunId ?? "none"}`], exit: false };
+    return {
+      lines: [
+        "Status:",
+        `  workspace:  ${state.workspacePath}`,
+        `  base-url:   ${state.baseUrl}`,
+        `  model:      ${state.model}`,
+        `  validation: ${state.validation ?? "none"}`,
+        `  active run: ${state.currentRunId ?? "none"}`
+      ],
+      exit: false
+    };
   }
   if (command === "/workspace") {
     const path = args.join(" ");
@@ -151,7 +172,7 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
     const response = await runtime.app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
     return { lines: response.statusCode >= 300 ? ["event fetch failed"] : renderEvents(response.json()), exit: false };
   }
-  if (command === "/clear") return { lines: ["screen cleared"], exit: false };
+  if (command === "/clear") return { lines: ["\u001b[2J\u001b[H"], exit: false };
   return { lines: [`unknown command: ${command}`], exit: false };
 }
 
@@ -199,8 +220,38 @@ function renderEvents(value: unknown): string[] {
   if (!isRecord(value) || !Array.isArray(value.events)) return [];
   return value.events.flatMap((event) => {
     if (!isRecord(event) || typeof event.type !== "string" || typeof event.summary !== "string") return [];
-    return [`[${event.type}] ${clip(safeText(event.summary))}`];
+    const rendered = renderEvent(event.type, event.summary);
+    return rendered === null ? [] : [rendered];
   });
+}
+
+function renderEvent(type: string, summary: string): string | null {
+  const safe = safeText(summary);
+  if (type === "run.started") return `Task: ${clipOneLine(safe)}`;
+  if (type === "action.proposed") return `Action: ${safe.replace(/ action$/u, "")}`;
+  if (type === "governance.decision") return safe.includes("DENY") || safe.includes("REQUIRE_APPROVAL") ? `Governance: ${clipOneLine(safe)}` : null;
+  if (type === "approval.required") return `Approval required: ${clipOneLine(safe)}`;
+  if (type === "approval.approved") return "Approval: approved";
+  if (type === "approval.rejected") return "Approval: rejected";
+  if (type === "validation.pass") return `Validation: ${clipOneLine(safe)}`;
+  if (type === "validation.fail") return `Validation failed: ${clipOneLine(safe)}`;
+  if (type === "finish.blocked") return `Finish blocked: ${clipOneLine(safe)}`;
+  if (type === "run.completed") return `Agent: ${clipOneLine(safe)}`;
+  if (type === "run.failed") return `Run failed: ${clipOneLine(safe)}`;
+  if (type === "run.stopped") return `Run stopped: ${clipOneLine(safe)}`;
+  if (type === "tool.result") return renderToolResult(safe);
+  return `${type}: ${clipOneLine(safe)}`;
+}
+
+function renderToolResult(summary: string): string {
+  if (summary.startsWith("sha256=")) {
+    return "Tool: read file";
+  }
+  if (summary === "command passed") return "Tool: validation command passed";
+  if (summary.startsWith("command failed")) return `Tool: validation command failed (${summary})`;
+  if (summary.startsWith("patched ")) return `Tool: ${summary}`;
+  if (summary.startsWith("REQUIRE_APPROVAL")) return `Tool: ${summary}`;
+  return `Tool: ${clipOneLine(summary)}`;
 }
 
 async function promptApproval(promptLine: (label: string) => Promise<string>): Promise<LocalApprovalDecision> {
@@ -216,7 +267,7 @@ function findApproval(lines: string[]): string | null {
 }
 
 function summaryFor(run: { status: string; stopReason: string | null }, lines: string[]): string {
-  const last = [...lines].reverse().find((line: string) => line.startsWith("[tool.result]") || line.startsWith("[validation."));
+  const last = [...lines].reverse().find((line: string) => line.startsWith("Tool:") || line.startsWith("Validation"));
   if (run.status === "COMPLETED" || run.stopReason === "COMPLETED") return "summary: completed";
   if (run.stopReason === "BUDGET_EXHAUSTED") return `summary: budget exhausted${last === undefined ? "" : `; last=${last}`}`;
   if (run.stopReason === "UNFIXABLE_FAILURE") return `summary: model or tool protocol failed${last === undefined ? "" : `; last=${last}`}`;
@@ -250,6 +301,10 @@ function safeText(value: string): string {
 
 function clip(value: string): string {
   return value.length > 500 ? `${value.slice(0, 500)}...` : value;
+}
+
+function clipOneLine(value: string): string {
+  return clip(value.replace(/\s+/gu, " ").trim());
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
