@@ -4,5 +4,6 @@ apps/server/dist-demo-web/
 .env
 .env.*
 coverage/
+.gcah/
 .DS_Store
 *.log

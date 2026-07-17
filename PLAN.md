@@ -1282,6 +1282,7 @@ Each unsplit T-task is one atomic fresh-subagent execution unit. For split tasks
 | Cloudflare Pages/Workers/Wrangler, D1 migration, manual domain/HTTPS steps, final security | S02, T18d, T27 |
 | Local production real-key smoke path and runtime hardening | T28 |
 | Single-terminal interactive local agent UX | T29 |
+| Persistent opencode-style terminal REPL and live agent console | T30 |
 
 ## 7. Principal execution risks and gates
 
@@ -1346,4 +1347,186 @@ Approval scope: PR-01 is complete and merged. Human rolling authorization now co
 
 **Non-goals:** No Cloudflare login/deployment, no remote push/release, no public-demo real-key path, no arbitrary shell, no dependency installation automation, no multi-workspace concurrent run orchestration.
 
-**Status:** Implemented in branch `feat/interactive-local-agent`; local verification passed, pending review and merge. **Commits:** `0a7e342`, `bf2c9d7`, `665070e`, `65df5c9`, `334146a`, `3f68dd6`, `16f7fcd`, `5be9d75`, `1e1ed1e`, `9194ffb`.
+**Status:** Merged to `main` by human instruction with reviewer gate skipped. Local verification passed. **Merge commit:** `74e9578`. **Commits:** `0a7e342`, `bf2c9d7`, `665070e`, `65df5c9`, `334146a`, `3f68dd6`, `16f7fcd`, `5be9d75`, `1e1ed1e`, `9194ffb`, `8e99ed6`.
+
+### Task T30: Persistent interactive local agent REPL
+
+**Goal:** Turn the current one-shot `gcah local --task ...` command into an opencode-style persistent terminal session where a user can configure provider/model/workspace once, repeatedly enter prompts, watch live agent events, approve actions, inspect status, and continue working without restarting the process.
+
+**Dependencies:** T20, T21, T28, T29.
+
+**Recommended PR/worktree:** PR-12 / `feat/local-agent-repl` at `E:/Desktop/GCAH-local-agent-repl`.
+
+**User command:** `gcah local` / `node apps/cli/dist/src/bin.js local` enters REPL mode when `--task` is omitted. `--task` remains a non-interactive one-shot mode for scripts and regression tests.
+
+**Architecture:** Keep the existing local production composition as the only execution path. Add a thin terminal session layer in the CLI that owns prompt input, command parsing, event streaming/polling, approval prompts, and final summaries. Do not copy AgentLoop, governance, tool execution, validation, credential, or repository logic.
+
+**Files expected to change:**
+
+- `apps/cli/src/main.ts`: route `local` into REPL mode when `--task` is absent; keep one-shot behavior when `--task` is present.
+- `apps/cli/src/local-repl.ts`: new REPL session loop, slash command parser, terminal rendering, event polling, approval prompt coordination, and lifecycle cleanup.
+- `apps/cli/src/local-session.ts`: expose reusable run submission/event polling helpers currently embedded in one-shot session logic; preserve existing one-shot API.
+- `apps/cli/src/local-profile.ts`: optionally remember last selected workspace/model/validation preference from REPL changes; never store API keys.
+- `apps/cli/test/local-repl.test.ts`: scripted prompt/input tests for repeated tasks, slash commands, live events, approval flow, and graceful exit.
+- `apps/cli/test/local-session.test.ts`: regression coverage for one-shot mode after helper extraction.
+- `apps/server/src/local-production.ts`: only change if a small API response improvement is required; no alternate execution path.
+- `README.md`: document REPL usage, slash commands, approval keys, known limits, and safety boundaries.
+- `AGENT_LOG.md`: record implementation commits and validation evidence.
+
+**T30a - REPL mode dispatch.** When `local` is invoked without `--task`, start an interactive session instead of returning `missing local task`. When `--task` is present, keep current one-shot behavior exactly so existing tests and scripted demos remain stable.
+
+Acceptance:
+- `node apps/cli/dist/src/bin.js local --task "..."` still exits after one run.
+- `node apps/cli/dist/src/bin.js local` prompts for missing profile fields and then shows a persistent prompt such as `gcah>`.
+- No API key is accepted as an argument, stored in profile, printed, or included in browser/server state.
+
+Tests:
+- Add a CLI unit test proving `local` without `--task` calls the REPL dependency.
+- Add a CLI unit test proving `local --task` calls the existing one-shot dependency.
+
+**T30b - Slash command parser.** Add a small parser for terminal commands:
+
+- `/help`: list available commands.
+- `/status`: show current workspace, model, validation preset, active run id/status if any.
+- `/workspace <path>`: canonicalize/register a workspace through the same local production app route; update non-secret profile.
+- `/model <name>`: change model for future runs and update profile.
+- `/base-url <url>`: change OpenAI-compatible base URL for future runs and update profile.
+- `/validation pnpm-test`: select the allowed validation preset.
+- `/events [run-id]`: print persisted events for the current or specified run.
+- `/clear`: clear terminal display if supported, otherwise no-op with no error.
+- `/exit` and `/quit`: close the embedded app and end the process cleanly.
+
+Acceptance:
+- Unknown slash commands produce a helpful error and keep the REPL alive.
+- Commands never bypass workspace fence, credential resolver, governance, approval, or validation.
+- `/base-url` and `/model` change configuration only for later runs; they do not mutate an active run.
+
+Tests:
+- Parser unit tests for command/argument handling.
+- Session tests for `/workspace`, `/model`, `/status`, `/exit`.
+
+**T30c - Repeated task loop.** Treat every non-empty non-slash line as a new task for the current workspace. Submit it through the existing local production REST route or in-process injection path, wait until the run reaches a terminal or waiting state, then return to the prompt instead of exiting.
+
+Acceptance:
+- A user can run task A, return to `gcah>`, run task B in the same workspace, and inspect both runs.
+- One active run per workspace remains enforced; entering another task while a run is active must print a clear message and avoid starting a second run.
+- Empty input is ignored.
+
+Tests:
+- Scripted prompt test submits two tasks and asserts two `/api/runs` submissions.
+- Active-run test returns a friendly message when the repository reports `WORKSPACE_HAS_ACTIVE_RUN`.
+
+**T30d - Live event rendering.** Replace end-only output with live polling or SSE-backed rendering. The REPL should print each persisted event once, in cursor order, while the run is active.
+
+Minimum rendered events:
+- `run.started`
+- `action.proposed`
+- `governance.decision`
+- `approval.required`
+- `approval.approved` / `approval.rejected`
+- `tool.result`
+- `validation.pass` / `validation.fail`
+- `finish.blocked`
+- `run.stopped` / `run.failed` / completed status
+
+Acceptance:
+- Events are read from repository-backed REST/SSE responses, not from a client-side fake list.
+- Reconnect/poll replay uses cursor/next cursor and does not duplicate events.
+- Large tool outputs are clipped in terminal rendering without altering persisted data.
+- Secret-shaped substrings are redacted before printing.
+
+Tests:
+- Fake app returns event batches with cursors; renderer prints each event once.
+- Redaction test proves `sk-test-sentinel` and bearer-token shaped values do not appear in stdout/stderr.
+
+**T30e - Inline approval UX.** When a run reaches `WAITING_APPROVAL` or an `approval.required` event appears, pause event polling and show the normalized action id, event summary, risk/governance context available from persisted events, and a prompt: `approve once [o], approve session [s], reject [r]:`.
+
+Acceptance:
+- `o` sends `approve_once` to the existing approval endpoint.
+- `s` sends `approve_session`.
+- `r` or empty input sends `reject`.
+- After approval, the same run resumes and live event rendering continues.
+- Rejection is fed back through the existing AgentLoop path; no client-side fake continuation is generated.
+
+Tests:
+- Scripted approval test proves approval endpoint receives the expected DTO and resumed events are rendered.
+- Rejection test proves the run remains governed by the existing approval/feedback path.
+
+**T30f - Better terminal failure summaries.** Improve user-facing output for common terminal states:
+
+- `COMPLETED`: show validation success and changed/read file hints when available.
+- `BUDGET_EXHAUSTED`: show last action, last validation/tool result, and a concrete retry suggestion.
+- `PROTOCOL_ERROR`: show that the model returned an invalid tool/finish response and suggest retrying with a coder model or a stricter prompt.
+- `VALIDATION_FAILED`: show the validation command summary and the next useful local command, such as `pnpm test`.
+- `WORKSPACE_HAS_ACTIVE_RUN`, `WORKSPACE_NOT_REGISTERED`, `WORKSPACE_DENIED`: show exact safe remediation.
+
+Acceptance:
+- The CLI no longer collapses all run-start failures into `local run submit failed`.
+- Error detail remains redacted and bounded.
+- Summaries do not leak API keys or raw provider responses.
+
+Tests:
+- Unit tests for each summary category using fake REST responses.
+- Snapshot-style tests are allowed only for small stable strings; avoid brittle full transcript snapshots.
+
+**T30g - Protocol recovery for post-validation model drift.** If validation has passed and the next LLM response causes a recoverable `PROTOCOL_ERROR`, attempt one bounded protocol-repair turn asking for a valid `finish` action before failing the run. This must live in the formal LLM/AgentLoop path, not in the terminal client.
+
+Acceptance:
+- At most one protocol-repair attempt per run after validation pass.
+- Repair prompt contains no secrets and no raw oversized tool output.
+- If repair succeeds, the run can complete with `COMPLETED`.
+- If repair fails, terminal summary clearly reports `PROTOCOL_ERROR` and preserves the failed run evidence.
+
+Tests:
+- Core or LLM adapter test where a model returns invalid text after validation pass, then valid finish on repair.
+- Test proving repeated malformed responses do not loop indefinitely.
+
+**T30h - Session lifecycle and cleanup.** Ensure Ctrl+C, `/exit`, app close, and process errors cleanly close the embedded Fastify app/repositories and leave no active terminal prompt promises.
+
+Acceptance:
+- `/exit` closes the app exactly once.
+- Ctrl+C exits with a nonzero or conventional interrupted status without corrupting SQLite.
+- A failed run returns to prompt unless the server/app itself cannot continue.
+
+Tests:
+- Injected fake app counts `close()` calls.
+- Scripted input cancellation test exits without unhandled rejection.
+
+**T30i - Documentation and demo script.** Update README with a teacher-friendly terminal demo:
+
+1. Build.
+2. Store credential safely.
+3. Create or choose a sample workspace with `package.json` and `pnpm test`.
+4. Start `gcah local`.
+5. Enter a task.
+6. Approve a mutation if requested.
+7. Watch live read/patch/validation events.
+8. Enter a second task.
+9. Exit and clear credential.
+
+Acceptance:
+- Docs explicitly state public demo remains Mock-only.
+- Docs state `.gcah/` local runtime data must not be committed.
+- Docs include troubleshooting for missing `package.json`, `pnpm test` failure, and provider `PROTOCOL_ERROR`.
+
+**T30j - Verification.** Run the normal local verification suite without real network or real keys:
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+git diff --check
+```
+
+Acceptance:
+- Default CI remains fake-provider/mock-only and never requires a real API key.
+- Public demo still rejects real-key paths and arbitrary workspace uploads.
+- Real course-provider smoke remains manual only; do not automate paid calls.
+
+**Acceptance:** A teacher can run `gcah local`, see an interactive prompt, submit one task, watch live events as the real local production AgentLoop reads/patches/validates, approve or reject required actions inline, receive a clear final summary, submit a second prompt without restarting, and exit cleanly. One-shot `--task` mode continues to work for scripts. No real API key is stored in config/profile/logs/events/SQLite/browser state, and public demo remains Mock-only.
+
+**Non-goals:** No full-screen curses UI, no remote push/PR/release, no Cloudflare login/deployment, no arbitrary shell, no automatic dependency installation, no multi-workspace concurrent agent execution, no background daemon, and no public-demo real-key path.
+
+**Status:** Planned by human request on 2026-07-17. **Commit:** —.
