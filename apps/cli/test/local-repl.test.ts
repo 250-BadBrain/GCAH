@@ -101,6 +101,50 @@ describe("local REPL", () => {
       payload: { decision: "approve_once", reason: "local repl approval" }
     });
   });
+
+  it("recreates the embedded app when the workspace changes", async () => {
+    const allowedRoots: string[][] = [];
+    let closed = 0;
+    const inputs = ["/workspace E:/real-project", "/exit"];
+    const written: string[] = [];
+
+    const result = await runLocalRepl({
+      workspacePath: "E:/missing-project",
+      baseUrl: "https://gateway.example/v1",
+      model: "Qwen-Coder",
+      validation: "pnpm-test"
+    }, {
+      credentialStore: credentialStore(),
+      createApp: async (input) => {
+        allowedRoots.push(input.allowedWorkspaceRoots);
+        const root = input.allowedWorkspaceRoots[0];
+        return {
+          async inject(request) {
+            if (request.url === "/api/workspaces" && root === "E:/missing-project") {
+              return { statusCode: 500, json: () => ({ error: "ENOENT" }) };
+            }
+            if (request.url === "/api/workspaces" && root === "E:/real-project") {
+              return { statusCode: 201, json: () => ({ path: "E:/real-project" }) };
+            }
+            return { statusCode: 404, json: () => ({}) };
+          },
+          async close() {
+            closed += 1;
+          }
+        };
+      },
+      promptLine: async () => inputs.shift() ?? "/exit",
+      writeLine: (line) => {
+        written.push(line);
+      }
+    });
+
+    expect(result.stdout).toBe("");
+    expect(allowedRoots).toEqual([["E:/missing-project"], ["E:/real-project"]]);
+    expect(written).toContain("workspace registration failed: {\"error\":\"ENOENT\"}");
+    expect(written).toContain("workspace=E:/real-project");
+    expect(closed).toBe(2);
+  });
 });
 
 function isTask(value: unknown, task: string): boolean {

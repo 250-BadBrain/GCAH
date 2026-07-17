@@ -38,6 +38,10 @@ interface ReplState {
   currentRunId: string | null;
 }
 
+interface ReplRuntime {
+  app: InjectableApp;
+}
+
 export async function runLocalRepl(options: LocalReplOptions, deps: LocalReplDeps): Promise<CliResult> {
   const state: ReplState = {
     workspacePath: options.workspacePath,
@@ -46,14 +50,7 @@ export async function runLocalRepl(options: LocalReplOptions, deps: LocalReplDep
     validation: options.validation,
     currentRunId: null
   };
-  const app = await deps.createApp({
-    dataDir: options.dataDir ?? ".gcah",
-    credentialStore: deps.credentialStore,
-    baseUrl: options.baseUrl,
-    model: options.model,
-    allowedWorkspaceRoots: [options.workspacePath],
-    ...(validationCommand(options.validation) === undefined ? {} : { validationCommand: validationCommand(options.validation)! })
-  });
+  const runtime: ReplRuntime = { app: await createWorkspaceApp(options, deps, state) };
   const lines: string[] = [];
   const emit = (line: string): void => {
     lines.push(line);
@@ -62,25 +59,42 @@ export async function runLocalRepl(options: LocalReplOptions, deps: LocalReplDep
   emit("GCAH local interactive session");
   emit("Type /help for commands. Type /exit to quit.");
   try {
-    emit(await registerWorkspace(app, state.workspacePath));
+    emit(await registerWorkspace(runtime.app, state.workspacePath));
     while (true) {
       const input = (await deps.promptLine("gcah>")).trim();
       if (input === "") continue;
       if (input.startsWith("/")) {
-        const result = await handleCommand(input, state, app, deps.profileStore);
+        const result = await handleCommand(input, state, runtime, options, deps);
         for (const line of result.lines) emit(line);
         if (result.exit) break;
         continue;
       }
-      for (const line of await runTask(app, state, input, deps.promptLine)) emit(line);
+      for (const line of await runTask(runtime.app, state, input, deps.promptLine)) emit(line);
     }
   } finally {
-    await app.close();
+    await runtime.app.close();
   }
   return deps.writeLine === undefined ? ok(`${lines.join("\n")}\n`) : ok("");
 }
 
-async function handleCommand(input: string, state: ReplState, app: InjectableApp, profileStore: LocalReplProfileStore | undefined): Promise<{ lines: string[]; exit: boolean }> {
+async function createWorkspaceApp(options: LocalReplOptions, deps: LocalReplDeps, state: ReplState): Promise<InjectableApp> {
+  const command = validationCommand(state.validation);
+  return deps.createApp({
+    dataDir: options.dataDir ?? ".gcah",
+    credentialStore: deps.credentialStore,
+    baseUrl: state.baseUrl,
+    model: state.model,
+    allowedWorkspaceRoots: [state.workspacePath],
+    ...(command === undefined ? {} : { validationCommand: command })
+  });
+}
+
+async function recreateApp(options: LocalReplOptions, deps: LocalReplDeps, state: ReplState, runtime: ReplRuntime): Promise<void> {
+  await runtime.app.close();
+  runtime.app = await createWorkspaceApp(options, deps, state);
+}
+
+async function handleCommand(input: string, state: ReplState, runtime: ReplRuntime, options: LocalReplOptions, deps: LocalReplDeps): Promise<{ lines: string[]; exit: boolean }> {
   const [command, ...args] = input.split(/\s+/u);
   if (command === "/exit" || command === "/quit") return { lines: ["bye"], exit: true };
   if (command === "/help") {
@@ -96,34 +110,45 @@ async function handleCommand(input: string, state: ReplState, app: InjectableApp
     const path = args.join(" ");
     if (path === "") return { lines: ["usage: /workspace <path>"], exit: false };
     state.workspacePath = path;
-    await profileStore?.save(profile(state));
-    return { lines: [await registerWorkspace(app, state.workspacePath)], exit: false };
+    state.currentRunId = null;
+    await deps.profileStore?.save(profile(state));
+    await recreateApp(options, deps, state, runtime);
+    return { lines: [await registerWorkspace(runtime.app, state.workspacePath)], exit: false };
   }
   if (command === "/model") {
     const model = args.join(" ");
     if (model === "") return { lines: ["usage: /model <name>"], exit: false };
     state.model = model;
-    await profileStore?.save(profile(state));
-    return { lines: [`model=${state.model}`], exit: false };
+    state.currentRunId = null;
+    await deps.profileStore?.save(profile(state));
+    await recreateApp(options, deps, state, runtime);
+    const registered = await registerWorkspace(runtime.app, state.workspacePath);
+    return { lines: [`model=${state.model}`, registered], exit: false };
   }
   if (command === "/base-url") {
     const baseUrl = args.join(" ");
     if (baseUrl === "") return { lines: ["usage: /base-url <url>"], exit: false };
     state.baseUrl = baseUrl;
-    await profileStore?.save(profile(state));
-    return { lines: [`base-url=${state.baseUrl}`], exit: false };
+    state.currentRunId = null;
+    await deps.profileStore?.save(profile(state));
+    await recreateApp(options, deps, state, runtime);
+    const registered = await registerWorkspace(runtime.app, state.workspacePath);
+    return { lines: [`base-url=${state.baseUrl}`, registered], exit: false };
   }
   if (command === "/validation") {
     const validation = args[0] ?? "";
     if (validation !== "pnpm-test") return { lines: ["unsupported validation; allowed: pnpm-test"], exit: false };
     state.validation = validation;
-    await profileStore?.save(profile(state));
-    return { lines: [`validation=${validation}`], exit: false };
+    state.currentRunId = null;
+    await deps.profileStore?.save(profile(state));
+    await recreateApp(options, deps, state, runtime);
+    const registered = await registerWorkspace(runtime.app, state.workspacePath);
+    return { lines: [`validation=${validation}`, registered], exit: false };
   }
   if (command === "/events") {
     const runId = args[0] ?? state.currentRunId;
     if (runId === null) return { lines: ["no run selected"], exit: false };
-    const response = await app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
+    const response = await runtime.app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
     return { lines: response.statusCode >= 300 ? ["event fetch failed"] : renderEvents(response.json()), exit: false };
   }
   if (command === "/clear") return { lines: ["screen cleared"], exit: false };
