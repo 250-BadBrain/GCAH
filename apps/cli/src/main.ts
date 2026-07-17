@@ -18,6 +18,7 @@ export interface RunCliDependencies {
   localProfileStore?: LocalProfileStore;
   runLocalSession?: (options: LocalSessionOptions) => Promise<CliResult>;
   runLocalRepl?: (options: LocalSessionOptions) => Promise<CliResult>;
+  writeLine?: (line: string) => void;
 }
 
 export interface LocalSessionOptions {
@@ -92,6 +93,7 @@ async function defaultLocalRepl(options: LocalSessionOptions, deps: RunCliDepend
     credentialStore: store,
     createApp: async (input) => createLocalProductionApp(input),
     promptLine: deps.promptLine ?? defaultPromptLine,
+    writeLine: deps.writeLine ?? ((line) => process.stdout.write(`${line}\n`)),
     profileStore
   });
 }

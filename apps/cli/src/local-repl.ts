@@ -26,6 +26,7 @@ export interface LocalReplDeps {
     validationCommand?: { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number };
   }): Promise<InjectableApp>;
   promptLine(label: string): Promise<string>;
+  writeLine?(line: string): void;
   profileStore?: LocalReplProfileStore;
 }
 
@@ -53,27 +54,30 @@ export async function runLocalRepl(options: LocalReplOptions, deps: LocalReplDep
     allowedWorkspaceRoots: [options.workspacePath],
     ...(validationCommand(options.validation) === undefined ? {} : { validationCommand: validationCommand(options.validation)! })
   });
-  const lines = [
-    "GCAH local interactive session",
-    "Type /help for commands. Type /exit to quit."
-  ];
+  const lines: string[] = [];
+  const emit = (line: string): void => {
+    lines.push(line);
+    deps.writeLine?.(line);
+  };
+  emit("GCAH local interactive session");
+  emit("Type /help for commands. Type /exit to quit.");
   try {
-    lines.push(await registerWorkspace(app, state.workspacePath));
+    emit(await registerWorkspace(app, state.workspacePath));
     while (true) {
       const input = (await deps.promptLine("gcah>")).trim();
       if (input === "") continue;
       if (input.startsWith("/")) {
         const result = await handleCommand(input, state, app, deps.profileStore);
-        lines.push(...result.lines);
+        for (const line of result.lines) emit(line);
         if (result.exit) break;
         continue;
       }
-      lines.push(...await runTask(app, state, input, deps.promptLine));
+      for (const line of await runTask(app, state, input, deps.promptLine)) emit(line);
     }
   } finally {
     await app.close();
   }
-  return ok(`${lines.join("\n")}\n`);
+  return deps.writeLine === undefined ? ok(`${lines.join("\n")}\n`) : ok("");
 }
 
 async function handleCommand(input: string, state: ReplState, app: InjectableApp, profileStore: LocalReplProfileStore | undefined): Promise<{ lines: string[]; exit: boolean }> {

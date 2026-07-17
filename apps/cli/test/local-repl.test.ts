@@ -37,20 +37,25 @@ describe("local REPL", () => {
       }
     };
     const inputs = ["first", "/status", "second", "/exit"];
+    const written: string[] = [];
     const deps: LocalReplDeps = {
       credentialStore: credentialStore(),
       createApp: async () => app,
-      promptLine: async () => inputs.shift() ?? "/exit"
+      promptLine: async () => inputs.shift() ?? "/exit",
+      writeLine: (line) => {
+        written.push(line);
+      }
     };
 
     const result = await runLocalRepl({ workspacePath: "E:/project", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" }, deps);
 
-    expect(result.stdout).toContain("GCAH local interactive session");
-    expect(result.stdout).toContain("Run run-1 COMPLETED stop=COMPLETED");
-    expect(result.stdout).toContain("[tool.result] patched <redacted>");
-    expect(result.stdout).toContain("workspace=E:/project model=Qwen-Coder validation=pnpm-test active=run-1");
-    expect(result.stdout).toContain("Run run-2 STOPPED stop=BUDGET_EXHAUSTED");
-    expect(result.stdout).toContain("summary: budget exhausted");
+    expect(result.stdout).toBe("");
+    expect(written).toContain("GCAH local interactive session");
+    expect(written).toContain("Run run-1 COMPLETED stop=COMPLETED");
+    expect(written).toContain("[tool.result] patched <redacted>");
+    expect(written).toContain("workspace=E:/project model=Qwen-Coder validation=pnpm-test active=run-1");
+    expect(written).toContain("Run run-2 STOPPED stop=BUDGET_EXHAUSTED");
+    expect(written).toContain("summary: budget exhausted; last=[validation.fail] command failed 1");
     expect(closed).toBe(true);
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "first" } });
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "second" } });
@@ -72,6 +77,7 @@ describe("local REPL", () => {
       async close() {}
     };
     const inputs = ["mutate", "o", "/exit"];
+    const written: string[] = [];
 
     const result = await runLocalRepl({
       workspacePath: "E:/project",
@@ -81,10 +87,14 @@ describe("local REPL", () => {
     }, {
       credentialStore: credentialStore(),
       createApp: async () => app,
-      promptLine: async () => inputs.shift() ?? "/exit"
+      promptLine: async () => inputs.shift() ?? "/exit",
+      writeLine: (line) => {
+        written.push(line);
+      }
     });
 
-    expect(result.stdout).toContain("approval approve_once");
+    expect(result.stdout).toBe("");
+    expect(written).toContain("approval approve_once");
     expect(requests).toContainEqual({
       method: "POST",
       url: "/api/runs/run-approval/approvals/action:run-approval:1",
