@@ -6,7 +6,7 @@ import type { CredentialStore } from "@gcah/credentials";
 describe("CLI server commands", () => {
   it("starts the interactive local agent through an injectable local session", async () => {
     const calls: string[][] = [];
-    await expect(runCli(["local", "--workspace", "E:/project", "--base-url", "https://gateway.example/v1", "--model", "DeepSeek-V3"], {
+    await expect(runCli(["local", "--workspace", "E:/project", "--base-url", "https://gateway.example/v1", "--model", "DeepSeek-V3", "--task", "fix it"], {
       runLocalSession: async (options) => {
         calls.push([options.workspacePath, options.baseUrl, options.model]);
         return { stdout: "local session complete\n", stderr: "", exitCode: 0 };
@@ -18,7 +18,7 @@ describe("CLI server commands", () => {
   it("prompts for missing local options and saves a non-secret profile", async () => {
     const prompts: string[] = [];
     const saved: unknown[] = [];
-    const answers = ["E:/prompted", "https://gateway.example/v1", "Qwen-Coder", "fix it"];
+    const answers = ["E:/prompted", "https://gateway.example/v1", "Qwen-Coder"];
     await expect(runCli(["local"], {
       promptLine: async (label) => {
         prompts.push(label);
@@ -30,9 +30,9 @@ describe("CLI server commands", () => {
           saved.push(profile);
         }
       },
-      runLocalSession: async (options) => ({ stdout: `${options.workspacePath} ${options.model} ${options.validation}\n`, stderr: "", exitCode: 0 })
+      runLocalRepl: async (options) => ({ stdout: `${options.workspacePath} ${options.model} ${options.validation}\n`, stderr: "", exitCode: 0 })
     })).resolves.toMatchObject({ stdout: "E:/prompted Qwen-Coder pnpm-test\n" });
-    expect(prompts).toEqual(["Workspace", "Base URL", "Model", "Task"]);
+    expect(prompts).toEqual(["Workspace", "Base URL", "Model"]);
     expect(JSON.stringify(saved)).not.toContain("sk-");
     expect(saved).toEqual([{ workspacePath: "E:/prompted", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" }]);
   });

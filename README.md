@@ -41,7 +41,23 @@ Recommended single-terminal workflow:
 node apps/cli/dist/src/bin.js local
 ```
 
-The command prompts for workspace, base URL, model, and task when they are not already saved in the non-secret local profile at `%USERPROFILE%\.gcah\local-profile.json`. The profile stores only workspace, base URL, model, and validation preference; it never stores API keys. You can also provide the values directly:
+The command prompts for workspace, base URL, and model when they are not already saved in the non-secret local profile at `%USERPROFILE%\.gcah\local-profile.json`, then opens a persistent `gcah>` prompt. The profile stores only workspace, base URL, model, and validation preference; it never stores API keys.
+
+At `gcah>`, enter a normal task to submit a run. Slash commands are available:
+
+```text
+/help
+/status
+/workspace E:\path\to\project
+/model <MODEL_NAME>
+/base-url https://your-openai-compatible-provider.example/v1
+/validation pnpm-test
+/events [run-id]
+/clear
+/exit
+```
+
+One-shot mode remains available for scripts and quick smoke tests:
 
 ```powershell
 node apps/cli/dist/src/bin.js local `
@@ -53,6 +69,12 @@ node apps/cli/dist/src/bin.js local `
 ```
 
 `--validation pnpm-test` is the only built-in validation preset. It runs the existing `pnpm test` script in the selected workspace after mutations and does not install dependencies or execute arbitrary shell strings. When the agent reaches `REQUIRE_APPROVAL`, the same terminal asks whether to approve once, approve for the session, or reject; the decision is sent through the existing local approval API and resumes the same AgentLoop.
+
+Troubleshooting:
+
+- If validation says `command failed 1`, run `pnpm test` in the target workspace. The workspace must contain a `package.json` with a `test` script.
+- If the run reports `PROTOCOL_ERROR`, the provider returned an invalid tool/finish response. Retry with a coder model or a stricter task prompt.
+- The local runtime database is stored in `.gcah/`; it is ignored by Git and must not be committed.
 
 Lower-level two-terminal workflow:
 
