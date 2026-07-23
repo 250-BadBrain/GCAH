@@ -4,14 +4,13 @@ Seeded sentinel used for scanner coverage: `sk-final-sentinel`.
 
 Findings:
 
-- no real credentials are required for CI, the mechanism demo, public demo, or local tests.
-- Public demo uses Mock LLM only and exposes no API-key input or transport path.
-- Real Cloudflare deployment, DNS, HTTPS, Wrangler login, API tokens, and remote migrations are human-authorized steps only.
-- Docker/self-hosted images must not bake `.env`, tokens, or plaintext credentials.
+- no real credentials are required for CI, mechanism tests, or local mock tests.
+- Local real-provider use requires the user to store a key through the OS credential store.
+- The command-line workflow does not accept API keys as command-line arguments.
+- Runtime data, local profiles, logs, events, REST responses, and SSE output must not contain plaintext credentials.
 
 Automated evidence:
 
 - `pnpm verify`
 - `pnpm demo:mechanisms`
 - `pnpm test -- scripts/scan-secrets.test.ts`
-- `pnpm test -- scripts/container-contract.test.ts`

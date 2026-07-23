@@ -97,7 +97,6 @@
   - `.spikes/hosting/README.md`
   - `.spikes/hosting/worker-sse-shape.ts`
   - `.spikes/hosting/cloudflare-topology-notes.md`
-  - `docs/spikes/hosting.md`
 - Commands:
   - `git rev-parse --show-toplevel`
   - `git branch --show-current`

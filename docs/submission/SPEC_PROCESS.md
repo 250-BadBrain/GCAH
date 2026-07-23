@@ -54,9 +54,9 @@ Evidence source: `docs/evidence/cold-start/`.
 - macOS Keychain, Linux Secret Service, and Docker/headless behavior were not runtime-tested. They remain unverified and must not be described as validated support.
 - Formal behavior is fail closed: reject `file`, `null`, unknown, and unavailable backends; never downgrade to file storage.
 
-### S02 Cloudflare architecture validation
+### S02 online deployment scope removed
 
-- `docs/spikes/hosting.md` supports the architecture decision: React + Vite on Pages; API/SSE on Workers; relational persistence in D1; optional Durable Objects for per-run coordination and SSE fan-out.
-- Fastify + SQLite remains the local/Docker/self-hosted composition; Cloudflare uses independent Worker HTTP and D1 repository adapters behind core ports.
-- No Cloudflare login, account/project authorization, API-token creation, deployment, custom-domain binding, DNS change, or HTTPS activation was performed. S02 does not prove a real remote deployment.
-- Disposable S01/S02 spike code was deleted; only the two reports under `docs/spikes/` remain as permanent evidence.
+- The final submission does not require online deployment or a public URL.
+- The permanent submission docs were revised to describe local command-line use as the delivery path.
+- No external account login, remote resource creation, custom-domain binding, DNS change, or remote deployment was performed.
+- Disposable spike code was deleted; the credential-store report remains as permanent evidence.

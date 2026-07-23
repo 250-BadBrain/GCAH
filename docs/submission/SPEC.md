@@ -28,14 +28,14 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 - CLI 用于服务管理、配置、凭据、任务提交、状态和审批操作。
 - WebUI 是运行过程的观察窗口与人工审批入口；所有权限判断、动作执行和状态转移均由 server-side harness core 完成。
 - 系统可保存多个 Run，但同一 workspace 同时最多一个活动 Run；同一 Run 内 Step 串行推进，不执行并行动作。
-- 本地或 self-hosted 模式可操作用户显式允许的 workspace；默认使用受 workspace 围栏和策略约束的本地执行器，可选 Docker 沙箱执行后端。
-- 公网演示模式部署为 React + Vite on Cloudflare Pages 与 API/SSE on Cloudflare Workers，只绑定固定示例 workspace 和 Mock LLM；不包含真实 LLM adapter，不提供 API key 输入、传输或存储路径，不接受项目上传，并按策略重置 demo workspace。
+- 本地模式可操作用户显式允许的 workspace；默认使用受 workspace 围栏和策略约束的本地执行器。
+- 机制演示使用 Mock LLM 与固定示例 workspace；不包含真实 LLM adapter，不提供 API key 输入、传输或存储路径，不接受项目上传，并按策略重置 demo workspace。
 - 首版记录结构化运行事件与追加式审计日志，但不实现数据库级完整 event sourcing。
 - 真实 LLM API key 只通过安全凭据来源读取，不进入 workspace、配置、SQLite、事件或日志，也不在 WebUI 明文展示。
 
 ### 1.5 明确不做
 
-首版不实现多用户协作、同一 Run 内并行动作、多 agent 编排、云端 Git 仓库执行、线上项目上传、向量记忆、完整 event sourcing、Anthropic adapter 或自定义策略 DSL。
+首版不实现多用户协作、同一 Run 内并行动作、多 agent 编排、云端 Git 仓库执行、线上项目上传、公网部署、向量记忆、完整 event sourcing、Anthropic adapter 或自定义策略 DSL。
 
 ## 2. 用户故事与验收标准
 
@@ -97,18 +97,18 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 - CLI 使用隐藏输入完成录入、更新与清除，状态命令不回显明文。【CLI 演示】
 - fake credential store 证明 key 不进入配置、事件、日志和 repository。【核心单元测试】
 
-### US-9：安全公网演示
+### US-9：安全本地机制演示
 
-作为演示观看者，我希望通过公网 WebUI 观察隔离示例任务的事件时间线和审批过程，以便理解机制而不会接触真实代码库。
+作为演示观看者，我希望通过本地命令确定性观察隔离示例任务的事件链和审批过程，以便理解机制而不会接触真实代码库。
 
-- 公网 demo URL 可访问固定示例 WebUI。【WebUI 演示】
-- 任意命令执行、网络、依赖安装、真实 LLM 和用户 key 均被 public-demo 策略拒绝，并限制任务启动频率。【核心单元测试/WebUI 演示】
+- `pnpm demo:mechanisms` 可确定性展示护栏拦截、验证失败反馈和审批过期。【CLI 演示】
+- 任意命令执行、网络、依赖安装、真实 LLM 和用户 key 均不会进入 Mock LLM 机制演示路径。【核心单元测试/CLI 演示】
 
-### US-10：可复制分发与持续集成
+### US-10：可复制本地运行与持续集成
 
-作为评审者，我希望按照 README 的命令启动镜像并看到通过的 CI，以便在新环境中复现项目。
+作为评审者，我希望按照 README 的命令安装、构建并启动本地 CLI agent，并看到通过的 CI，以便在新环境中复现项目。
 
-- Docker 镜像可通过 README 的 `docker build` 与 `docker run` 示例启动；示例包含端口映射、workspace 挂载和 GCAH 数据目录挂载。【Docker 演示】
+- README 提供 `pnpm install --frozen-lockfile`、`pnpm build`、`credential set`、`local` REPL 和 one-shot CLI 的完整命令。【CLI 演示】
 - `.gitlab-ci.yml` 包含名为 `unit-test` 的 job，GitHub Actions 存在等价验证，最终提交对应的两套 CI 执行均为 pass。【CI 证据】
 
 ## 3. 功能规格
@@ -160,7 +160,7 @@ LLM 响应协议是二选一 discriminated union：
 - `ALLOW`：安全读取、列举、记忆检索与范围内低风险 patch。低风险 patch 指单个非敏感源码或文档文件内的小范围 unified diff，不创建/删除文件，不覆盖全文件，不修改配置、锁文件、CI、凭据、审计或 GCAH 自身治理相关文件，且变更行数、文件大小和路径均低于策略阈值。
 - `REQUIRE_APPROVAL`：覆盖已有文件、大范围变更、新文件创建、删除文件、修改配置/锁文件/CI 文件、workspace 内破坏性操作、网络请求、依赖安装、Git 发布及本地模式中的高风险命令。大范围变更包括跨多个文件、超过行数阈值、重命名/移动目录、生成大量文件或难以人工快速审阅的 patch。
 - `DENY`：越出 workspace、访问凭据区、提权、篡改 GCAH 护栏或审计记录。
-- public demo mode 额外默认拒绝任意命令执行、网络、依赖安装和真实 LLM。
+- Mock LLM 演示模式额外默认拒绝任意命令执行、网络、依赖安装和真实 LLM。
 
 审批支持“仅本次”和“本会话同类动作”。同类授权必须绑定工具名、规范化路径范围、命令模板、风险类别、`scopeHash` 和过期轮次，不能按自然语言理由匹配。执行前重新计算 `normalizedActionHash` 或 `scopeHash`；参数变化、过期或越界时重新审批。
 
@@ -200,13 +200,13 @@ LLM 响应协议是二选一 discriminated union：
 
 正式实现采用 `cross-keychain`，实际版本由 `pnpm-lock.yaml` 锁定。`CredentialStore` adapter 必须在操作前验证当前 backend，只允许 Windows 的 `native-windows`、`windows`，macOS 的 `native-macos`、`macos`，Linux 的 `native-linux`、`secret-service`。必须拒绝 `file`、`null` 和任何 unknown backend；后端不可用时 fail closed，返回明确的 `backend unavailable`，不得自动降级到文件存储。
 
-CLI 提供 `credential status/set/update/clear`，录入时隐藏输入，状态仅返回 provider、来源、backend 与更新时间。Docker/headless 环境没有操作系统凭据库时明确返回 `backend unavailable`。public demo 不提供 API key 输入、传输或存储路径。S01 只在 Windows 实测 `native-windows`；macOS、Linux 与 Docker 均未实测，不得宣称已验证支持。
+CLI 提供 `credential status/set/update/clear`，录入时隐藏输入，状态仅返回 provider、来源、backend 与更新时间。headless 环境没有操作系统凭据库时明确返回 `backend unavailable`。Mock LLM 机制演示不提供 API key 输入、传输或存储路径。S01 只在 Windows 实测 `native-windows`；macOS 与 Linux 均未实测，不得宣称已验证支持。
 
 ### 3.10 Server、CLI 与 WebUI
 
-本地开发、Docker 与 self-hosted 使用 Fastify composition root 提供任务、状态、事件、审批、配置状态和凭据状态 API；Cloudflare 生产使用独立的 Worker HTTP adapter/composition root。两条路径都必须先持久化事件再通过 SSE 发布，支持 cursor 重连和客户端断线恢复。CLI 连接相应 API；WebUI 展示时间线、风险解释、验证结果和审批入口。
+本地开发使用 Fastify composition root 提供任务、状态、事件、审批、配置状态和凭据状态 API。事件必须先持久化再通过 SSE 发布，支持 cursor 重连和客户端断线恢复。CLI 连接本地 API；WebUI 可作为本地观察窗口展示时间线、风险解释、验证结果和审批入口。
 
-local/self-hosted 模式使用单用户管理令牌认证，本地首次启动生成令牌并存入系统凭据库；self-hosted 部署可使用显式 Secret。public-demo 模式使用匿名但能力受限的接口，只允许访问固定示例 Run、启动受限示例任务和提交演示审批，不提供真实 workspace、真实 LLM、凭据或任意命令能力。部署 Secret 只在 server 侧读取，绝不暴露给浏览器。
+local 模式使用单用户管理令牌认证，本地首次启动生成令牌并存入系统凭据库。Mock LLM 机制演示只允许访问固定示例 Run、启动受限示例任务和提交演示审批，不提供真实 workspace、真实 LLM、凭据或任意命令能力。
 
 浏览器认证采用 same-origin cookie；REST 与 SSE 均依赖同源 Cookie 认证和 CSRF/Origin 校验，不把 bearer token 放入前端 JavaScript 可读存储。SSE 连接必须与 API 同源；断线后用事件游标补取。
 
@@ -222,15 +222,15 @@ local/self-hosted 模式使用单用户管理令牌认证，本地首次启动�
 
 ### 4.2 安全与威胁模型
 
-**威胁来源**：恶意或错误的 LLM 输出、workspace prompt injection、路径穿越、symlink 逃逸、命令参数注入、审批复用、恶意配置、日志泄密和 public demo 滥用。
+**威胁来源**：恶意或错误的 LLM 输出、workspace prompt injection、路径穿越、symlink 逃逸、命令参数注入、审批复用、恶意配置、日志泄密和机制演示误用。
 
 **凭据威胁**：API key 可能被 LLM 请求读取、被 workspace 中的提示注入诱导输出、被日志/WebUI 泄露，或被误写进配置、事件与存储。凭据明文只在 LLM adapter 调用边界短暂可用；core 其他模块只接触 `CredentialStatus`。日志脱敏作为第二道防线，但不能替代数据流隔离。
 
 **路径策略**：先规范化路径，再解析真实路径；解析后的真实路径必须仍位于 workspace root。默认禁止跟随指向 workspace 外部的 symlink。
 
-**主要对策**：严格响应协议、命令模板、执行前治理、审批哈希二次校验、不可变配置快照、敏感值隔离与脱敏、单 workspace 运行锁、public-demo 硬拒绝规则及频率限制。workspace 内容始终视为不可信数据，不能修改系统策略。
+**主要对策**：严格响应协议、命令模板、执行前治理、审批哈希二次校验、不可变配置快照、敏感值隔离与脱敏、单 workspace 运行锁、Mock LLM 演示隔离规则。workspace 内容始终视为不可信数据，不能修改系统策略。
 
-public demo 不接受用户 API key，不持久化用户上传内容，并对任务启动频率实施基础限制。demo workspace 从仓库内固定示例或镜像内只读模板重置；每次示例 Run 前恢复到已知状态，Run 后可丢弃临时副本，防止跨访客污染。
+机制演示不接受用户 API key，不持久化用户上传内容。demo workspace 从仓库内固定示例模板重置；每次示例 Run 前恢复到已知状态，Run 后可丢弃临时副本，防止演示状态污染。
 
 ### 4.3 可用性
 
@@ -266,19 +266,19 @@ WebUI ─REST/SSE─> Node Server ─> Harness Core ─> LlmClient
                                   │ Governance ─> Approval State Machine
                                   │   │
                                   │   v
-                                  ├─ Tool Gateway ─> Local Executor / Docker Executor
+                                  ├─ Tool Gateway ─> Local Executor
                                   ├─ Validation & Feedback
-                                  └─ Repository Interfaces ─> In-memory / SQLite / D1
+                                  └─ Repository Interfaces ─> In-memory / SQLite
 ```
 
 - `harness-core`：主循环、上下文组织、状态机、预算与停机；不依赖 HTTP、UI 或具体 LLM。
 - `llm`：可注入的 LLM 接口、Mock 实现和 OpenAI-compatible adapter。
 - `tools-and-governance`：工具注册、路径/命令规范化、策略、审批与执行网关。
 - `validation-and-memory`：确定性验证、失败分类、反馈指纹和记忆检索。
-- `server-and-cli`：本地/Docker/self-hosted 的 Fastify composition root、Cloudflare Worker HTTP adapter/composition root，以及 API、SSE、认证、任务与凭据命令。
+- `server-and-cli`：本地 Fastify composition root，以及 API、SSE、认证、任务与凭据命令。
 - `webui`：运行观察、风险解释和审批交互。
 
-core 的 LLM、repository、clock、tool gateway 等依赖均通过接口注入，且不得依赖 SQLite、D1、Fastify 或 Worker。单元测试默认使用 in-memory repository；SQLite adapter 用于本地开发、测试、Docker 与 self-hosted，D1 repository adapter 用于 Cloudflare。必要时 Durable Objects 仅承担 per-run 协调与 SSE fan-out；KV 和 R2 不得替代关系型 run/audit/event repository。
+core 的 LLM、repository、clock、tool gateway 等依赖均通过接口注入，且不得依赖 SQLite 或 Fastify。单元测试默认使用 in-memory repository；SQLite adapter 用于本地开发和测试。
 
 ### 5.2 数据流
 
@@ -289,13 +289,13 @@ CLI 提交任务
   → LLM 提出严格 ToolAction / FinishAction
   → Governance 判定 ALLOW / REQUIRE_APPROVAL / DENY
   → 必要时暂停并等待 WebUI/CLI 审批
-  → Tool Gateway 调用本地或 Docker 执行器
+  → Tool Gateway 调用本地执行器
   → 状态变更动作触发验证
   → 结构化反馈回灌下一轮
   → 完成、拒绝、失败、取消或预算停机
 ```
 
-工具执行前必须经过 governance；工具实现不直接决定权限。默认执行后端是受 workspace 围栏和策略约束的 `LocalExecutor`，Docker 沙箱是可选后端，不改变 core 契约。`LocalExecutor` 不是 OS 级沙箱：它能在执行前限制 GCAH 直接发起的路径和命令，但不能保证已批准子进程不会访问宿主其他文件或网络；因此高风险命令、网络、依赖安装和 public-demo 命令执行必须由治理策略限制或拒绝。
+工具执行前必须经过 governance；工具实现不直接决定权限。默认执行后端是受 workspace 围栏和策略约束的 `LocalExecutor`。`LocalExecutor` 不是 OS 级沙箱：它能在执行前限制 GCAH 直接发起的路径和命令，但不能保证已批准子进程不会访问宿主其他文件或网络；因此高风险命令、网络和依赖安装必须由治理策略限制或拒绝。
 
 ### 5.3 外部依赖
 
@@ -342,38 +342,33 @@ CLI 提交任务
 - 事件游标单调递增；配置快照不可变。
 - 持久化 schema 中不存在 API key 明文字段。
 
-## 7. 凭据与分发设计
+## 7. 凭据与本地运行设计
 
 ### 7.1 凭据生命周期
 
-首次使用真实 LLM 时，CLI 检查 `cross-keychain` 当前 backend 并引导隐藏录入。正式支持声明以实测证据为准：S01 已实测 Windows `native-windows`；macOS、Linux 和 Docker 未实测。Docker/headless 没有操作系统凭据库时返回 `backend unavailable`，不得回退为文件、环境变量、Secret 文件或 `.env` 存储。
+首次使用真实 LLM 时，CLI 检查 `cross-keychain` 当前 backend 并引导隐藏录入。正式支持声明以实测证据为准：S01 已实测 Windows `native-windows`；macOS 和 Linux 未实测。headless 环境没有操作系统凭据库时返回 `backend unavailable`，不得回退为文件、环境变量、Secret 文件或 `.env` 存储。
 
-### 7.2 分发形态
+### 7.2 本地命令行运行形态
 
-- Cloudflare 公网生产交付物：Pages 静态站点、Worker API/SSE bundle、D1 migration，以及必要时的 Durable Object binding。
-- Docker/OCI 是本地开发、测试、课程分发与 self-hosted fallback 的独立交付路径，不是 Cloudflare 生产部署方式。
-- 已验证凭据平台仅为 Windows 原生；macOS、Linux 与 Docker 凭据库仍未实测。
-- CI 至少构建 Linux `amd64` 镜像。
-- README 必须提供可复制的单条 `docker build` 和 `docker run` 示例，包含端口映射、workspace 挂载和 GCAH 数据目录挂载。
+- README 必须提供可复制的命令行使用路径：安装、构建、凭据录入、交互式 REPL、workspace/model/base-url/validation 配置、提交任务、查看事件和退出。
+- 已验证凭据平台仅为 Windows 原生；macOS 与 Linux 凭据库仍未实测。
 - GCAH 数据目录只保存 SQLite、审计日志和非敏感运行状态，不保存 API key 明文。
 
-### 7.3 公网部署
+### 7.3 不提供在线部署
 
-公网生产目标为 React + Vite 部署到 Cloudflare Pages，API 与 SSE 部署到 Cloudflare Workers，关系型 run/audit/event 数据持久化到 D1；仅在需要 per-run 协调或 SSE fan-out 时使用 Durable Objects。public demo 只绑定 Mock LLM，不包含真实 LLM adapter，不接受用户 API key，不开放任意 shell、依赖安装、网络访问或 workspace 上传。Pages/Workers/Wrangler 配置可自动化验证，但 Cloudflare 登录、授权、令牌配置、实际部署、自定义域名、DNS 与 HTTPS 绑定均为人工授权步骤。
+本提交不提供在线部署、公网 URL、域名绑定或远程资源创建。项目以本地命令行运行、Mock LLM 机制演示和可验证测试作为交付形态。
 
 ## 8. 技术选型与理由
 
 - **TypeScript / Node.js LTS / pnpm workspace**：前后端共享 schema 与类型，适合实现可注入接口和结构化协议。
-- **Fastify + Worker HTTP adapter**：Fastify 仅用于本地开发、Docker 与 self-hosted composition root；Cloudflare 生产使用独立 Fetch/Worker composition root；二者都不承担 agent 决策。
+- **Fastify**：用于本地 composition root；不承担 agent 决策。
 - **Zod 4**：运行时校验 Action、配置、工具参数和 API 输入；正式实现必须通过 `pnpm-lock.yaml` 锁定兼容版本，schema 写法以 Zod 4 API 为准。
-- **SQLite / D1 repository adapters**：SQLite 用于本地、测试、Docker 与 self-hosted，D1 用于 Cloudflare；core 只依赖 repository ports。KV/R2 不承担关系型 run/audit/event 存储。
+- **SQLite repository adapter**：SQLite 用于本地和测试；core 只依赖 repository ports。
 - **React + Vite**：构建轻量运行控制台。计划采用 Open Design 的 `linear-app` 设计系统；若工具不可用，使用等价的简洁工程控制台风格，并在 `AGENT_LOG.md` 记录偏离原因。计划使用 `od-react-export` skill 辅助 UI 产出。
 - **Vitest**：Mock LLM、假时钟、in-memory repository 和 fake executor 驱动确定性测试。
 - **CredentialStore adapter**：正式采用 `cross-keychain` 并由 `pnpm-lock.yaml` 锁定实际版本；验证并仅允许平台对应的 OS backend，拒绝 `file`、`null` 与 unknown backend，底层不可用时 fail closed。
 - **OpenAI-compatible adapter**：通过 `baseUrl`、`model`、`apiKey`、`providerName` 接入课程网关的 DeepSeek、Qwen 等模型；暂不实现 Anthropic。
-- **Cloudflare Pages / Workers / D1**：公网生产目标；Durable Objects 为可选协调层。
-- **Docker / OCI**：用于本地开发、测试、课程分发与 self-hosted fallback；Docker 沙箱仅为可选执行后端。
-- **GitLab CI + GitHub Actions**：两者均要求提供；`.gitlab-ci.yml` 必须包含 `unit-test` job，GitHub Actions 镜像默认离线验证与镜像构建，二者共同作为 CI 证据。
+- **GitLab CI**：`.gitlab-ci.yml` 必须包含 `unit-test` job，并运行离线验证命令。
 
 所有第三方库只承担 HTTP、数据库、schema、UI、系统凭据或单次 LLM 调用等底层能力。agent loop、工具治理、审批、反馈、记忆选择和停机逻辑均由本项目代码实现。
 
@@ -429,18 +424,16 @@ PROPOSED ToolAction / FinishAction
 
 - realpath 后的访问仍限制于 workspace，外部 symlink 被拒绝。
 - workspace 必须落在 `allowedWorkspaceRoots` 中，且不得与 GCAH data、credential、audit 目录重叠。
-- 凭据不出现在请求、workspace、配置、浏览器状态、SQLite、D1、KV、R2、事件、日志、错误或 WebUI。
-- public demo 拒绝命令执行、网络、依赖安装、真实 LLM 和用户 key，浏览器无法读取部署 Secret。
+- 凭据不出现在请求、workspace、配置、浏览器状态、SQLite、事件、日志、错误或 WebUI。
+- Mock LLM 机制演示拒绝命令执行、网络、依赖安装、真实 LLM 和用户 key。
 - 审批哈希、作用域和过期轮次均通过确定性测试。
 
-### 10.3 分发与 CI
+### 10.3 本地运行与 CI
 
-- README 的 build/run 命令可在全新环境启动 Linux `amd64` 镜像。
+- README 的 build/run 命令可在全新环境启动本地命令行 agent。
 - `.gitlab-ci.yml` 包含 `unit-test` job；GitHub Actions 也存在并执行等价默认验证。
 - `pnpm test` 运行离线单元测试；`pnpm verify` 运行 lint、typecheck 与 test；`pnpm demo:mechanisms` 一键运行确定性机制演示。
 - 最后一次提交证据中的 GitLab CI/CD 和 GitHub Actions 状态为 pass。
-- Linux `amd64` 镜像被构建并推送到公开 registry。
-- 公网 demo URL 可访问固定示例 WebUI。
 
 ### 10.4 真实 LLM 手动演示
 
@@ -451,33 +444,32 @@ PROPOSED ToolAction / FinishAction
 
 ### 11.1 已识别风险及对策
 
-- **系统凭据库兼容性**：S01 仅验证 Windows `native-windows`；macOS、Linux 与 Docker 未实测。adapter 必须验证 backend 并 fail closed，不得把未实测平台写成已验证支持。
-- **Docker 与宿主凭据隔离**：容器只接受显式环境变量或 Secret 映射；public demo 禁用真实 LLM。
+- **系统凭据库兼容性**：S01 仅验证 Windows `native-windows`；macOS 与 Linux 未实测。adapter 必须验证 backend 并 fail closed，不得把未实测平台写成已验证支持。
 - **命令模板规避**：`run_command` 使用 executable 与 args，不调用系统 shell；无法匹配声明模板时拒绝或审批。
-- **跨平台路径差异**：规范化与 realpath 双重校验，并建立 Windows、POSIX、容器测试矩阵。
+- **跨平台路径差异**：规范化与 realpath 双重校验，并建立 Windows/POSIX 路径测试。
 - **审批范围过宽**：使用工具、路径、命令模板、风险类别、哈希和过期轮次联合约束。
 - **反馈循环抖动**：失败指纹去除非稳定噪声；综合预算和重复失败阈值强制停机。
-- **SQLite/D1 与 SSE 一致性**：两种 repository adapter 共享 contract；事件先持久化再发布，支持 cursor replay 和断线恢复；写入失败时暂停，不执行后续副作用。
+- **SQLite 与 SSE 一致性**：事件先持久化再发布，支持 cursor replay 和断线恢复；写入失败时暂停，不执行后续副作用。
 - **Open Design 不可用**：降级到等价工程控制台风格并在 `AGENT_LOG.md` 说明偏离。
-- **公网资源滥用**：固定 workspace、Mock LLM、频率限制和任务预算；不接受上传与 key。
+- **演示资源误用**：固定 workspace、Mock LLM 和任务预算；不接受上传与 key。
 - **课程 API 额度耗尽或模型不可用**：默认测试与机制演示使用 Mock LLM；DeepSeek/Qwen 仅手动 integration demo，失败不阻断默认 CI。
 - **SPEC/PLAN 含隐性上下文**：正式实现前由不同类型 agent 在全新 session 中仅凭 `SPEC.md` 与 `PLAN.md` 冷启动试做 1–2 个 task；将误解、提问和修订 diff 记录到 `SPEC_PROCESS.md`。
 - **npm 供应链风险**：提交并锁定 pnpm lockfile；CI 使用 frozen lockfile；关键安全依赖变更记录到 `AGENT_LOG.md`。
-- **本地执行器隔离不足**：`LocalExecutor` 不是 OS 级沙箱，不能限制已批准子进程的全部宿主文件和网络访问；通过默认拒绝/审批高风险命令、public-demo 禁止命令执行和可选 Docker 后端降低风险。
+- **本地执行器隔离不足**：`LocalExecutor` 不是 OS 级沙箱，不能限制已批准子进程的全部宿主文件和网络访问；通过默认拒绝/审批高风险命令和 Mock LLM 演示禁止命令执行降低风险。
 - **范围膨胀**：多用户、云端仓库、向量记忆、多 agent、完整 event sourcing 和 Anthropic adapter 均推迟。
 
 ### 11.2 实现前需验证的适配器选择
 
-S01 已选定 `cross-keychain` 并仅完成 Windows 实测；S02 已验证 Cloudflare Pages + Workers + D1 的架构可行性，但未进行 Cloudflare 登录、授权、令牌创建、实际部署、域名或 DNS 操作。macOS、Linux、Docker 凭据行为以及真实 Cloudflare 部署仍未验证，必须保留为后续人工授权/平台验证步骤，不得声称 spike 已完成远程部署。
+S01 已选定 `cross-keychain` 并仅完成 Windows 实测。macOS 与 Linux 凭据行为仍未验证，不得声称已经完成跨平台凭据支持。
 
 ## 12. 测试与机制演示策略
 
 - **核心单元测试**：Mock LLM、fake clock、in-memory repository、fake credential store 和 fake executor；无网络、无真实 key。
-- **工具/适配器测试**：临时 workspace、路径/symlink 边界、命令模板、SQLite 与 D1 repository contract 一致性、Fastify/Worker HTTP API，以及 SSE cursor replay。
-- **public-demo 安全测试**：证明请求、浏览器状态、日志、D1、KV、R2 和错误中均不存在 API key，且无 API key 输入/传输路径或真实 LLM adapter。
+- **工具/适配器测试**：临时 workspace、路径/symlink 边界、命令模板、SQLite repository contract、Fastify HTTP API，以及 SSE cursor replay。
+- **Mock 演示安全测试**：证明请求、浏览器状态、日志和错误中均不存在 API key，且无 API key 输入/传输路径或真实 LLM adapter。
 - **WebUI 测试**：状态渲染、事件时间线、审批提交与 SSE 重连。
 - **机制演示**：一键脚本使用 Mock LLM 确定性演示三项核心行为。
 - **手动 integration demo**：显式启用时调用课程 API 网关 DeepSeek/Qwen；不进入默认 CI。
-- **CI**：GitLab `unit-test` 为必交 job；GitHub Actions 也必须存在。CI 使用 frozen lockfile，运行 `pnpm test`、`pnpm verify`、`pnpm demo:mechanisms`，并至少构建 Linux `amd64` 镜像。镜像推送到公开 registry；真实 LLM integration demo 不进入默认 CI。
+- **CI**：GitLab `unit-test` 为必交 job。CI 使用 frozen lockfile，运行 `pnpm test`、`pnpm verify` 和 `pnpm demo:mechanisms`；真实 LLM integration demo 不进入默认 CI。
 
 在 `SPEC.md` 与后续 `PLAN.md` 通过冷启动验证之前，不开始实现代码。

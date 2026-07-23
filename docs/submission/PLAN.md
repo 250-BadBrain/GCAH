@@ -402,18 +402,18 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Done:** T26 acceptance holds. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
 
-#### T27a — Public deployment and reproducible operator documentation
+#### T27a — Local command-line operator documentation
 
-**Goal:** Deploy fixed public demo and document exact Windows/Docker/operator flows. **Dependencies:** S02, T23, T26b. **Files:** `deploy/public-demo.env.example`, `docs/deployment.md`, `README.md`, platform manifest only after documented PLAN revision if mandated. **First red:** Clean-room command/deployment checklist finds missing or mismatched commands. **Expected implementation:** Exact mounts, ports, credentials, rollback, LocalExecutor warning, interruption semantics, URLs/digest.
+**Goal:** Document exact local command-line usage for installation, safe credential setup, interactive REPL operation, one-shot runs, validation, and local safety boundaries. **Dependencies:** T23 and T25. **Files:** `README.md`, `docs/submission/README.md`, `docs/security-review.md`. **First red:** Clean-room command checklist finds missing or mismatched local commands. **Expected implementation:** Exact Windows PowerShell commands, credential lifecycle, workspace setup, model/base-url configuration, validation behavior, LocalExecutor warning, and troubleshooting.
 
 - [ ] Add a documentation contract checklist for required commands/sections.
 - [ ] Run checklist; confirm missing-section red.
-- [ ] Write minimal README build/run and deployment guide.
-- [ ] Validate Pages/Workers/Wrangler configuration and D1 migration locally; reserve actual deployment for a separately authorized human step.
+- [ ] Write minimal README build/run and local CLI usage guide.
+- [ ] Remove online deployment guidance and stale external platform references.
 - [ ] Refactor commands to match executed commands; rerun clean-room smoke.
 - [ ] Update logs/status; commit and record hash.
 
-**Done:** Cloudflare artifacts and manual deployment/domain/HTTPS instructions are reproducible; reachability is accepted only after separately authorized deployment. **Parallel:** No. **Status:** Not started. **Commit:** — (record after execution).
+**Done:** Local command-line usage is reproducible from README; no online deployment or public URL is part of final submission. **Parallel:** No. **Status:** Complete. **Commit:** `f822cd3` plus final documentation cleanup.
 
 #### T27b — Final security and acceptance evidence
 
@@ -471,21 +471,21 @@ The child IDs below are the executable fresh-subagent units. Each belongs to its
 
 **Parallel:** Yes, with S02. **Status:** Findings complete; conclusion written back, no formal implementation started. **Commit:** —.
 
-### Spike S02: Select the public hosting platform
+### Spike S02: Online hosting scope removed
 
 **Dependencies:** Gate CS complete and documentation revisions approved.
 
-**PR/worktree:** Disposable `spike/hosting`; findings-only worktree.
+**PR/worktree:** None in final submission.
 
-**Exact paths:** Disposable evidence under `.spikes/hosting/**`; permanent report `docs/spikes/hosting.md`; required decision entry in `AGENT_LOG.md`.
+**Exact paths:** Final submission keeps no hosting spike report or online deployment guide.
 
-**Procedure:** Validate Cloudflare Pages for React + Vite, Workers for Fetch API/SSE, D1 for relational persistence, and optional Durable Objects for per-run coordination/fan-out. Do not log in, authorize, create tokens, deploy, or change domains/DNS during the spike.
+**Procedure:** Remove online deployment as a final delivery requirement and make local CLI usage the supported path.
 
-**Validation:** Deploy and remove the placeholder service; verify HTTPS URL, Secret non-exposure, persistent mount semantics, and documented teardown.
+**Validation:** README documents local command-line setup and use without requiring any public service.
 
-**Completion:** `docs/spikes/hosting.md` records the Pages + Workers + D1 topology, optional Durable Objects, persistence/SSE boundaries, Docker's separate role, and manual authorization steps used by T26–T27. S02 performs no Cloudflare login, authorization, token creation, deployment, domain, DNS, or HTTPS operation and does not claim a real remote deployment. Disposable code is deleted; only the report remains.
+**Completion:** No online deployment, domain, DNS, HTTPS, remote token, or remote resource step remains in the final README path.
 
-**Parallel:** Yes, with S01. **Status:** Architecture findings complete; no remote deployment performed. **Commit:** —.
+**Parallel:** Yes, with S01. **Status:** Scope removed from final submission. **Commit:** —.
 
 ---
 
@@ -1203,27 +1203,27 @@ Also assert the complete Run/Action enum sets, required `BudgetStopDetail` field
 
 ### Task T27: Prepare Cloudflare delivery, document manual deployment, and pass final review
 
-**Goal:** Produce the separate Cloudflare Pages/Workers/D1 delivery configuration and objective pre-deployment evidence, while leaving login, tokens, real deployment, domain binding, DNS, and HTTPS to an explicitly authorized human step.
+**Goal:** Produce final local command-line usage evidence, credential safety evidence, and submission documentation without online deployment requirements.
 
-**Dependencies:** S02, T18d, T22, T23, T25, and T26.
+**Dependencies:** T18, T22, T23, and T25.
 
 **PR/worktree:** PR-10 / `feat/release-evidence`.
 
-**Files:** Create Pages/Workers/Wrangler deployment configuration, D1 migration/deployment scripts, `docs/security-review.md`, `docs/deployment.md`, and secret/security contract tests; modify `README.md` and `AGENT_LOG.md`. No Cloudflare credential or token is committed.
+**Files:** Create/update `docs/security-review.md`, `scripts/scan-secrets.test.ts`, root `README.md`, `docs/submission/README.md`, and submission checklist documentation. No real credential is committed.
 
-**Expected implementation:** Configure React + Vite Pages build, Worker routes/bindings, D1 migration, optional Durable Object binding, environment separation, preview checks, and rollback guidance. Document custom domain and HTTPS as manual Cloudflare/DNS steps, including least-privilege token setup performed only by an authorized human. Also document the independent Windows/Fastify and Docker/self-hosted path.
+**Expected implementation:** Document local command-line installation, build, credential setup, interactive REPL, one-shot CLI use, workspace requirements, validation behavior, and safety boundaries.
 
-**First failing test:** Validate Pages/Workers/Wrangler config and D1 migration locally; seed a disposable API-key sentinel and prove it cannot appear in requests, browser state, logs, D1, KV, R2, or errors; assert public composition has Mock LLM only and no upload/shell/install/network capability.
+**First failing test:** Seed a disposable API-key sentinel and prove README/security evidence documents local credential boundaries and no plaintext key path.
 
-**Expected red:** Deployment manifest, complete documentation, evidence, and final scanner/review do not exist.
+**Expected red:** Complete local CLI documentation, security evidence, and final scanner/review do not exist.
 
-**Minimum implementation:** Add deployable Pages/Workers/Wrangler configuration, D1 migrations, local/preview validation commands, rollback documentation, and a clearly marked human checklist for login, authorization, token configuration, deployment, custom domain, DNS, and HTTPS. Do not perform those external operations without separate authorization.
+**Minimum implementation:** Add command-line setup/use documentation, security review, final scanner test, and checklist evidence. Do not add online deployment instructions.
 
 **Refactor:** Make README commands identical to tested commands; consolidate evidence links without exposing credentials or full prompts.
 
-**Verification:** `pnpm install --frozen-lockfile`; `pnpm verify`; `pnpm demo:mechanisms`; SQLite/D1 contract parity; Worker SSE cursor replay/disconnect recovery; local Wrangler/Pages configuration validation; public-demo API-key absence tests; README Docker smoke test. Real deployment and URL checks remain pending until human authorization.
+**Verification:** `pnpm install --frozen-lockfile`; `pnpm verify`; `pnpm demo:mechanisms`; `pnpm build`; `git diff --check`; local CLI README smoke review.
 
-**Done:** All locally/CI-verifiable SPEC §10 criteria have evidence, Docker and Cloudflare artifacts are distinct, and no unresolved critical/high finding or secret leakage remains. A public URL/domain/HTTPS is recorded only after the separate human deployment step; S02 itself is not evidence of remote deployment.
+**Done:** All locally verifiable SPEC §10 criteria have evidence and no unresolved critical/high finding or secret leakage remains. Online deployment is explicitly not part of final submission.
 
 **Parallel:** Final serial gate. **Status:** Complete. **Commit:** `23ffc4f` (`docs: add final deployment and security evidence`).
 
