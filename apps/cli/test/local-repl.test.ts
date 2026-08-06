@@ -116,7 +116,7 @@ describe("local REPL", () => {
 
   it("renders help as multiple lines and clear as a terminal control sequence", async () => {
     const written: string[] = [];
-    const inputs = ["/help", "/clear", "/exit"];
+    const inputs = ["/help", "/help credential", "/clear", "/exit"];
     await runLocalRepl({
       workspacePath: "E:/project",
       baseUrl: "https://gateway.example/v1",
@@ -139,6 +139,8 @@ describe("local REPL", () => {
 
     expect(written).toContain("Commands:");
     expect(written).toContain("  /status               Show workspace, model, validation, and current run.");
+    expect(written).toContain("  /credential ...       Manage the provider key. See /help credential.");
+    expect(written).toContain("Credential commands:");
     expect(written).toContain("  /credential status    Check whether the provider key is configured.");
     expect(written).toContain("\u001b[2J\u001b[H");
   });

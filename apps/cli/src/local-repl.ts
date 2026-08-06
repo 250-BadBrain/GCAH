@@ -98,20 +98,30 @@ async function recreateApp(options: LocalReplOptions, deps: LocalReplDeps, state
 async function handleCommand(input: string, state: ReplState, runtime: ReplRuntime, options: LocalReplOptions, deps: LocalReplDeps): Promise<{ lines: string[]; exit: boolean }> {
   const [command, ...args] = input.split(/\s+/u);
   if (command === "/exit" || command === "/quit") return { lines: ["bye"], exit: true };
+  if (command === "/help" && args[0] === "credential") {
+    return {
+      lines: [
+        "Credential commands:",
+        "  /credential status    Check whether the provider key is configured.",
+        "  /credential set       Store the provider key with hidden input.",
+        "  /credential update    Replace the provider key with hidden input.",
+        "  /credential clear     Clear the stored provider key."
+      ],
+      exit: false
+    };
+  }
   if (command === "/help") {
     return {
       lines: [
         "Commands:",
         "  /help                 Show this help.",
+        "  /help credential      Show credential command details.",
         "  /status               Show workspace, model, validation, and current run.",
         "  /workspace <path>     Switch workspace and save it to the local profile.",
         "  /model <name>         Change model for future runs.",
         "  /base-url <url>       Change OpenAI-compatible endpoint for future runs.",
         "  /validation pnpm-test Use the pnpm test validation preset.",
-        "  /credential status    Check whether the provider key is configured.",
-        "  /credential set       Store the provider key with hidden input.",
-        "  /credential update    Replace the provider key with hidden input.",
-        "  /credential clear     Clear the stored provider key.",
+        "  /credential ...       Manage the provider key. See /help credential.",
         "  /events [run-id]      Show the current or selected run timeline.",
         "  /clear                Clear the terminal screen.",
         "  /exit, /quit          Exit the local session."
