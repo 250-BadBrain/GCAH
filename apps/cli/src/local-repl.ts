@@ -131,8 +131,7 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
     state.currentRunId = null;
     await deps.profileStore?.save(profile(state));
     await recreateApp(options, deps, state, runtime);
-    const registered = await registerWorkspace(runtime.app, state.workspacePath);
-    return { lines: [`model=${state.model}`, registered], exit: false };
+    return { lines: [`model=${state.model}`, ...await registerWorkspaceOnlyOnFailure(runtime.app, state.workspacePath)], exit: false };
   }
   if (command === "/base-url") {
     const baseUrl = args.join(" ");
@@ -141,8 +140,7 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
     state.currentRunId = null;
     await deps.profileStore?.save(profile(state));
     await recreateApp(options, deps, state, runtime);
-    const registered = await registerWorkspace(runtime.app, state.workspacePath);
-    return { lines: [`base-url=${state.baseUrl}`, registered], exit: false };
+    return { lines: [`base-url=${state.baseUrl}`, ...await registerWorkspaceOnlyOnFailure(runtime.app, state.workspacePath)], exit: false };
   }
   if (command === "/validation") {
     const validation = args[0] ?? "";
@@ -163,8 +161,7 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
     state.currentRunId = null;
     await deps.profileStore?.save(profile(state));
     await recreateApp(options, deps, state, runtime);
-    const registered = await registerWorkspace(runtime.app, state.workspacePath);
-    return { lines: [`validation=${validation}`, registered], exit: false };
+    return { lines: [`validation=${validation}`, ...await registerWorkspaceOnlyOnFailure(runtime.app, state.workspacePath)], exit: false };
   }
   if (command === "/credential") {
     return { lines: await credentialCommand(args[0], deps), exit: false };
@@ -311,6 +308,11 @@ async function registerWorkspace(app: InjectableApp, path: string): Promise<stri
   const response = await app.inject({ method: "POST", url: "/api/workspaces", payload: { path } });
   if (response.statusCode >= 300) return `workspace registration failed: ${safeSummary(response.json())}`;
   return `workspace=${path}`;
+}
+
+async function registerWorkspaceOnlyOnFailure(app: InjectableApp, path: string): Promise<string[]> {
+  const result = await registerWorkspace(app, path);
+  return result.startsWith("workspace registration failed:") ? [result] : [];
 }
 
 async function fetchRenderedEvents(app: InjectableApp, runId: string): Promise<string[]> {

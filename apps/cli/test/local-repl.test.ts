@@ -184,6 +184,35 @@ describe("local REPL", () => {
     expect(written).toContain("credential: stored");
   });
 
+  it("does not echo workspace after non-workspace configuration commands succeed", async () => {
+    const written: string[] = [];
+    const inputs = ["/base-url https://next.example/v1", "/model NextModel", "/validation auto", "/exit"];
+    await runLocalRepl({
+      workspacePath: "E:/project",
+      baseUrl: "https://gateway.example/v1",
+      model: "Qwen-Coder",
+      validation: "auto"
+    }, {
+      credentialStore: credentialStore(),
+      createApp: async () => ({
+        async inject(request) {
+          if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
+          return { statusCode: 404, json: () => ({}) };
+        },
+        async close() {}
+      }),
+      promptLine: async () => inputs.shift() ?? "/exit",
+      writeLine: (line) => {
+        written.push(line);
+      }
+    });
+
+    expect(written).toContain("base-url=https://next.example/v1");
+    expect(written).toContain("model=NextModel");
+    expect(written).toContain("validation=auto");
+    expect(written.filter((line) => line === "workspace=E:/project")).toHaveLength(1);
+  });
+
   it("recreates the embedded app when the workspace changes", async () => {
     const allowedRoots: string[][] = [];
     let closed = 0;
