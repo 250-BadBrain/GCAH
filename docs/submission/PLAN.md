@@ -1391,7 +1391,7 @@ Tests:
 - `/workspace <path>`: canonicalize/register a workspace through the same local production app route; update non-secret profile.
 - `/model <name>`: change model for future runs and update profile.
 - `/base-url <url>`: change OpenAI-compatible base URL for future runs and update profile.
-- `/validation pnpm-test`: select the allowed validation preset.
+- `/validation auto|none|status`: select automatic detection, explicitly disable checks, or inspect the resolved command.
 - `/events [run-id]`: print persisted events for the current or specified run.
 - `/clear`: clear terminal display if supported, otherwise no-op with no error.
 - `/exit` and `/quit`: close the embedded app and end the process cleanly.
@@ -1543,7 +1543,7 @@ Acceptance:
 
 - `auto`: detect a project-native validation command from workspace files.
 - `none`: explicitly disable automatic correctness checks while keeping governance and workspace fencing.
-- `pnpm-test`: force `pnpm test` for Node/pnpm projects.
+- Legacy profile compatibility may still resolve `pnpm-test`, but the interactive terminal no longer presents it as a user-facing option because `auto` covers Node/pnpm projects.
 
 **Auto detection order:**
 
@@ -1558,7 +1558,7 @@ Acceptance:
 
 **Acceptance:**
 
-- `/validation auto`, `/validation none`, `/validation pnpm-test`, and `/validation status` work in the interactive terminal.
+- `/validation auto`, `/validation none`, and `/validation status` work in the interactive terminal.
 - `gcah local --validation auto` and `gcah local --validation none` work in one-shot mode.
 - `auto` never invents arbitrary shell commands and only emits structured executable/args/cwd templates.
 - Explicit no-validation passes `validationCommand: null` to the local production composition root and does not fall back to the legacy demo validator.
@@ -1567,7 +1567,7 @@ Acceptance:
 
 **Tests:**
 
-- CLI resolver tests for `auto`, `none`, `pnpm-test`, Node/pnpm/npm/yarn, Python, Rust, Go, and unknown workspaces.
+- CLI resolver tests for `auto`, `none`, legacy `pnpm-test`, Node/pnpm/npm/yarn, Python, Rust, Go, and unknown workspaces.
 - REPL tests for validation status/help behavior.
 - Local production integration test proving `validationCommand: null` completes without legacy demo validation events.
 

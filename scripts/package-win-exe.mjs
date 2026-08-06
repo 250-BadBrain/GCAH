@@ -68,7 +68,6 @@ Notes:
   - API keys are stored through the operating-system credential store.
   - Do not pass API keys as command-line arguments.
   - /validation auto detects common project checks; /validation none disables automatic correctness checks.
-  - /validation pnpm-test forces pnpm test and requires package.json with a test script.
   - Running gcah.exe without arguments is the same as running gcah.exe local.
   - The release executable is intended as a launcher; configure/check credentials from inside gcah> with /credential commands.
   - This release is for local command-line use; it does not perform online deployment.

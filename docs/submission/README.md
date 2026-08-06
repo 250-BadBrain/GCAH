@@ -105,7 +105,6 @@ Useful REPL commands:
 /model <name>
 /validation auto
 /validation none
-/validation pnpm-test
 /validation status
 /events [run-id]
 /clear
@@ -146,7 +145,7 @@ node apps\cli\dist\src\bin.js approval approve-once <run-id> <action-id> --reaso
 
 ## Workspace Requirements
 
-The selected workspace must be a real local directory. `--validation auto` detects project-native checks such as `pnpm test`, `npm test`, `yarn test`, `python -m pytest`, `cargo test`, or `go test ./...` when matching project files are present. `--validation none` disables automatic correctness checks. `--validation pnpm-test` forces `pnpm test` and requires a `package.json` with a `test` script. GCAH canonicalizes the workspace path, applies a workspace fence, and only runs governed tool actions inside the selected workspace.
+The selected workspace must be a real local directory. `--validation auto` detects project-native checks such as `pnpm test`, `npm test`, `yarn test`, `python -m pytest`, `cargo test`, or `go test ./...` when matching project files are present. `--validation none` disables automatic correctness checks. GCAH canonicalizes the workspace path, applies a workspace fence, and only runs governed tool actions inside the selected workspace.
 
 ## Safety Boundaries
 
@@ -154,7 +153,7 @@ The selected workspace must be a real local directory. `--validation auto` detec
 - The local profile stores non-secret settings only: workspace, base URL, model, and validation preference.
 - Mutating actions are governed before execution; risky actions can require approval.
 - Validation orchestrates the selected project's own checks; it is not a universal proof of correctness.
-- `auto` is the recommended validation profile. `none` is available for small or untested projects, and `pnpm-test` forces the workspace's existing `pnpm test`.
+- `auto` is the recommended validation profile. `none` is available for small or untested projects.
 - Real LLM calls are manual local actions controlled by your own provider key.
 - The local runtime database is stored in `.gcah/`; it is ignored by Git and must not be committed.
 

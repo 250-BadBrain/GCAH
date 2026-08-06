@@ -99,39 +99,8 @@ async function recreateApp(options: LocalReplOptions, deps: LocalReplDeps, state
 async function handleCommand(input: string, state: ReplState, runtime: ReplRuntime, options: LocalReplOptions, deps: LocalReplDeps): Promise<{ lines: string[]; exit: boolean }> {
   const [command, ...args] = input.split(/\s+/u);
   if (command === "/exit" || command === "/quit") return { lines: ["bye"], exit: true };
-  if (command === "/help" && args[0] === "credential") {
-    return {
-      lines: [
-        "Credential commands:",
-        "  /credential status    Check whether the provider key is configured.",
-        "  /credential set       Store the provider key with hidden input.",
-        "  /credential update    Replace the provider key with hidden input.",
-        "  /credential clear     Clear the stored provider key."
-      ],
-      exit: false
-    };
-  }
   if (command === "/help") {
-    return {
-      lines: [
-        "Commands:",
-        "  /help                 Show this help.",
-        "  /help credential      Show credential command details.",
-        "  /status               Show workspace, model, validation, and current run.",
-        "  /workspace <path>     Switch workspace and save it to the local profile.",
-        "  /model <name>         Change model for future runs.",
-        "  /base-url <url>       Change OpenAI-compatible endpoint for future runs.",
-        "  /validation auto      Auto-detect a project-native validation command.",
-        "  /validation none      Disable automatic correctness checks.",
-        "  /validation pnpm-test Use the pnpm test validation preset.",
-        "  /validation status    Show the resolved validation command.",
-        "  /credential ...       Manage the provider key. See /help credential.",
-        "  /events [run-id]      Show the current or selected run timeline.",
-        "  /clear                Clear the terminal screen.",
-        "  /exit, /quit          Exit the local session."
-      ],
-      exit: false
-    };
+    return { lines: helpLines(args[0]), exit: false };
   }
   if (command === "/status") {
     return {
@@ -189,7 +158,7 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
         exit: false
       };
     }
-    if (validation !== "auto" && validation !== "none" && validation !== "pnpm-test") return { lines: ["unsupported validation; allowed: auto, none, pnpm-test"], exit: false };
+    if (validation !== "auto" && validation !== "none") return { lines: ["unsupported validation; allowed: auto, none, status"], exit: false };
     state.validation = validation;
     state.currentRunId = null;
     await deps.profileStore?.save(profile(state));
@@ -208,6 +177,77 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
   }
   if (command === "/clear") return { lines: ["\u001b[2J\u001b[H"], exit: false };
   return { lines: [`unknown command: ${command}`], exit: false };
+}
+
+function helpLines(topic: string | undefined): string[] {
+  if (topic === undefined) return [
+    "Commands:",
+    "  /help [command]       Show command help.",
+    "  /status               Show current session settings.",
+    "  /workspace ...        Manage the active workspace.",
+    "  /model ...            Manage the model name.",
+    "  /base-url ...         Manage the OpenAI-compatible endpoint.",
+    "  /validation ...       Manage automatic validation.",
+    "  /credential ...       Manage the provider key.",
+    "  /events ...           Show a run timeline.",
+    "  /clear                Clear the terminal screen.",
+    "  /exit, /quit          Exit the local session."
+  ];
+  const normalized = topic.startsWith("/") ? topic : `/${topic}`;
+  if (normalized === "/help") return [
+    "Command:",
+    "  /help [command]",
+    "Description:",
+    "  Show the top-level command list or detailed help for one command."
+  ];
+  if (normalized === "/status") return [
+    "Command:",
+    "  /status",
+    "Description:",
+    "  Show workspace, base URL, model, validation profile, and active run."
+  ];
+  if (normalized === "/workspace") return [
+    "Workspace commands:",
+    "  /workspace <path>     Switch workspace and save it to the local profile."
+  ];
+  if (normalized === "/model") return [
+    "Model commands:",
+    "  /model <name>         Change model for future runs."
+  ];
+  if (normalized === "/base-url") return [
+    "Base URL commands:",
+    "  /base-url <url>       Change OpenAI-compatible endpoint for future runs."
+  ];
+  if (normalized === "/validation") return [
+    "Validation commands:",
+    "  /validation auto      Auto-detect a project-native validation command.",
+    "  /validation none      Disable automatic correctness checks.",
+    "  /validation status    Show the resolved validation command."
+  ];
+  if (normalized === "/credential") return [
+    "Credential commands:",
+    "  /credential status    Check whether the provider key is configured.",
+    "  /credential set       Store the provider key with hidden input.",
+    "  /credential update    Replace the provider key with hidden input.",
+    "  /credential clear     Clear the stored provider key."
+  ];
+  if (normalized === "/events") return [
+    "Events commands:",
+    "  /events [run-id]      Show the current or selected run timeline."
+  ];
+  if (normalized === "/clear") return [
+    "Command:",
+    "  /clear",
+    "Description:",
+    "  Clear the terminal screen."
+  ];
+  if (normalized === "/exit" || normalized === "/quit") return [
+    "Command:",
+    "  /exit, /quit",
+    "Description:",
+    "  Exit the local session."
+  ];
+  return [`unsupported command: ${topic}`];
 }
 
 async function credentialCommand(command: string | undefined, deps: LocalReplDeps): Promise<string[]> {
