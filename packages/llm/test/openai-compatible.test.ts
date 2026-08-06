@@ -198,4 +198,30 @@ describe("OpenAiCompatibleLlmClient", () => {
     });
     await expect(malformed.complete([])).rejects.toMatchObject({ code: "PROTOCOL_ERROR" });
   });
+
+  it("retries transient transport failures before classifying a network error", async () => {
+    let calls = 0;
+    const client = new OpenAiCompatibleLlmClient({
+      baseUrl: "https://gateway.example",
+      model: "model",
+      providerName: "course",
+      credentialResolver: resolver("sk-test-secret"),
+      retryDelayMs: 0,
+      transport: async () => {
+        calls += 1;
+        if (calls < 3) throw new Error("socket closed");
+        return {
+          status: 200,
+          body: {
+            choices: [{ message: { content: JSON.stringify({ kind: "finish", summary: "done", rationale: "complete" }) } }]
+          }
+        };
+      }
+    });
+
+    await expect(client.complete([])).resolves.toMatchObject({
+      response: { kind: "finish", summary: "done", rationale: "complete" }
+    });
+    expect(calls).toBe(3);
+  });
 });

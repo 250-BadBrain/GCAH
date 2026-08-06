@@ -36,6 +36,8 @@ export interface OpenAiCompatibleLlmClientOptions {
   credentialResolver: CredentialResolver;
   transport?: OpenAiCompatibleTransport;
   timeoutMs?: number;
+  retryAttempts?: number;
+  retryDelayMs?: number;
 }
 
 export class OpenAiCompatibleLlmClient implements LlmClientPort {
@@ -45,7 +47,7 @@ export class OpenAiCompatibleLlmClient implements LlmClientPort {
     try {
       return await this.options.credentialResolver.withCredential("openai-compatible", async (secret) => {
         const transport = this.options.transport ?? createOpenAiCompatibleFetchTransport();
-        const response = await transport({
+        const response = await requestWithRetry(transport, {
           url: `${this.options.baseUrl.replace(/\/+$/u, "")}/chat/completions`,
           method: "POST",
           headers: {
@@ -59,7 +61,7 @@ export class OpenAiCompatibleLlmClient implements LlmClientPort {
             temperature: 0
           },
           timeoutMs: this.options.timeoutMs ?? 30000
-        });
+        }, this.options.retryAttempts ?? 3, this.options.retryDelayMs ?? 250);
         if (response.status === 429) throw new OpenAiCompatibleError("RATE_LIMIT", this.options.providerName);
         if (response.status < 200 || response.status >= 300) throw new OpenAiCompatibleError("HTTP_ERROR", this.options.providerName);
         return parseResponse(response.body, this.options.providerName);
@@ -69,6 +71,30 @@ export class OpenAiCompatibleLlmClient implements LlmClientPort {
       throw new OpenAiCompatibleError("NETWORK_ERROR", this.options.providerName);
     }
   }
+}
+
+async function requestWithRetry(
+  transport: OpenAiCompatibleTransport,
+  request: OpenAiCompatibleTransportRequest,
+  retryAttempts: number,
+  retryDelayMs: number
+): Promise<OpenAiCompatibleTransportResponse> {
+  const attempts = Math.max(1, retryAttempts);
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await transport(request);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await delay(retryDelayMs * attempt);
+    }
+  }
+  throw lastError;
+}
+
+async function delay(ms: number): Promise<void> {
+  if (ms <= 0) return;
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function createOpenAiCompatibleFetchTransport(fetchFn: typeof fetch = fetch): OpenAiCompatibleTransport {

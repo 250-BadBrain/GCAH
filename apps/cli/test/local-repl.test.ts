@@ -128,6 +128,45 @@ describe("local REPL", () => {
     });
   });
 
+  it("summarizes provider failures after approval without raw response noise", async () => {
+    const app: InjectableApp = {
+      async inject(request) {
+        if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
+        if (request.url === "/api/runs") return { statusCode: 201, json: () => ({ id: "run-approval", status: "WAITING_APPROVAL", stopReason: null }) };
+        if (request.url === "/api/runs/run-approval/events?cursor=0") {
+          return { statusCode: 200, json: () => ({ events: [
+            { type: "action.proposed", summary: "write action" },
+            { type: "approval.required", summary: "approval required for action:run-approval:1", relatedEntityId: "action:run-approval:1" }
+          ] }) };
+        }
+        if (request.url === "/api/runs/run-approval/approvals/action:run-approval:1") {
+          return { statusCode: 500, json: () => ({ statusCode: 500, code: "NETWORK_ERROR", message: "openai-compatible NETWORK_ERROR" }) };
+        }
+        return { statusCode: 404, json: () => ({}) };
+      },
+      async close() {}
+    };
+    const inputs = ["mutate", "o", "/exit"];
+    const written: string[] = [];
+
+    await runLocalRepl({
+      workspacePath: "E:/project",
+      baseUrl: "https://gateway.example/v1",
+      model: "Qwen-Coder",
+      validation: "auto"
+    }, {
+      credentialStore: credentialStore(),
+      createApp: async () => app,
+      promptLine: async () => inputs.shift() ?? "/exit",
+      writeLine: (line) => {
+        written.push(line);
+      }
+    });
+
+    expect(written).toContain("approval failed: model request failed after approval (network, timeout, or invalid provider response). Try again or switch to a more stable model.");
+    expect(written.join("\n")).not.toContain("\"statusCode\":500");
+  });
+
   it("renders help as multiple lines and clear as a terminal control sequence", async () => {
     const written: string[] = [];
     const inputs = ["/help", "/help credential", "/help validation", "/help status", "/help missing", "/validation", "/validation status", "/clear", "/exit"];

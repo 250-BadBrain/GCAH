@@ -294,13 +294,24 @@ async function runTask(app: InjectableApp, state: ReplState, task: string, promp
         url: `/api/runs/${run.id}/approvals/${approval}`,
         payload: { decision, reason: "local repl approval" }
       });
-      if (approved.statusCode >= 300) return [...lines, `approval failed: ${safeSummary(approved.json())}`];
+      if (approved.statusCode >= 300) return [...lines, formatApprovalFailure(approved.json())];
       run = parseRun(approved.json()) ?? run;
       lines.push(`Approval: ${decision}`);
       events = await fetchEvents(app, run.id);
     }
   }
   return [...lines, ...renderRunSummary(run, events)];
+}
+
+function formatApprovalFailure(body: unknown): string {
+  const detail = safeSummary(body);
+  if (detail.includes("NETWORK_ERROR")) {
+    return "approval failed: model request failed after approval (network, timeout, or invalid provider response). Try again or switch to a more stable model.";
+  }
+  if (detail.includes("PROTOCOL_ERROR")) {
+    return "approval failed: model returned a response that did not match the required action JSON protocol. Try a coding-oriented model or a narrower prompt.";
+  }
+  return `approval failed: ${detail}`;
 }
 
 async function registerWorkspace(app: InjectableApp, path: string): Promise<string> {
