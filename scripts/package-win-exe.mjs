@@ -10,6 +10,7 @@ const packageDir = join(releaseRoot, "gcah-windows-x64");
 const appDir = join(packageDir, "app");
 const runtimeDir = join(packageDir, "runtime");
 const exePath = join(packageDir, "gcah.exe");
+const cmdPath = join(packageDir, "Start GCAH.cmd");
 const zipPath = join(releaseRoot, "gcah-windows-x64.zip");
 const sumsPath = join(packageDir, "SHA256SUMS.txt");
 
@@ -40,13 +41,23 @@ execFileSync("powershell", [
 ], { cwd: root, stdio: "inherit" });
 rmSync(launcherSourcePath, { force: true });
 
+writeFileSync(cmdPath, `@echo off
+cd /d "%~dp0"
+gcah.exe local
+if errorlevel 1 (
+  echo.
+  echo GCAH exited with an error. Press any key to close this window.
+  pause >nul
+)
+`, "utf8");
+
 writeFileSync(join(packageDir, "README-windows.txt"), `GCAH Windows x64 release
 
-Double-click gcah.exe to start the interactive local agent.
+Double-click "Start GCAH.cmd" to start the interactive local agent. You can also run gcah.exe from PowerShell.
 
 Preferred usage:
 
-  1. Double-click gcah.exe, or run .\\gcah.exe from PowerShell.
+  1. Double-click Start GCAH.cmd, or run .\\gcah.exe from PowerShell.
   2. Configure credentials and model settings inside gcah>.
 
 Inside gcah>:
@@ -70,18 +81,24 @@ Notes:
   - Do not pass API keys as command-line arguments.
   - /validation auto detects common project checks; /validation none disables automatic correctness checks.
   - Running gcah.exe without arguments is the same as running gcah.exe local.
+  - Start GCAH.cmd keeps the window open if startup fails, so errors are visible.
   - The release executable is intended as a launcher; configure/check credentials from inside gcah> with /credential commands.
   - This release is for local command-line use; it does not perform online deployment.
 `, "utf8");
 
 writeFileSync(sumsPath, [
   `${sha256(exePath)}  ${basename(exePath)}`,
+  `${sha256(cmdPath)}  ${basename(cmdPath)}`,
   `${sha256(join(runtimeDir, "node.exe"))}  runtime/node.exe`
 ].join("\n") + "\n", "utf8");
 
-execFileSync("tar", ["-a", "-cf", zipPath, "-C", packageDir, "."], { cwd: root, stdio: "inherit" });
-
-console.log(`Created ${zipPath}`);
+if (process.argv.includes("--zip")) {
+  execFileSync("tar", ["-a", "-cf", zipPath, "-C", packageDir, "."], { cwd: root, stdio: "inherit" });
+  console.log(`Created ${zipPath}`);
+} else {
+  console.log(`Created ${packageDir}`);
+  console.log("Zip creation skipped; compress the release folder manually or run this script with --zip.");
+}
 
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -91,7 +108,16 @@ function materializeHoistedDependencies(nodeModulesDir) {
   const hoistedDir = join(nodeModulesDir, ".pnpm", "node_modules");
   if (!existsSync(hoistedDir)) return;
   const seen = new Set();
-  materializePackage("cross-keychain");
+  for (const entry of readdirSync(hoistedDir, { withFileTypes: true })) {
+    if (entry.name === ".bin" || entry.name === "@gcah") continue;
+    if (entry.name.startsWith("@")) {
+      for (const scopedEntry of readdirSync(join(hoistedDir, entry.name), { withFileTypes: true })) {
+        materializePackage(`${entry.name}/${scopedEntry.name}`);
+      }
+      continue;
+    }
+    materializePackage(entry.name);
+  }
 
   function materializePackage(packageName) {
     if (packageName.startsWith("@gcah/") || seen.has(packageName)) return;

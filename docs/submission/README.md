@@ -36,19 +36,19 @@ pnpm demo:mechanisms
 
 ## Windows Release Package
 
-Build the Windows x64 package locally:
+Build the Windows x64 release folder locally:
 
 ```powershell
 pnpm package:win
 ```
 
-The generated GitHub Release asset is:
+The generated folder is:
 
 ```text
-release\gcah-windows-x64.zip
+release\gcah-windows-x64
 ```
 
-The zip contains `gcah.exe`, a bundled Node runtime, the deployed CLI app, `README-windows.txt`, and `SHA256SUMS.txt`. Upload this zip to the GitHub Release page. Double-clicking `gcah.exe` starts the interactive local agent. Users configure and check API keys inside `gcah>:` with `/credential set` and `/credential status`. The release package is for local command-line use and does not perform online deployment.
+The folder contains `Start GCAH.cmd`, `gcah.exe`, a bundled Node runtime, the deployed CLI app, `README-windows.txt`, and `SHA256SUMS.txt`. Compress this folder manually if you want a zip for the GitHub Release page. Double-clicking `Start GCAH.cmd` starts the interactive local agent and keeps the window open if startup fails. Users configure and check API keys inside `gcah>:` with `/credential set` and `/credential status`. The release package is for local command-line use and does not perform online deployment.
 
 ## Safe Credential Setup
 

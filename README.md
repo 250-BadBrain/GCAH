@@ -19,19 +19,19 @@ pnpm verify
 pnpm demo:mechanisms
 ```
 
-Build a Windows x64 release package for GitHub Releases:
+Build a Windows x64 release folder for GitHub Releases:
 
 ```powershell
 pnpm package:win
 ```
 
-The generated asset is:
+The generated folder is:
 
 ```text
-release\gcah-windows-x64.zip
+release\gcah-windows-x64
 ```
 
-Upload that zip file to the GitHub Release page. The zip contains `gcah.exe`, a bundled Node runtime, the deployed CLI app, a Windows README, and SHA-256 checksums. Double-clicking `gcah.exe` starts the interactive local agent. Users configure and check API keys inside `gcah>:` with `/credential set` and `/credential status`.
+Compress this folder manually if you want a zip for the GitHub Release page. The folder contains `Start GCAH.cmd`, `gcah.exe`, a bundled Node runtime, the deployed CLI app, a Windows README, and SHA-256 checksums. Double-clicking `Start GCAH.cmd` starts the interactive local agent and keeps the window open if startup fails. Users configure and check API keys inside `gcah>:` with `/credential set` and `/credential status`.
 
 ## 2. Store Your API Key Safely
 
