@@ -26,6 +26,7 @@ export interface LocalReplDeps {
     validationCommand?: { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number };
   }): Promise<InjectableApp>;
   promptLine(label: string): Promise<string>;
+  promptSecret?: () => Promise<string>;
   writeLine?(line: string): void;
   profileStore?: LocalReplProfileStore;
 }
@@ -107,6 +108,10 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
         "  /model <name>         Change model for future runs.",
         "  /base-url <url>       Change OpenAI-compatible endpoint for future runs.",
         "  /validation pnpm-test Use the pnpm test validation preset.",
+        "  /credential status    Check whether the provider key is configured.",
+        "  /credential set       Store the provider key with hidden input.",
+        "  /credential update    Replace the provider key with hidden input.",
+        "  /credential clear     Clear the stored provider key.",
         "  /events [run-id]      Show the current or selected run timeline.",
         "  /clear                Clear the terminal screen.",
         "  /exit, /quit          Exit the local session."
@@ -166,6 +171,9 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
     const registered = await registerWorkspace(runtime.app, state.workspacePath);
     return { lines: [`validation=${validation}`, registered], exit: false };
   }
+  if (command === "/credential") {
+    return { lines: await credentialCommand(args[0], deps), exit: false };
+  }
   if (command === "/events") {
     const runId = args[0] ?? state.currentRunId;
     if (runId === null) return { lines: ["no run selected"], exit: false };
@@ -174,6 +182,35 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
   }
   if (command === "/clear") return { lines: ["\u001b[2J\u001b[H"], exit: false };
   return { lines: [`unknown command: ${command}`], exit: false };
+}
+
+async function credentialCommand(command: string | undefined, deps: LocalReplDeps): Promise<string[]> {
+  if (command === "status") {
+    try {
+      const status = await deps.credentialStore.status("openai-compatible");
+      if (!status.available && status.reason === "backend-unavailable") return ["credential: backend unavailable"];
+      if (!status.available) return ["credential: missing"];
+      return [`credential: configured backend=${status.backend}`];
+    } catch {
+      return ["credential: backend unavailable"];
+    }
+  }
+  if (command === "set" || command === "update") {
+    if (deps.promptSecret === undefined) return ["credential: hidden input unavailable"];
+    const secret = await deps.promptSecret();
+    if (secret === "") return ["credential: empty secret ignored"];
+    if (command === "set") {
+      await deps.credentialStore.set("openai-compatible", secret);
+      return ["credential: stored"];
+    }
+    await deps.credentialStore.update("openai-compatible", secret);
+    return ["credential: updated"];
+  }
+  if (command === "clear") {
+    await deps.credentialStore.clear("openai-compatible");
+    return ["credential: cleared"];
+  }
+  return ["usage: /credential status|set|update|clear"];
 }
 
 async function runTask(app: InjectableApp, state: ReplState, task: string, promptLine: (label: string) => Promise<string>): Promise<string[]> {

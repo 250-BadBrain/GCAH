@@ -29,9 +29,8 @@ rmSync(join(appDir, "src"), { recursive: true, force: true });
 rmSync(join(appDir, "test"), { recursive: true, force: true });
 copyFileSync(process.execPath, join(runtimeDir, "node.exe"));
 
-const launcherSource = launcherCs();
 const launcherSourcePath = join(packageDir, "gcah-launcher.cs");
-writeFileSync(launcherSourcePath, launcherSource, "utf8");
+writeFileSync(launcherSourcePath, launcherCs(), "utf8");
 
 execFileSync("powershell", [
   "-NoProfile",
@@ -42,23 +41,26 @@ rmSync(launcherSourcePath, { force: true });
 
 writeFileSync(join(packageDir, "README-windows.txt"), `GCAH Windows x64 release
 
-Usage from PowerShell:
+Double-click gcah.exe to start the interactive local agent.
 
-  .\\gcah.exe credential set --provider openai-compatible
-  .\\gcah.exe credential status --provider openai-compatible
-  .\\gcah.exe local
+Preferred usage:
+
+  1. Double-click gcah.exe, or run .\\gcah.exe from PowerShell.
+  2. Configure credentials and model settings inside gcah>.
 
 Inside gcah>:
 
+  /credential set
+  /credential status
   /workspace E:\\path\\to\\your-project
   /base-url https://your-openai-compatible-provider.example/v1
   /model DeepSeek-V3
   /validation pnpm-test
-  修复失败的测试
+  Fix the failing tests.
 
 One-shot example:
 
-  .\\gcah.exe local --workspace E:\\path\\to\\your-project --base-url https://your-openai-compatible-provider.example/v1 --model DeepSeek-V3 --validation pnpm-test --task "修复失败的测试"
+  .\\gcah.exe local --workspace E:\\path\\to\\your-project --base-url https://your-openai-compatible-provider.example/v1 --model DeepSeek-V3 --validation pnpm-test --task "Fix the failing tests"
 
 Notes:
 
@@ -66,6 +68,8 @@ Notes:
   - API keys are stored through the operating-system credential store.
   - Do not pass API keys as command-line arguments.
   - The selected workspace must contain package.json with a test script when using /validation pnpm-test.
+  - Running gcah.exe without arguments is the same as running gcah.exe local.
+  - The release executable is intended as a launcher; configure/check credentials from inside gcah> with /credential commands.
   - This release is for local command-line use; it does not perform online deployment.
 `, "utf8");
 
@@ -114,7 +118,8 @@ public static class GcahLauncher
 
         var psi = new ProcessStartInfo();
         psi.FileName = node;
-        psi.Arguments = Quote(script) + BuildArguments(args);
+        string[] effectiveArgs = args.Length == 0 ? new string[] { "local" } : args;
+        psi.Arguments = Quote(script) + BuildArguments(effectiveArgs);
         psi.UseShellExecute = false;
 
         using (var process = Process.Start(psi))

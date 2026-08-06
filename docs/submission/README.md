@@ -48,7 +48,7 @@ The generated GitHub Release asset is:
 release\gcah-windows-x64.zip
 ```
 
-The zip contains `gcah.exe`, a bundled Node runtime, the deployed CLI app, `README-windows.txt`, and `SHA256SUMS.txt`. Upload this zip to the GitHub Release page. The release package is for local command-line use and does not perform online deployment.
+The zip contains `gcah.exe`, a bundled Node runtime, the deployed CLI app, `README-windows.txt`, and `SHA256SUMS.txt`. Upload this zip to the GitHub Release page. Double-clicking `gcah.exe` starts the interactive local agent. Users configure and check API keys inside `gcah>:` with `/credential set` and `/credential status`. The release package is for local command-line use and does not perform online deployment.
 
 ## Safe Credential Setup
 
@@ -96,6 +96,10 @@ Useful REPL commands:
 ```text
 /help
 /status
+/credential set
+/credential status
+/credential update
+/credential clear
 /workspace <path>
 /base-url <url>
 /model <name>

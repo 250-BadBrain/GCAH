@@ -5,13 +5,22 @@ import type { CredentialStore } from "@gcah/credentials";
 import type { InjectableApp } from "../src/local-session.js";
 
 function credentialStore(): CredentialStore {
+  let stored: string | null = "sk-existing-secret";
   return {
     async status(provider) {
-      return { available: true, provider, source: "os", backend: "fake", updatedAt: null };
+      return stored === null
+        ? { available: false, provider, source: "os", reason: "missing", backend: "fake", updatedAt: null }
+        : { available: true, provider, source: "os", backend: "fake", updatedAt: null };
     },
-    async set() {},
-    async update() {},
-    async clear() {},
+    async set(_provider, secret) {
+      stored = secret;
+    },
+    async update(_provider, secret) {
+      stored = secret;
+    },
+    async clear() {
+      stored = null;
+    },
     async withCredential(_provider, callback) {
       return callback("sk-test-secret");
     }
@@ -130,7 +139,39 @@ describe("local REPL", () => {
 
     expect(written).toContain("Commands:");
     expect(written).toContain("  /status               Show workspace, model, validation, and current run.");
+    expect(written).toContain("  /credential status    Check whether the provider key is configured.");
     expect(written).toContain("\u001b[2J\u001b[H");
+  });
+
+  it("manages credentials inside the interactive session", async () => {
+    const written: string[] = [];
+    const inputs = ["/credential status", "/credential clear", "/credential status", "/credential set", "/credential status", "/exit"];
+    const secrets = ["sk-new-secret"];
+    await runLocalRepl({
+      workspacePath: "E:/project",
+      baseUrl: "https://gateway.example/v1",
+      model: "Qwen-Coder",
+      validation: "pnpm-test"
+    }, {
+      credentialStore: credentialStore(),
+      createApp: async () => ({
+        async inject(request) {
+          if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
+          return { statusCode: 404, json: () => ({}) };
+        },
+        async close() {}
+      }),
+      promptLine: async () => inputs.shift() ?? "/exit",
+      promptSecret: async () => secrets.shift() ?? "",
+      writeLine: (line) => {
+        written.push(line);
+      }
+    });
+
+    expect(written).toContain("credential: configured backend=fake");
+    expect(written).toContain("credential: cleared");
+    expect(written).toContain("credential: missing");
+    expect(written).toContain("credential: stored");
   });
 
   it("recreates the embedded app when the workspace changes", async () => {

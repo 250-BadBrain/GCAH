@@ -31,7 +31,7 @@ The generated asset is:
 release\gcah-windows-x64.zip
 ```
 
-Upload that zip file to the GitHub Release page. The zip contains `gcah.exe`, a bundled Node runtime, the deployed CLI app, a Windows README, and SHA-256 checksums.
+Upload that zip file to the GitHub Release page. The zip contains `gcah.exe`, a bundled Node runtime, the deployed CLI app, a Windows README, and SHA-256 checksums. Double-clicking `gcah.exe` starts the interactive local agent. Users configure and check API keys inside `gcah>:` with `/credential set` and `/credential status`.
 
 ## 2. Store Your API Key Safely
 
@@ -75,6 +75,10 @@ Useful REPL commands:
 ```text
 /help
 /status
+/credential set
+/credential status
+/credential update
+/credential clear
 /workspace <path>
 /base-url <url>
 /model <name>

@@ -93,6 +93,7 @@ async function defaultLocalRepl(options: LocalSessionOptions, deps: RunCliDepend
     credentialStore: store,
     createApp: async (input) => createLocalProductionApp(input),
     promptLine: deps.promptLine ?? defaultPromptLine,
+    promptSecret: deps.promptSecret ?? createHiddenInputPrompt(),
     writeLine: deps.writeLine ?? ((line) => process.stdout.write(`${line}\n`)),
     profileStore
   });
