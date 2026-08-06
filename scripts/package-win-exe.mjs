@@ -78,11 +78,7 @@ writeFileSync(sumsPath, [
   `${sha256(join(runtimeDir, "node.exe"))}  runtime/node.exe`
 ].join("\n") + "\n", "utf8");
 
-execFileSync("powershell", [
-  "-NoProfile",
-  "-Command",
-  `Compress-Archive -Path '${packageDir}\\*' -DestinationPath '${zipPath}' -Force`
-], { cwd: root, stdio: "inherit" });
+execFileSync("tar", ["-a", "-cf", zipPath, "-C", packageDir, "."], { cwd: root, stdio: "inherit" });
 
 console.log(`Created ${zipPath}`);
 
