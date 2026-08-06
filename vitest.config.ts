@@ -5,6 +5,9 @@ import { defineConfig } from "vitest/config";
 const fromRoot = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
+  test: {
+    exclude: ["**/node_modules/**", "**/dist/**", "release/**"]
+  },
   resolve: {
     alias: {
       "@gcah/core": fromRoot("./packages/core/src/index.ts"),

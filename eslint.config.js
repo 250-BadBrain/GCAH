@@ -7,6 +7,7 @@ export default tseslint.config(
       "dist/**",
       "**/dist/**",
       "coverage/**",
+      "release/**",
       "**/*.d.ts"
     ]
   },

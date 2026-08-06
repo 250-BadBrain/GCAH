@@ -19,6 +19,20 @@ pnpm verify
 pnpm demo:mechanisms
 ```
 
+Build a Windows x64 release package for GitHub Releases:
+
+```powershell
+pnpm package:win
+```
+
+The generated asset is:
+
+```text
+release\gcah-windows-x64.zip
+```
+
+Upload that zip file to the GitHub Release page. The zip contains `gcah.exe`, a bundled Node runtime, the deployed CLI app, a Windows README, and SHA-256 checksums.
+
 ## 2. Store Your API Key Safely
 
 Use an OpenAI-compatible provider key, such as the course platform key. The key is entered with hidden input and is not written to config files.
