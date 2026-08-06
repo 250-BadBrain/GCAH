@@ -89,7 +89,7 @@ export async function createLocalProductionApp(options: LocalProductionAppOption
       validationCommand: options.validationCommand
     });
     try {
-      const run = await loop.start({ runId, workspaceId: workspaceRoot, taskSummary: body.task, configSnapshot, maxSteps: 12 });
+      const run = await loop.start({ runId, workspaceId: workspaceRoot, taskSummary: body.task, configSnapshot, maxSteps: 24 });
       if (run.status === "WAITING_APPROVAL") pausedLoops.set(run.id, loop);
       return reply.code(201).send(toRunDto(run));
     } catch (error) {
@@ -276,7 +276,7 @@ function localConfig(workspaceRoot: string, validationCommand: CommandTemplate |
   const commands = validationCommand === null ? {} : { test: `${effective.executable} ${effective.args.join(" ")}`.trim() };
   return createConfigSnapshot({
     mode: "local",
-    budgets: { maxRounds: 12, maxTokens: 100000, maxElapsedMs: 600000 },
+    budgets: { maxRounds: 24, maxTokens: 100000, maxElapsedMs: 600000 },
     validation: { required },
     riskThresholds: { requireApproval: "medium", deny: "high" },
     commands,

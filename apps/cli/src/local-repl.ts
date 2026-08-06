@@ -288,7 +288,6 @@ async function runTask(app: InjectableApp, state: ReplState, task: string, promp
     const approval = findApproval(events);
     if (approval !== null) {
       const promptLines = approvalPromptLines(approval, events);
-      lines.push(...promptLines);
       const decision = await promptApproval(promptLine, promptLines);
       const approved = await app.inject({
         method: "POST",
@@ -313,11 +312,6 @@ async function registerWorkspace(app: InjectableApp, path: string): Promise<stri
 async function registerWorkspaceOnlyOnFailure(app: InjectableApp, path: string): Promise<string[]> {
   const result = await registerWorkspace(app, path);
   return result.startsWith("workspace registration failed:") ? [result] : [];
-}
-
-async function fetchRenderedEvents(app: InjectableApp, runId: string): Promise<string[]> {
-  const events = await fetchEvents(app, runId);
-  return events === null ? ["event fetch failed"] : renderEvents(events);
 }
 
 async function fetchEvents(app: InjectableApp, runId: string): Promise<RunEventView[] | null> {
@@ -391,22 +385,22 @@ function findApproval(events: RunEventView[] | null): string | null {
   return event.relatedEntityId ?? event.summary.match(/action:[^\s\]]+/u)?.[0] ?? null;
 }
 
-function approvalPromptLines(actionId: string, events: RunEventView[] | null): string[] {
+function approvalPromptLines(_actionId: string, events: RunEventView[] | null): string[] {
   const prior = events ?? [];
   const action = lastWhere(prior, (event) => event.type === "action.proposed");
-  const governance = lastWhere(prior, (event) => event.type === "governance.decision");
-  const tool = lastWhere(prior, (event) => event.type === "tool.result");
+  const actionName = action?.summary.replace(/ action$/u, "") ?? "action";
   return [
-    "Approval required:",
-    `  action: ${actionId}`,
-    ...(action === undefined ? [] : [`  proposed: ${clipOneLine(action.summary)}`]),
-    ...(governance === undefined ? [] : [`  governance: ${clipOneLine(governance.summary)}`]),
-    ...(tool === undefined ? [] : [`  tool result: ${clipOneLine(tool.summary)}`]),
-    "  reason: the proposed action needs explicit permission before it can run.",
-    "  once: approve only this action.",
-    "  session: approve matching actions in this run.",
-    "  reject: deny and ask the agent to find another path."
+    `Approval required: ${actionName}`,
+    approvalHint(actionName),
+    "[o] approve once   [s] approve similar actions in this run   [r] reject"
   ];
+}
+
+function approvalHint(actionName: string): string {
+  if (actionName === "write" || actionName === "patch" || actionName === "delete") return "This may change files in the selected workspace.";
+  if (actionName === "run_validation") return "This may run the configured validation command.";
+  if (actionName === "run_command" || actionName === "shell") return "This may run an allowlisted local command.";
+  return "This action needs your permission before it can run.";
 }
 
 function renderRunSummary(run: { id: string; status: string; stopReason: string | null }, events: RunEventView[] | null): string[] {
@@ -420,9 +414,16 @@ function renderRunSummary(run: { id: string; status: string; stopReason: string 
   if (patched.length > 0) lines.push(`Changed: ${[...new Set(patched)].join(", ")}`);
   if (validation !== undefined) lines.push(validation.type === "validation.pass" ? `Validation: ${clipOneLine(validation.summary)}` : `Validation failed: ${clipOneLine(validation.summary)}`);
   if (completed !== undefined) lines.push(`Agent: ${clipOneLine(completed.summary)}`);
-  if (stopped !== undefined && completed === undefined) lines.push(`Stopped: ${clipOneLine(stopped.summary)}`);
+  if (stopped !== undefined && completed === undefined && run.stopReason !== "BUDGET_EXHAUSTED") lines.push(`Stopped: ${clipOneLine(stopped.summary)}`);
+  if (run.stopReason === "BUDGET_EXHAUSTED") lines.push("Stopped: local step limit reached before completion");
   if (actions.length > 0) lines.push(`Actions: ${summarizeActions(actions)}`);
-  lines.push(run.status === "COMPLETED" || run.stopReason === "COMPLETED" ? "Summary: completed" : `Summary: ${run.status}${run.stopReason === null ? "" : ` ${run.stopReason}`}`);
+  if (run.status === "COMPLETED" || run.stopReason === "COMPLETED") {
+    lines.push("Summary: completed");
+  } else if (run.stopReason === "BUDGET_EXHAUSTED") {
+    lines.push("Summary: step limit reached; retry with a narrower task or continue with another prompt.");
+  } else {
+    lines.push(`Summary: ${run.status}${run.stopReason === null ? "" : ` ${run.stopReason}`}`);
+  }
   lines.push(`Details: /events ${run.id}`);
   return lines;
 }

@@ -67,7 +67,8 @@ describe("local REPL", () => {
     expect(written).toContain("  model:      Qwen-Coder");
     expect(written).toContain("Run run-2 STOPPED stop=BUDGET_EXHAUSTED");
     expect(written).toContain("Validation failed: command failed 1");
-    expect(written).toContain("Summary: STOPPED BUDGET_EXHAUSTED");
+    expect(written).toContain("Stopped: local step limit reached before completion");
+    expect(written).toContain("Summary: step limit reached; retry with a narrower task or continue with another prompt.");
     expect(closed).toBe(true);
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "first" } });
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "second" } });
@@ -115,12 +116,11 @@ describe("local REPL", () => {
     });
 
     expect(result.stdout).toBe("");
-    expect(written).toContain("Approval required:");
-    expect(written).toContain("  proposed: write action");
-    expect(written).toContain("  governance: governance REQUIRE_APPROVAL");
-    expect(written).toContain("  tool result: REQUIRE_APPROVAL NO_GRANT");
     expect(written).toContain("Approval: approve_once");
-    expect(prompts.some((label) => label.includes("Approval required:") && label.includes("proposed: write action"))).toBe(true);
+    expect(written).not.toContain("  governance: governance REQUIRE_APPROVAL");
+    expect(written).not.toContain("  tool result: REQUIRE_APPROVAL NO_GRANT");
+    expect(prompts.some((label) => label.includes("Approval required: write") && label.includes("This may change files in the selected workspace."))).toBe(true);
+    expect(prompts.some((label) => label.includes("governance REQUIRE_APPROVAL"))).toBe(false);
     expect(requests).toContainEqual({
       method: "POST",
       url: "/api/runs/run-approval/approvals/action:run-approval:1",
