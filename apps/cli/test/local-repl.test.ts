@@ -37,7 +37,7 @@ describe("local REPL", () => {
         if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
         if (request.url === "/api/runs" && isTask(request.payload, "first")) return { statusCode: 201, json: () => ({ id: "run-1", status: "COMPLETED", stopReason: "COMPLETED" }) };
         if (request.url === "/api/runs" && isTask(request.payload, "second")) return { statusCode: 201, json: () => ({ id: "run-2", status: "STOPPED", stopReason: "BUDGET_EXHAUSTED" }) };
-        if (request.url === "/api/runs/run-1/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "tool.result", summary: "sha256=abc123\nexport const secret = 'sk-test-secret';" }] }) };
+        if (request.url === "/api/runs/run-1/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "run.completed", summary: "fixed the issue" }, { type: "tool.result", summary: "sha256=abc123\nexport const secret = 'sk-test-secret';" }] }) };
         if (request.url === "/api/runs/run-2/events?cursor=0") return { statusCode: 200, json: () => ({ events: [{ type: "validation.fail", summary: "command failed 1" }] }) };
         return { statusCode: 404, json: () => ({ error: "missing" }) };
       },
@@ -61,13 +61,13 @@ describe("local REPL", () => {
     expect(result.stdout).toBe("");
     expect(written).toContain("GCAH local interactive session");
     expect(written).toContain("Run run-1 COMPLETED stop=COMPLETED");
-    expect(written).toContain("Tool: read file");
+    expect(written).toContain("Agent: fixed the issue");
     expect(written).toContain("Status:");
     expect(written).toContain("  workspace:  E:/project");
     expect(written).toContain("  model:      Qwen-Coder");
     expect(written).toContain("Run run-2 STOPPED stop=BUDGET_EXHAUSTED");
     expect(written).toContain("Validation failed: command failed 1");
-    expect(written).toContain("summary: budget exhausted; last=Validation failed: command failed 1");
+    expect(written).toContain("Summary: STOPPED BUDGET_EXHAUSTED");
     expect(closed).toBe(true);
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "first" } });
     expect(requests).toContainEqual({ method: "POST", url: "/api/runs", payload: { workspacePath: "E:/project", task: "second" } });
@@ -81,7 +81,12 @@ describe("local REPL", () => {
         if (request.url === "/api/workspaces") return { statusCode: 201, json: () => ({ path: "E:/project" }) };
         if (request.url === "/api/runs") return { statusCode: 201, json: () => ({ id: "run-approval", status: "WAITING_APPROVAL", stopReason: null }) };
         if (request.url === "/api/runs/run-approval/events?cursor=0") {
-          return { statusCode: 200, json: () => ({ events: [{ type: "approval.required", summary: "approval required for action:run-approval:1" }] }) };
+          return { statusCode: 200, json: () => ({ events: [
+            { type: "action.proposed", summary: "write action" },
+            { type: "governance.decision", summary: "governance REQUIRE_APPROVAL" },
+            { type: "tool.result", summary: "REQUIRE_APPROVAL NO_GRANT" },
+            { type: "approval.required", summary: "approval required for action:run-approval:1", relatedEntityId: "action:run-approval:1" }
+          ] }) };
         }
         if (request.url === "/api/runs/run-approval/approvals/action:run-approval:1") return { statusCode: 200, json: () => ({ id: "run-approval", status: "COMPLETED", stopReason: "COMPLETED" }) };
         return { statusCode: 404, json: () => ({}) };
@@ -106,7 +111,11 @@ describe("local REPL", () => {
     });
 
     expect(result.stdout).toBe("");
-    expect(written).toContain("approval approve_once");
+    expect(written).toContain("Approval required:");
+    expect(written).toContain("  proposed: write action");
+    expect(written).toContain("  governance: governance REQUIRE_APPROVAL");
+    expect(written).toContain("  tool result: REQUIRE_APPROVAL NO_GRANT");
+    expect(written).toContain("Approval: approve_once");
     expect(requests).toContainEqual({
       method: "POST",
       url: "/api/runs/run-approval/approvals/action:run-approval:1",

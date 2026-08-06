@@ -170,7 +170,7 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
     const runId = args[0] ?? state.currentRunId;
     if (runId === null) return { lines: ["no run selected"], exit: false };
     const response = await runtime.app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
-    return { lines: response.statusCode >= 300 ? ["event fetch failed"] : renderEvents(response.json()), exit: false };
+    return { lines: response.statusCode >= 300 ? ["event fetch failed"] : renderEvents(parseEvents(response.json())), exit: false };
   }
   if (command === "/clear") return { lines: ["\u001b[2J\u001b[H"], exit: false };
   return { lines: [`unknown command: ${command}`], exit: false };
@@ -282,11 +282,12 @@ async function runTask(app: InjectableApp, state: ReplState, task: string, promp
   let run = parseRun(submitted.json());
   if (run === null) return ["run submit failed: malformed response"];
   state.currentRunId = run.id;
-  const lines = [`Run ${run.id} ${run.status}${run.stopReason === null ? "" : ` stop=${run.stopReason}`}`];
-  lines.push(...await fetchRenderedEvents(app, run.id));
+  let events = await fetchEvents(app, run.id);
+  const lines: string[] = [];
   if (run.status === "WAITING_APPROVAL") {
-    const approval = findApproval(lines);
+    const approval = findApproval(events);
     if (approval !== null) {
+      lines.push(...approvalPromptLines(approval, events));
       const decision = await promptApproval(promptLine);
       const approved = await app.inject({
         method: "POST",
@@ -295,13 +296,11 @@ async function runTask(app: InjectableApp, state: ReplState, task: string, promp
       });
       if (approved.statusCode >= 300) return [...lines, `approval failed: ${safeSummary(approved.json())}`];
       run = parseRun(approved.json()) ?? run;
-      lines.push(`approval ${decision}`);
-      lines.push(`Run ${run.id} ${run.status}${run.stopReason === null ? "" : ` stop=${run.stopReason}`}`);
-      lines.push(...await fetchRenderedEvents(app, run.id));
+      lines.push(`Approval: ${decision}`);
+      events = await fetchEvents(app, run.id);
     }
   }
-  lines.push(summaryFor(run, lines));
-  return lines;
+  return [...lines, ...renderRunSummary(run, events)];
 }
 
 async function registerWorkspace(app: InjectableApp, path: string): Promise<string> {
@@ -316,15 +315,34 @@ async function registerWorkspaceOnlyOnFailure(app: InjectableApp, path: string):
 }
 
 async function fetchRenderedEvents(app: InjectableApp, runId: string): Promise<string[]> {
-  const events = await app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
-  if (events.statusCode >= 300) return ["event fetch failed"];
-  return renderEvents(events.json());
+  const events = await fetchEvents(app, runId);
+  return events === null ? ["event fetch failed"] : renderEvents(events);
 }
 
-function renderEvents(value: unknown): string[] {
+async function fetchEvents(app: InjectableApp, runId: string): Promise<RunEventView[] | null> {
+  const response = await app.inject({ method: "GET", url: `/api/runs/${runId}/events?cursor=0` });
+  if (response.statusCode >= 300) return null;
+  return parseEvents(response.json());
+}
+
+interface RunEventView {
+  type: string;
+  summary: string;
+  relatedEntityId: string | null;
+}
+
+function parseEvents(value: unknown): RunEventView[] {
   if (!isRecord(value) || !Array.isArray(value.events)) return [];
-  return value.events.flatMap((event) => {
-    if (!isRecord(event) || typeof event.type !== "string" || typeof event.summary !== "string") return [];
+  return value.events.flatMap((event) =>
+    isRecord(event) && typeof event.type === "string" && typeof event.summary === "string"
+      ? [{ type: event.type, summary: event.summary, relatedEntityId: typeof event.relatedEntityId === "string" ? event.relatedEntityId : null }]
+      : []
+  );
+}
+
+function renderEvents(events: RunEventView[] | null): string[] {
+  if (events === null) return ["event fetch failed"];
+  return events.flatMap((event) => {
     const rendered = renderEvent(event.type, event.summary);
     return rendered === null ? [] : [rendered];
   });
@@ -360,23 +378,66 @@ function renderToolResult(summary: string): string {
 }
 
 async function promptApproval(promptLine: (label: string) => Promise<string>): Promise<LocalApprovalDecision> {
-  const answer = (await promptLine("approve once [o], approve session [s], reject [r]:")).trim().toLowerCase();
+  const answer = (await promptLine("Choose approval [o=once, s=session, r=reject]:")).trim().toLowerCase();
   if (answer === "o" || answer === "once") return "approve_once";
   if (answer === "s" || answer === "session") return "approve_session";
   return "reject";
 }
 
-function findApproval(lines: string[]): string | null {
-  const joined = lines.join("\n");
-  return joined.match(/action:[^\s\]]+/u)?.[0] ?? null;
+function findApproval(events: RunEventView[] | null): string | null {
+  const event = events === null ? undefined : lastWhere(events, (candidate) => candidate.type === "approval.required");
+  if (event === undefined) return null;
+  return event.relatedEntityId ?? event.summary.match(/action:[^\s\]]+/u)?.[0] ?? null;
 }
 
-function summaryFor(run: { status: string; stopReason: string | null }, lines: string[]): string {
-  const last = [...lines].reverse().find((line: string) => line.startsWith("Tool:") || line.startsWith("Validation"));
-  if (run.status === "COMPLETED" || run.stopReason === "COMPLETED") return "summary: completed";
-  if (run.stopReason === "BUDGET_EXHAUSTED") return `summary: budget exhausted${last === undefined ? "" : `; last=${last}`}`;
-  if (run.stopReason === "UNFIXABLE_FAILURE") return `summary: model or tool protocol failed${last === undefined ? "" : `; last=${last}`}`;
-  return `summary: ${run.status}${run.stopReason === null ? "" : ` ${run.stopReason}`}`;
+function approvalPromptLines(actionId: string, events: RunEventView[] | null): string[] {
+  const prior = events ?? [];
+  const action = lastWhere(prior, (event) => event.type === "action.proposed");
+  const governance = lastWhere(prior, (event) => event.type === "governance.decision");
+  const tool = lastWhere(prior, (event) => event.type === "tool.result");
+  return [
+    "Approval required:",
+    `  action: ${actionId}`,
+    ...(action === undefined ? [] : [`  proposed: ${clipOneLine(action.summary)}`]),
+    ...(governance === undefined ? [] : [`  governance: ${clipOneLine(governance.summary)}`]),
+    ...(tool === undefined ? [] : [`  tool result: ${clipOneLine(tool.summary)}`]),
+    "  reason: the proposed action needs explicit permission before it can run.",
+    "  once: approve only this action.",
+    "  session: approve matching actions in this run.",
+    "  reject: deny and ask the agent to find another path."
+  ];
+}
+
+function renderRunSummary(run: { id: string; status: string; stopReason: string | null }, events: RunEventView[] | null): string[] {
+  if (events === null) return [`Run ${run.id} ${run.status}${run.stopReason === null ? "" : ` stop=${run.stopReason}`}`, "Could not load run events."];
+  const actions = events.filter((event) => event.type === "action.proposed").map((event) => event.summary.replace(/ action$/u, ""));
+  const patched = events.filter((event) => event.type === "tool.result" && event.summary.startsWith("patched ")).map((event) => event.summary);
+  const validation = lastWhere(events, (event) => event.type === "validation.pass" || event.type === "validation.fail");
+  const completed = lastWhere(events, (event) => event.type === "run.completed");
+  const stopped = lastWhere(events, (event) => event.type === "run.stopped" || event.type === "run.failed");
+  const lines = [`Run ${run.id} ${run.status}${run.stopReason === null ? "" : ` stop=${run.stopReason}`}`];
+  if (patched.length > 0) lines.push(`Changed: ${[...new Set(patched)].join(", ")}`);
+  if (validation !== undefined) lines.push(validation.type === "validation.pass" ? `Validation: ${clipOneLine(validation.summary)}` : `Validation failed: ${clipOneLine(validation.summary)}`);
+  if (completed !== undefined) lines.push(`Agent: ${clipOneLine(completed.summary)}`);
+  if (stopped !== undefined && completed === undefined) lines.push(`Stopped: ${clipOneLine(stopped.summary)}`);
+  if (actions.length > 0) lines.push(`Actions: ${summarizeActions(actions)}`);
+  lines.push(run.status === "COMPLETED" || run.stopReason === "COMPLETED" ? "Summary: completed" : `Summary: ${run.status}${run.stopReason === null ? "" : ` ${run.stopReason}`}`);
+  lines.push(`Details: /events ${run.id}`);
+  return lines;
+}
+
+function summarizeActions(actions: string[]): string {
+  const counts = new Map<string, number>();
+  for (const action of actions) counts.set(action, (counts.get(action) ?? 0) + 1);
+  return [...counts.entries()].map(([action, count]) => count === 1 ? action : `${action} x${count}`).join(", ");
+}
+
+function lastWhere<T>(items: T[], predicate: (item: T) => boolean): T | undefined {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item !== undefined && predicate(item)) return item;
+  }
+  return undefined;
 }
 
 function parseRun(value: unknown): { id: string; status: string; stopReason: string | null } | null {
