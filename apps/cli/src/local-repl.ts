@@ -287,8 +287,9 @@ async function runTask(app: InjectableApp, state: ReplState, task: string, promp
   if (run.status === "WAITING_APPROVAL") {
     const approval = findApproval(events);
     if (approval !== null) {
-      lines.push(...approvalPromptLines(approval, events));
-      const decision = await promptApproval(promptLine);
+      const promptLines = approvalPromptLines(approval, events);
+      lines.push(...promptLines);
+      const decision = await promptApproval(promptLine, promptLines);
       const approved = await app.inject({
         method: "POST",
         url: `/api/runs/${run.id}/approvals/${approval}`,
@@ -377,8 +378,8 @@ function renderToolResult(summary: string): string {
   return `Tool: ${clipOneLine(summary)}`;
 }
 
-async function promptApproval(promptLine: (label: string) => Promise<string>): Promise<LocalApprovalDecision> {
-  const answer = (await promptLine("Choose approval [o=once, s=session, r=reject]:")).trim().toLowerCase();
+async function promptApproval(promptLine: (label: string) => Promise<string>, details: string[]): Promise<LocalApprovalDecision> {
+  const answer = (await promptLine(`${details.join("\n")}\nChoose approval [o=once, s=session, r=reject]`)).trim().toLowerCase();
   if (answer === "o" || answer === "once") return "approve_once";
   if (answer === "s" || answer === "session") return "approve_session";
   return "reject";

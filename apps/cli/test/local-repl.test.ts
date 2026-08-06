@@ -94,6 +94,7 @@ describe("local REPL", () => {
       async close() {}
     };
     const inputs = ["mutate", "o", "/exit"];
+    const prompts: string[] = [];
     const written: string[] = [];
 
     const result = await runLocalRepl({
@@ -104,7 +105,10 @@ describe("local REPL", () => {
     }, {
       credentialStore: credentialStore(),
       createApp: async () => app,
-      promptLine: async () => inputs.shift() ?? "/exit",
+      promptLine: async (label) => {
+        prompts.push(label);
+        return inputs.shift() ?? "/exit";
+      },
       writeLine: (line) => {
         written.push(line);
       }
@@ -116,6 +120,7 @@ describe("local REPL", () => {
     expect(written).toContain("  governance: governance REQUIRE_APPROVAL");
     expect(written).toContain("  tool result: REQUIRE_APPROVAL NO_GRANT");
     expect(written).toContain("Approval: approve_once");
+    expect(prompts.some((label) => label.includes("Approval required:") && label.includes("proposed: write action"))).toBe(true);
     expect(requests).toContainEqual({
       method: "POST",
       url: "/api/runs/run-approval/approvals/action:run-approval:1",
