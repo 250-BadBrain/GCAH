@@ -31,10 +31,10 @@ describe("CLI server commands", () => {
         }
       },
       runLocalRepl: async (options) => ({ stdout: `${options.workspacePath} ${options.model} ${options.validation}\n`, stderr: "", exitCode: 0 })
-    })).resolves.toMatchObject({ stdout: "E:/prompted Qwen-Coder pnpm-test\n" });
+    })).resolves.toMatchObject({ stdout: "E:/prompted Qwen-Coder auto\n" });
     expect(prompts).toEqual(["Workspace", "Base URL", "Model"]);
     expect(JSON.stringify(saved)).not.toContain("sk-");
-    expect(saved).toEqual([{ workspacePath: "E:/prompted", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "pnpm-test" }]);
+    expect(saved).toEqual([{ workspacePath: "E:/prompted", baseUrl: "https://gateway.example/v1", model: "Qwen-Coder", validation: "auto" }]);
   });
 
   it("rejects arbitrary local validation commands", async () => {

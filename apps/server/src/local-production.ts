@@ -29,7 +29,7 @@ export interface LocalProductionAppOptions {
   model: string;
   allowedWorkspaceRoots: string[];
   clock?: Clock;
-  validationCommand?: CommandTemplate;
+  validationCommand?: CommandTemplate | null;
 }
 
 export async function createLocalProductionApp(options: LocalProductionAppOptions): Promise<FastifyInstance> {
@@ -157,7 +157,7 @@ function createLoop(input: {
   model: string;
   clock: Clock;
   approvalService: ApprovalService;
-  validationCommand: CommandTemplate | undefined;
+  validationCommand: CommandTemplate | null | undefined;
 }): AgentLoop {
   const executor = new LocalExecutor({
     workspaceRoot: input.workspaceRoot,
@@ -167,16 +167,17 @@ function createLoop(input: {
   registerMutationTools(executor);
   const runner = new CommandRunner(async (request) => await spawnCommand(request.executable, request.args, join(input.workspaceRoot, request.cwd), request.timeoutMs));
   const validationCommand = input.validationCommand ?? { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 };
+  const validationTemplates = input.validationCommand === null ? [] : [validationCommand];
   registerCommandTools({
     registry: executor.registry,
     runner,
-    templates: [validationCommand],
+    templates: validationTemplates,
     publicDemo: false
   });
   registerValidationTool({
     registry: executor.registry,
     runner,
-    validators: { test: stripTemplateId(validationCommand) }
+    validators: input.validationCommand === null ? {} : { test: stripTemplateId(validationCommand) }
   });
   const toolGateway = createToolGateway({
     runId: input.runId,
@@ -220,7 +221,7 @@ function createLoop(input: {
       input.validationCommand === undefined
         ? new CommandRunner(async () => await validateWorkspaceState(input.workspaceRoot))
         : runner,
-      { test: stripTemplateId(validationCommand) }
+      input.validationCommand === null ? {} : { test: stripTemplateId(validationCommand) }
     ),
     approval: {
       shouldPauseForFinish: () => false,
@@ -238,8 +239,8 @@ async function validateWorkspaceState(workspaceRoot: string): Promise<{ status: 
 
 async function spawnCommand(executable: string, args: string[], cwd: string, timeoutMs: number): Promise<{ status: "OK" | "ERROR"; summary: string }> {
   return await new Promise((resolve) => {
-    const useWindowsCommandShim = process.platform === "win32" && executable === "pnpm";
-    const command = useWindowsCommandShim ? "pnpm.cmd" : executable;
+    const useWindowsCommandShim = process.platform === "win32" && ["pnpm", "npm", "yarn"].includes(executable);
+    const command = useWindowsCommandShim ? `${executable}.cmd` : executable;
     const child = spawn(command, args, { cwd, shell: useWindowsCommandShim, windowsHide: true });
     const timer = setTimeout(() => {
       child.kill();
@@ -269,13 +270,16 @@ function containsOrEquals(parent: string, child: string): boolean {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-function localConfig(workspaceRoot: string, validationCommand: CommandTemplate = { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 }): ConfigSnapshot {
+function localConfig(workspaceRoot: string, validationCommand: CommandTemplate | null | undefined = { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 }): ConfigSnapshot {
+  const effective = validationCommand ?? { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 };
+  const required = validationCommand === null ? [] : ["test"];
+  const commands = validationCommand === null ? {} : { test: `${effective.executable} ${effective.args.join(" ")}`.trim() };
   return createConfigSnapshot({
     mode: "local",
     budgets: { maxRounds: 12, maxTokens: 100000, maxElapsedMs: 600000 },
-    validation: { required: ["test"] },
+    validation: { required },
     riskThresholds: { requireApproval: "medium", deny: "high" },
-    commands: { test: `${validationCommand.executable} ${validationCommand.args.join(" ")}`.trim() },
+    commands,
     allowedWorkspaceRoots: [workspaceRoot],
     executorBackend: "local",
     llm: { provider: "openai-compatible" }

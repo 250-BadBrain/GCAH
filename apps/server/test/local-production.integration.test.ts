@@ -10,6 +10,44 @@ import { createLocalProductionApp } from "../src/local-production.js";
 import { createPublicDemoApp } from "../src/public-demo.js";
 
 describe("local production composition", () => {
+  it("honors explicit no-validation without falling back to the legacy demo validator", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gcah-prod-no-validation-"));
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "src", "app.ts"), "export const value = \"broken\";\n", "utf8");
+    const brokenHash = sha256("export const value = \"broken\";\n");
+    let requests = 0;
+    const fake = await fakeOpenAiServer(() => {
+      requests += 1;
+      const response = requests === 1
+        ? { kind: "tool", tool: "patch", args: { path: "src/app.ts", baseSha256: brokenHash, unifiedDiff: "--- a/src/app.ts\n+++ b/src/app.ts\n@@\n-export const value = \"broken\";\n+export const value = \"changed-without-validation\";\n" }, rationale: "change" }
+        : { kind: "finish", summary: "complete without validation", rationale: "no validators configured" };
+      return { choices: [{ message: { content: JSON.stringify(response) } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } };
+    });
+    const app = await createLocalProductionApp({
+      dataDir: await mkdtemp(join(tmpdir(), "gcah-prod-data-")),
+      credentialStore: fakeStore("sk-prod-sentinel"),
+      baseUrl: fake.url,
+      model: "course-model",
+      allowedWorkspaceRoots: [root],
+      validationCommand: null
+    });
+
+    try {
+      await app.inject({ method: "POST", url: "/api/workspaces", payload: { path: root } });
+      const submitted = await app.inject({ method: "POST", url: "/api/runs", payload: { workspacePath: root, task: "change without validation" } });
+      expect(submitted.statusCode, submitted.body).toBe(201);
+      const run = JSON.parse(submitted.body) as { id: string; status: string; stopReason: string };
+      expect(run).toMatchObject({ status: "COMPLETED", stopReason: "COMPLETED" });
+      await expect(readFile(join(root, "src", "app.ts"), "utf8")).resolves.toContain("changed-without-validation");
+      const events = await app.inject({ method: "GET", url: `/api/runs/${run.id}/events?cursor=0` });
+      expect(events.body).not.toContain("validation.fail");
+      expect(events.body).not.toContain("src/app.ts does not contain fixed");
+    } finally {
+      await app.close();
+      await fake.close();
+    }
+  });
+
   it("submits a run through real OpenAI-compatible LLM, AgentLoop, tools, validation, and SQLite without leaking the key", async () => {
     const root = await mkdtemp(join(tmpdir(), "gcah-prod-workspace-"));
     await mkdir(join(root, "src"), { recursive: true });

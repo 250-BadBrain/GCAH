@@ -1532,3 +1532,43 @@ Acceptance:
 **Status:** Implemented in branch `feat/local-agent-repl`; reviewer gate skipped by human instruction. Local verification passed. **Commit:** current T30 implementation commit on this branch.
 
 **Implementation note:** This implementation provides the persistent `gcah>` REPL, repeated prompts, slash commands, persisted event rendering, inline approval routing, and clearer summaries. The existing local production `/api/runs` endpoint still executes each AgentLoop synchronously, so events are rendered from persisted repository state after each run returns rather than streamed concurrently while the run is executing. A future server-side async run endpoint would be required for true real-time event streaming during long provider calls.
+
+## T31 — Validation Auto Detection and UX
+
+**Goal:** Replace the local terminal's single `pnpm-test` assumption with a safer validation profile system that works across common project types while making clear that GCAH orchestrates project-native checks rather than proving universal correctness.
+
+**Scope:** Local CLI/REPL validation selection, one-shot local validation selection, local production no-validation semantics, documentation, and tests. This does not change AgentLoop, governance, approval, tool execution, CredentialStore, public demo, or real LLM adapter security boundaries.
+
+**Profiles:**
+
+- `auto`: detect a project-native validation command from workspace files.
+- `none`: explicitly disable automatic correctness checks while keeping governance and workspace fencing.
+- `pnpm-test`: force `pnpm test` for Node/pnpm projects.
+
+**Auto detection order:**
+
+1. `package.json` with `scripts.test` plus `pnpm-lock.yaml` -> `pnpm test`.
+2. `package.json` with `scripts.test` plus `package-lock.json` -> `npm test`.
+3. `package.json` with `scripts.test` plus `yarn.lock` -> `yarn test`.
+4. `package.json` with `scripts.test` and no lockfile -> `npm test`.
+5. Python project marker (`pytest.ini`, `pyproject.toml`, or `requirements.txt`) -> `python -m pytest`.
+6. `Cargo.toml` -> `cargo test`.
+7. `go.mod` -> `go test ./...`.
+8. Otherwise, resolve to no automatic validation with a user-facing diagnostic.
+
+**Acceptance:**
+
+- `/validation auto`, `/validation none`, `/validation pnpm-test`, and `/validation status` work in the interactive terminal.
+- `gcah local --validation auto` and `gcah local --validation none` work in one-shot mode.
+- `auto` never invents arbitrary shell commands and only emits structured executable/args/cwd templates.
+- Explicit no-validation passes `validationCommand: null` to the local production composition root and does not fall back to the legacy demo validator.
+- `/validation status` tells the user whether a command was resolved or whether automatic correctness checks are disabled.
+- Documentation explains that no validation mode does not verify correctness, and auto mode delegates to the project's own checks.
+
+**Tests:**
+
+- CLI resolver tests for `auto`, `none`, `pnpm-test`, Node/pnpm/npm/yarn, Python, Rust, Go, and unknown workspaces.
+- REPL tests for validation status/help behavior.
+- Local production integration test proving `validationCommand: null` completes without legacy demo validation events.
+
+**Status:** Implemented after T30 as a usability hardening stage. **Commit:** pending.

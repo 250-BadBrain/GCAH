@@ -82,7 +82,7 @@ At the `gcah>:` prompt, configure the local workspace, provider endpoint, model,
 /workspace E:\path\to\your-project
 /base-url https://your-openai-compatible-provider.example/v1
 /model DeepSeek-V3
-/validation pnpm-test
+/validation auto
 ```
 
 Then type a normal coding task:
@@ -103,7 +103,10 @@ Useful REPL commands:
 /workspace <path>
 /base-url <url>
 /model <name>
+/validation auto
+/validation none
 /validation pnpm-test
+/validation status
 /events [run-id]
 /clear
 /exit
@@ -118,7 +121,7 @@ node apps\cli\dist\src\bin.js local `
   --workspace E:\path\to\your-project `
   --base-url https://your-openai-compatible-provider.example/v1 `
   --model DeepSeek-V3 `
-  --validation pnpm-test `
+  --validation auto `
   --task "修复失败的测试"
 ```
 
@@ -143,14 +146,15 @@ node apps\cli\dist\src\bin.js approval approve-once <run-id> <action-id> --reaso
 
 ## Workspace Requirements
 
-The selected workspace must be a real local directory. For `--validation pnpm-test`, the workspace must contain a `package.json` with a `test` script. GCAH canonicalizes the workspace path, applies a workspace fence, and only runs governed tool actions inside the selected workspace.
+The selected workspace must be a real local directory. `--validation auto` detects project-native checks such as `pnpm test`, `npm test`, `yarn test`, `python -m pytest`, `cargo test`, or `go test ./...` when matching project files are present. `--validation none` disables automatic correctness checks. `--validation pnpm-test` forces `pnpm test` and requires a `package.json` with a `test` script. GCAH canonicalizes the workspace path, applies a workspace fence, and only runs governed tool actions inside the selected workspace.
 
 ## Safety Boundaries
 
 - API keys must be configured only through `credential set/update`; do not pass keys as command-line arguments.
 - The local profile stores non-secret settings only: workspace, base URL, model, and validation preference.
 - Mutating actions are governed before execution; risky actions can require approval.
-- `pnpm-test` is the only built-in validation preset and runs the workspace's existing `pnpm test`.
+- Validation orchestrates the selected project's own checks; it is not a universal proof of correctness.
+- `auto` is the recommended validation profile. `none` is available for small or untested projects, and `pnpm-test` forces the workspace's existing `pnpm test`.
 - Real LLM calls are manual local actions controlled by your own provider key.
 - The local runtime database is stored in `.gcah/`; it is ignored by Git and must not be committed.
 
@@ -172,6 +176,7 @@ docs/course       original course requirement files
 
 ## Troubleshooting
 
-- If validation says `command failed 1`, run `pnpm test` in the target workspace. The workspace must contain a `package.json` with a `test` script.
+- If `/validation status` reports `command: none`, no supported project-native check was detected. Use `/validation none` intentionally, or add a project test command such as `package.json` plus `test`, `pytest`, `Cargo.toml`, or `go.mod`.
+- If validation says `command failed 1`, run the resolved command from `/validation status` in the target workspace, then fix the reported project error.
 - If the run reports `PROTOCOL_ERROR`, the provider returned an invalid tool/finish response. Retry with a coder model or a stricter task prompt.
 - If the provider reports a network error, confirm the base URL, model name, provider quota, and local network connection.

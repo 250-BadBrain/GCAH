@@ -55,19 +55,20 @@ Inside gcah>:
   /workspace E:\\path\\to\\your-project
   /base-url https://your-openai-compatible-provider.example/v1
   /model DeepSeek-V3
-  /validation pnpm-test
+  /validation auto
   Fix the failing tests.
 
 One-shot example:
 
-  .\\gcah.exe local --workspace E:\\path\\to\\your-project --base-url https://your-openai-compatible-provider.example/v1 --model DeepSeek-V3 --validation pnpm-test --task "Fix the failing tests"
+  .\\gcah.exe local --workspace E:\\path\\to\\your-project --base-url https://your-openai-compatible-provider.example/v1 --model DeepSeek-V3 --validation auto --task "Fix the failing tests"
 
 Notes:
 
   - This package includes its own Node runtime.
   - API keys are stored through the operating-system credential store.
   - Do not pass API keys as command-line arguments.
-  - The selected workspace must contain package.json with a test script when using /validation pnpm-test.
+  - /validation auto detects common project checks; /validation none disables automatic correctness checks.
+  - /validation pnpm-test forces pnpm test and requires package.json with a test script.
   - Running gcah.exe without arguments is the same as running gcah.exe local.
   - The release executable is intended as a launcher; configure/check credentials from inside gcah> with /credential commands.
   - This release is for local command-line use; it does not perform online deployment.

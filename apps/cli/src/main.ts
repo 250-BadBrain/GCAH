@@ -6,6 +6,7 @@ import { createFileLocalProfileStore, type LocalProfileStore } from "./local-pro
 import { runLocalRepl } from "./local-repl.js";
 import { createPromptApprovalDecider, runEmbeddedLocalSession } from "./local-session.js";
 import { fail, ok, sanitizeOutput, type CliResult } from "./output.js";
+import { isAllowedLocalValidation } from "./validation-profile.js";
 
 export { createFetchTransport, createHiddenInputPrompt, createRawModeLineReader, sanitizeOutput, type CliResult };
 export type { CliTransport };
@@ -62,7 +63,7 @@ async function localCommand(args: readonly string[], deps: RunCliDependencies): 
   const workspacePath = option(args, "--workspace") ?? profile?.workspacePath ?? await prompt("Workspace");
   const baseUrl = option(args, "--base-url") ?? profile?.baseUrl ?? await prompt("Base URL");
   const model = option(args, "--model") ?? profile?.model ?? await prompt("Model");
-  const validation = option(args, "--validation") ?? profile?.validation ?? "pnpm-test";
+  const validation = option(args, "--validation") ?? profile?.validation ?? "auto";
   const task = option(args, "--task") ?? undefined;
   if (workspacePath === "" || baseUrl === "" || model === "") return fail("missing local options\n");
   if (!isAllowedLocalValidation(validation)) return fail("unsupported local validation\n", 2);
@@ -113,10 +114,6 @@ function createDefaultPromptLine(): (label: string) => Promise<string> {
       process.stderr.write("\n");
     }
   };
-}
-
-function isAllowedLocalValidation(value: string): boolean {
-  return value === "pnpm-test";
 }
 
 async function runCommand(command: string | undefined, args: readonly string[], transport: CliTransport): Promise<CliResult> {

@@ -2,6 +2,7 @@ import type { CredentialStore } from "@gcah/credentials";
 
 import type { InjectableApp, LocalApprovalDecision } from "./local-session.js";
 import { ok, type CliResult } from "./output.js";
+import { resolveLocalValidation, type LocalValidationCommand } from "./validation-profile.js";
 
 export interface LocalReplOptions {
   workspacePath: string;
@@ -23,7 +24,7 @@ export interface LocalReplDeps {
     baseUrl: string;
     model: string;
     allowedWorkspaceRoots: string[];
-    validationCommand?: { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number };
+    validationCommand?: LocalValidationCommand | null;
   }): Promise<InjectableApp>;
   promptLine(label: string): Promise<string>;
   promptSecret?: () => Promise<string>;
@@ -35,7 +36,7 @@ interface ReplState {
   workspacePath: string;
   baseUrl: string;
   model: string;
-  validation: string | undefined;
+  validation: string;
   currentRunId: string | null;
 }
 
@@ -48,7 +49,7 @@ export async function runLocalRepl(options: LocalReplOptions, deps: LocalReplDep
     workspacePath: options.workspacePath,
     baseUrl: options.baseUrl,
     model: options.model,
-    validation: options.validation,
+    validation: options.validation ?? "auto",
     currentRunId: null
   };
   const runtime: ReplRuntime = { app: await createWorkspaceApp(options, deps, state) };
@@ -79,14 +80,14 @@ export async function runLocalRepl(options: LocalReplOptions, deps: LocalReplDep
 }
 
 async function createWorkspaceApp(options: LocalReplOptions, deps: LocalReplDeps, state: ReplState): Promise<InjectableApp> {
-  const command = validationCommand(state.validation);
+  const resolved = await resolveLocalValidation(state.validation, state.workspacePath);
   return deps.createApp({
     dataDir: options.dataDir ?? ".gcah",
     credentialStore: deps.credentialStore,
     baseUrl: state.baseUrl,
     model: state.model,
     allowedWorkspaceRoots: [state.workspacePath],
-    ...(command === undefined ? {} : { validationCommand: command })
+    validationCommand: resolved.command
   });
 }
 
@@ -120,7 +121,10 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
         "  /workspace <path>     Switch workspace and save it to the local profile.",
         "  /model <name>         Change model for future runs.",
         "  /base-url <url>       Change OpenAI-compatible endpoint for future runs.",
+        "  /validation auto      Auto-detect a project-native validation command.",
+        "  /validation none      Disable automatic correctness checks.",
         "  /validation pnpm-test Use the pnpm test validation preset.",
+        "  /validation status    Show the resolved validation command.",
         "  /credential ...       Manage the provider key. See /help credential.",
         "  /events [run-id]      Show the current or selected run timeline.",
         "  /clear                Clear the terminal screen.",
@@ -136,7 +140,7 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
         `  workspace:  ${state.workspacePath}`,
         `  base-url:   ${state.baseUrl}`,
         `  model:      ${state.model}`,
-        `  validation: ${state.validation ?? "none"}`,
+        `  validation: ${state.validation}`,
         `  active run: ${state.currentRunId ?? "none"}`
       ],
       exit: false
@@ -173,7 +177,19 @@ async function handleCommand(input: string, state: ReplState, runtime: ReplRunti
   }
   if (command === "/validation") {
     const validation = args[0] ?? "";
-    if (validation !== "pnpm-test") return { lines: ["unsupported validation; allowed: pnpm-test"], exit: false };
+    if (validation === "status") {
+      const resolved = await resolveLocalValidation(state.validation, state.workspacePath);
+      return {
+        lines: [
+          "Validation:",
+          `  profile: ${state.validation}`,
+          `  command: ${resolved.command === null ? "none" : `${resolved.command.executable} ${resolved.command.args.join(" ")}`.trim()}`,
+          ...resolved.diagnostics.map((line) => `  note: ${line}`)
+        ],
+        exit: false
+      };
+    }
+    if (validation !== "auto" && validation !== "none" && validation !== "pnpm-test") return { lines: ["unsupported validation; allowed: auto, none, pnpm-test"], exit: false };
     state.validation = validation;
     state.currentRunId = null;
     await deps.profileStore?.save(profile(state));
@@ -326,13 +342,8 @@ function parseRun(value: unknown): { id: string; status: string; stopReason: str
   return { id: value.id, status: value.status, stopReason: typeof value.stopReason === "string" ? value.stopReason : null };
 }
 
-function validationCommand(validation: string | undefined): { id: string; executable: string; args: string[]; cwd: string; timeoutMs: number } | undefined {
-  if (validation === "pnpm-test") return { id: "test", executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 30000 };
-  return undefined;
-}
-
 function profile(state: ReplState): { workspacePath: string; baseUrl: string; model: string; validation?: string } {
-  return { workspacePath: state.workspacePath, baseUrl: state.baseUrl, model: state.model, ...(state.validation === undefined ? {} : { validation: state.validation }) };
+  return { workspacePath: state.workspacePath, baseUrl: state.baseUrl, model: state.model, validation: state.validation };
 }
 
 function safeSummary(value: unknown): string {
