@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { basename, join, resolve } from "node:path";
@@ -25,6 +25,7 @@ execFileSync("pnpm", ["--filter", "@gcah/cli", "deploy", appDir, "--legacy", "--
   shell: process.platform === "win32"
 });
 
+materializeHoistedDependencies(join(appDir, "node_modules"));
 rmSync(join(appDir, "src"), { recursive: true, force: true });
 rmSync(join(appDir, "test"), { recursive: true, force: true });
 copyFileSync(process.execPath, join(runtimeDir, "node.exe"));
@@ -84,6 +85,50 @@ console.log(`Created ${zipPath}`);
 
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function materializeHoistedDependencies(nodeModulesDir) {
+  const hoistedDir = join(nodeModulesDir, ".pnpm", "node_modules");
+  if (!existsSync(hoistedDir)) return;
+  const seen = new Set();
+  materializePackage("cross-keychain");
+
+  function materializePackage(packageName) {
+    if (packageName.startsWith("@gcah/") || seen.has(packageName)) return;
+    seen.add(packageName);
+    const source = packagePath(hoistedDir, packageName);
+    if (!existsSync(source)) return;
+    const target = packagePath(nodeModulesDir, packageName);
+    copyPackage(source, target);
+    const manifestPath = join(target, "package.json");
+    if (!existsSync(manifestPath)) return;
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    for (const dependencyName of Object.keys({
+      ...(manifest.dependencies ?? {}),
+      ...(manifest.optionalDependencies ?? {})
+    })) {
+      materializePackage(dependencyName);
+    }
+  }
+}
+
+function packagePath(nodeModulesDir, packageName) {
+  const [scope, name] = packageName.startsWith("@") ? packageName.split("/") : [null, packageName];
+  return scope === null ? join(nodeModulesDir, name) : join(nodeModulesDir, scope, name);
+}
+
+function copyPackage(source, target) {
+  mkdirSync(target, { recursive: true });
+  for (const entry of readdirSync(source, { withFileTypes: true })) {
+    if (entry.name === "node_modules") continue;
+    const sourcePath = join(source, entry.name);
+    const targetPath = join(target, entry.name);
+    if (entry.isDirectory()) {
+      copyPackage(sourcePath, targetPath);
+    } else if (entry.isFile() || statSync(sourcePath).isFile()) {
+      copyFileSync(sourcePath, targetPath);
+    }
+  }
 }
 
 function launcherCs() {
