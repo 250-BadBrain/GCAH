@@ -40,6 +40,11 @@ describe("local validation profiles", () => {
     await writeFile(join(pnpm, "pnpm-lock.yaml"), "");
     await expect(resolveLocalValidation("auto", pnpm)).resolves.toMatchObject({ command: { executable: "pnpm", args: ["test"] } });
 
+    const pnpmBom = await workspace();
+    await writeFile(join(pnpmBom, "package.json"), `\uFEFF${JSON.stringify({ scripts: { test: "vitest run" } })}`);
+    await writeFile(join(pnpmBom, "pnpm-lock.yaml"), "");
+    await expect(resolveLocalValidation("auto", pnpmBom)).resolves.toMatchObject({ command: { executable: "pnpm", args: ["test"] } });
+
     const npm = await workspace();
     await writeFile(join(npm, "package.json"), JSON.stringify({ scripts: { test: "node test.js" } }));
     await writeFile(join(npm, "package-lock.json"), "{}");

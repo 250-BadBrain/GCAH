@@ -70,7 +70,7 @@ function command(executable: string, args: string[]): LocalValidationCommand {
 
 async function readPackageJson(workspacePath: string): Promise<{ scripts?: { test?: string } } | null> {
   try {
-    const parsed = JSON.parse(await readFile(join(workspacePath, "package.json"), "utf8")) as unknown;
+    const parsed = JSON.parse(stripBom(await readFile(join(workspacePath, "package.json"), "utf8"))) as unknown;
     if (typeof parsed !== "object" || parsed === null) return null;
     const scripts = "scripts" in parsed ? (parsed as { scripts?: unknown }).scripts : undefined;
     if (typeof scripts !== "object" || scripts === null) return {};
@@ -81,6 +81,10 @@ async function readPackageJson(workspacePath: string): Promise<{ scripts?: { tes
   } catch {
     return null;
   }
+}
+
+function stripBom(value: string): string {
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
 }
 
 async function exists(workspacePath: string, name: string): Promise<boolean> {
