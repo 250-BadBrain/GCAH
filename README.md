@@ -122,7 +122,6 @@ Submission documents are collected under [`docs/submission/`](docs/submission/):
 
 - [`README.md`](docs/submission/README.md)
 - [`SPEC.md`](docs/submission/SPEC.md)
-- [`PLAN.md`](docs/submission/PLAN.md)
 - [`SPEC_PROCESS.md`](docs/submission/SPEC_PROCESS.md)
 - [`AGENT_LOG.md`](docs/submission/AGENT_LOG.md)
 - [`REFLECTION.md`](docs/submission/REFLECTION.md)

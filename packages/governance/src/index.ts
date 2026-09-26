@@ -10,11 +10,9 @@ export {
   type GovernanceDecision,
   type GovernanceEngine,
   type GovernanceResult,
-  type NormalizedAction,
-  type PolicySnapshot
+  type NormalizedAction
 } from "./decision.js";
 export { assessPatchRisk, type PatchRisk, type PatchRiskInput } from "./patch-risk.js";
-export { PUBLIC_DEMO_POLICY } from "./public-demo-policy.js";
 export {
   ApprovalService,
   type ApprovalFeedback,

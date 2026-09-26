@@ -27,11 +27,11 @@ describe("CLI approval and config commands", () => {
   it("prints non-sensitive config status", async () => {
     const transport: CliTransport = async () => ({
       status: 200,
-      body: { mode: "local", llmProvider: "mock", publicDemo: false }
+      body: { mode: "local", llmProvider: "mock" }
     });
 
     await expect(runCli(["config", "status"], { transport })).resolves.toMatchObject({
-      stdout: "mode=local llm=mock publicDemo=false\n"
+      stdout: "mode=local llm=mock\n"
     });
   });
 });

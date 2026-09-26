@@ -26,11 +26,11 @@ describe("GovernanceEngine", () => {
       action({ kind: "tool", tool: "memory_search", args: { query: "policy", tags: [], limit: 5 }, rationale: "ignored", normalizedSummary: "summary" }),
       action({ kind: "tool", tool: "patch", args: { path: "src/app.ts", baseSha256: "a".repeat(64), unifiedDiff: "@@ -1 +1 @@\n-old\n+new" }, rationale: "ignored", normalizedSummary: "summary" })
     ]) {
-      expect(engine.decide(candidate, { mode: "local" }).result).toBe("ALLOW");
+      expect(engine.decide(candidate).result).toBe("ALLOW");
     }
 
-    const first = engine.decide(readAction("one"), { mode: "local" });
-    const second = engine.decide(readAction("two"), { mode: "local" });
+    const first = engine.decide(readAction("one"));
+    const second = engine.decide(readAction("two"));
     expect(first).toEqual(second);
   });
 
@@ -45,11 +45,11 @@ describe("GovernanceEngine", () => {
       action({ kind: "tool", tool: "run_command", args: { executable: "git", args: ["commit", "-m", "x"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" }),
       action({ kind: "tool", tool: "run_command", args: { executable: "curl", args: ["https://example.com"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" })
     ]) {
-      expect(engine.decide(candidate, { mode: "local" }).result).toBe("REQUIRE_APPROVAL");
+      expect(engine.decide(candidate).result).toBe("REQUIRE_APPROVAL");
     }
   });
 
-  it("denies path, credential, elevation, audit, and public-demo violations", () => {
+  it("denies path, credential, elevation, and audit violations", () => {
     const engine = createGovernanceEngine();
     for (const candidate of [
       action({ kind: "tool", tool: "read", args: { path: "../secret.txt" }, rationale: "ignored", normalizedSummary: "summary" }),
@@ -62,15 +62,8 @@ describe("GovernanceEngine", () => {
       action({ kind: "tool", tool: "run_command", args: { executable: "/usr/bin/sudo", args: ["ls"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" }),
       action({ kind: "tool", tool: "run_command", args: { executable: "C:\\Windows\\System32\\runas.exe", args: ["ls"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" })
     ]) {
-      expect(engine.decide(candidate, { mode: "local" }).result).toBe("DENY");
+      expect(engine.decide(candidate).result).toBe("DENY");
     }
 
-    expect(engine.decide(readAction("ignored"), { mode: "public-demo" }).result).toBe("ALLOW");
-    for (const candidate of [
-      action({ kind: "tool", tool: "write", args: { path: "src/app.ts", content: "x" }, rationale: "ignored", normalizedSummary: "summary" }),
-      action({ kind: "tool", tool: "run_command", args: { executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 1000 }, rationale: "ignored", normalizedSummary: "summary" })
-    ]) {
-      expect(engine.decide(candidate, { mode: "public-demo" }).result).toBe("DENY");
-    }
   });
 });

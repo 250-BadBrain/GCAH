@@ -25,13 +25,12 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 
 ### 1.4 产品边界
 
-- CLI 用于服务管理、配置、凭据、任务提交、状态和审批操作。
-- WebUI 是运行过程的观察窗口与人工审批入口；所有权限判断、动作执行和状态转移均由 server-side harness core 完成。
+- 交互式 CLI 用于本地配置、凭据管理、任务提交、状态查看和人工审批。
 - 系统可保存多个 Run，但同一 workspace 同时最多一个活动 Run；同一 Run 内 Step 串行推进，不执行并行动作。
 - 本地模式可操作用户显式允许的 workspace；默认使用受 workspace 围栏和策略约束的本地执行器。
-- 机制演示使用 Mock LLM 与固定示例 workspace；不包含真实 LLM adapter，不提供 API key 输入、传输或存储路径，不接受项目上传，并按策略重置 demo workspace。
+- 确定性机制验证使用 Mock LLM 与临时 workspace，不需要真实 API key 或外部模型服务。
 - 首版记录结构化运行事件与追加式审计日志，但不实现数据库级完整 event sourcing。
-- 真实 LLM API key 只通过安全凭据来源读取，不进入 workspace、配置、SQLite、事件或日志，也不在 WebUI 明文展示。
+- 真实 LLM API key 只通过安全凭据来源读取，不进入 workspace、配置、SQLite、事件、日志或 CLI 输出。
 
 ### 1.5 明确不做
 
@@ -59,7 +58,7 @@ GCAH 将 LLM 限定为“不可信的下一步动作提议者”，由自行实�
 
 作为审批者，我希望看到动作、参数、命中规则和风险原因，并选择仅本次或本会话同类授权，以便作出知情决定。
 
-- WebUI 展示规范化动作、风险依据与授权范围。【CLI/WebUI 演示】
+- CLI 展示规范化动作、风险依据与授权范围。
 - 参数摘要变化、授权过期或作用域不符时必须重新审批。【核心单元测试】
 
 ### US-4：客观反馈与自动修正
@@ -128,7 +127,7 @@ LLM 响应协议是二选一 discriminated union：
 - `ToolAction`：`{ "kind": "tool", "tool": SupportedToolName, "args": object, "rationale": string }`，只能请求一个已注册工具枚举中的工具。
 - `FinishAction`：`{ "kind": "finish", "summary": string, "rationale": string }`，表示模型认为任务完成。
 
-`rationale` 不参与权限判断、路径解析、命令选择或状态转移；它是不可信纯文本展示字段，必须限长、按目标展示介质转义，并经过凭据与路径脱敏后才可进入日志或 WebUI。实现不得把 `rationale` 当作 Markdown/HTML/命令/路径解析，也不得让其参与 action hash、scope hash 或任何状态机判断。`FinishAction` 只有在最近一次代码变更后的必需验证全部通过，且没有未处理的审批、失败或预算触限时，才能把 Run 转为 `COMPLETED`；否则 core 将其转为结构化反馈并继续或按停机规则停止。
+`rationale` 不参与权限判断、路径解析、命令选择或状态转移；它是不可信纯文本展示字段，必须限长、转义，并经过凭据与路径脱敏后才可进入日志或 CLI 输出。实现不得把 `rationale` 当作 Markdown/HTML/命令/路径解析，也不得让其参与 action hash、scope hash 或任何状态机判断。`FinishAction` 只有在最近一次代码变更后的必需验证全部通过，且没有未处理的审批、失败或预算触限时，才能把 Run 转为 `COMPLETED`；否则 core 将其转为结构化反馈并继续或按停机规则停止。
 
 ### 3.2 LLM 抽象层
 
@@ -200,15 +199,11 @@ LLM 响应协议是二选一 discriminated union：
 
 正式实现采用 `cross-keychain`，实际版本由 `pnpm-lock.yaml` 锁定。`CredentialStore` adapter 必须在操作前验证当前 backend，只允许 Windows 的 `native-windows`、`windows`，macOS 的 `native-macos`、`macos`，Linux 的 `native-linux`、`secret-service`。必须拒绝 `file`、`null` 和任何 unknown backend；后端不可用时 fail closed，返回明确的 `backend unavailable`，不得自动降级到文件存储。
 
-CLI 提供 `credential status/set/update/clear`，录入时隐藏输入，状态仅返回 provider、来源、backend 与更新时间。headless 环境没有操作系统凭据库时明确返回 `backend unavailable`。Mock LLM 机制演示不提供 API key 输入、传输或存储路径。S01 只在 Windows 实测 `native-windows`；macOS 与 Linux 均未实测，不得宣称已验证支持。
+CLI 提供 `credential status/set/update/clear`，录入时隐藏输入，状态仅返回 provider、来源、backend 与更新时间。headless 环境没有操作系统凭据库时明确返回 `backend unavailable`。S01 只在 Windows 实测 `native-windows`；macOS 与 Linux 均未实测，不得宣称已验证支持。
 
-### 3.10 Server、CLI 与 WebUI
+### 3.10 本地服务与 CLI
 
-本地开发使用 Fastify composition root 提供任务、状态、事件、审批、配置状态和凭据状态 API。事件必须先持久化再通过 SSE 发布，支持 cursor 重连和客户端断线恢复。CLI 连接本地 API；WebUI 可作为本地观察窗口展示时间线、风险解释、验证结果和审批入口。
-
-local 模式使用单用户管理令牌认证，本地首次启动生成令牌并存入系统凭据库。Mock LLM 机制演示只允许访问固定示例 Run、启动受限示例任务和提交演示审批，不提供真实 workspace、真实 LLM、凭据或任意命令能力。
-
-浏览器认证采用 same-origin cookie；REST 与 SSE 均依赖同源 Cookie 认证和 CSRF/Origin 校验，不把 bearer token 放入前端 JavaScript 可读存储。SSE 连接必须与 API 同源；断线后用事件游标补取。
+本地开发使用 Fastify composition root 提供 workspace、Run、事件查询、审批和配置状态接口。交互式 CLI 通过嵌入式 Fastify 实例调用这些接口；事件在持久化后由 CLI 按游标读取。服务只绑定本机回环地址。
 
 服务异常重启后，活动 Run 标记为 `INTERRUPTED`。首版取消 `INTERRUPTED` Run 原地恢复：用户只能查看、关闭该 Run，或基于原任务创建新的 Run；系统绝不自动重放可能产生副作用的动作。
 
@@ -217,24 +212,21 @@ local 模式使用单用户管理令牌认证，本地首次启动生成令牌�
 ### 4.1 性能
 
 - 排除 LLM、工具和验证器外部耗时后，普通开发机上的单次策略判定与事件写入目标 p95 小于 100 ms。
-- SSE 在事件成功持久化后 1 秒内推送。
 - 事件、工具输出、记忆注入与 LLM 上下文均有大小上限。
 
 ### 4.2 安全与威胁模型
 
 **威胁来源**：恶意或错误的 LLM 输出、workspace prompt injection、路径穿越、symlink 逃逸、命令参数注入、审批复用、恶意配置、日志泄密和机制演示误用。
 
-**凭据威胁**：API key 可能被 LLM 请求读取、被 workspace 中的提示注入诱导输出、被日志/WebUI 泄露，或被误写进配置、事件与存储。凭据明文只在 LLM adapter 调用边界短暂可用；core 其他模块只接触 `CredentialStatus`。日志脱敏作为第二道防线，但不能替代数据流隔离。
+**凭据威胁**：API key 可能被 LLM 请求读取、被 workspace 中的提示注入诱导输出、被日志或 API 响应泄露，或被误写进配置、事件与存储。凭据明文只在 LLM adapter 调用边界短暂可用；core 其他模块只接触 `CredentialStatus`。日志脱敏作为第二道防线，但不能替代数据流隔离。
 
 **路径策略**：先规范化路径，再解析真实路径；解析后的真实路径必须仍位于 workspace root。默认禁止跟随指向 workspace 外部的 symlink。
 
-**主要对策**：严格响应协议、命令模板、执行前治理、审批哈希二次校验、不可变配置快照、敏感值隔离与脱敏、单 workspace 运行锁、Mock LLM 演示隔离规则。workspace 内容始终视为不可信数据，不能修改系统策略。
-
-机制演示不接受用户 API key，不持久化用户上传内容。demo workspace 从仓库内固定示例模板重置；每次示例 Run 前恢复到已知状态，Run 后可丢弃临时副本，防止演示状态污染。
+**主要对策**：严格响应协议、命令模板、执行前治理、审批哈希二次校验、不可变配置快照、敏感值隔离与脱敏、单 workspace 运行锁。workspace 内容始终视为不可信数据，不能修改系统策略。
 
 ### 4.3 可用性
 
-- CLI 与 WebUI 使用一致状态术语。
+- CLI 使用统一状态术语。
 - 每次暂停显示原因和下一步操作。
 - 审批展示动作预览、风险类别、命中规则和授权范围。
 - 系统凭据后端不可用时返回可操作错误，不静默创建明文文件。
@@ -243,13 +235,13 @@ local 模式使用单用户管理令牌认证，本地首次启动生成令牌�
 
 每个事件包含 run ID、step ID、事件类型、时间、相关规则或工具、结果摘要、关联 ID 和递增游标。审计明确区分 LLM 建议、治理决策、人工决定、工具结果与验证反馈。
 
-默认日志不记录完整文件内容、完整模型提示或凭据。结构化运行事件支持 WebUI 时间线和 CLI 游标查询，但不承担完整 event sourcing。
+默认日志不记录完整文件内容、完整模型提示或凭据。结构化运行事件支持 CLI 按游标查询，但不承担完整 event sourcing。
 
 ### 4.5 可靠性
 
 - 核心状态转换必须幂等，或通过唯一 action ID 防重。
 - 数据库写入失败时不得继续执行工具。
-- SSE 断连不影响 core；客户端可按游标补取事件。
+- CLI 中断或退出不改变已持久化事件；用户可按游标重新查看事件。
 - 服务异常退出后的活动 Run 统一标记 `INTERRUPTED`，只能查看、关闭或基于原任务创建新 Run，不能原地恢复。
 
 ## 5. 系统架构
@@ -257,26 +249,23 @@ local 模式使用单用户管理令牌认证，本地首次启动生成令牌�
 ### 5.1 组件
 
 ```text
-CLI ───────────────┐
-                   v
-WebUI ─REST/SSE─> Node Server ─> Harness Core ─> LlmClient
-                                  │   │             ├─ MockLlmClient
-                                  │   │             └─ OpenAI-compatible Adapter
-                                  │   v
-                                  │ Governance ─> Approval State Machine
-                                  │   │
-                                  │   v
-                                  ├─ Tool Gateway ─> Local Executor
-                                  ├─ Validation & Feedback
-                                  └─ Repository Interfaces ─> In-memory / SQLite
+CLI ─REST─> Node Server ─> Harness Core ─> LlmClient
+                          │   │             ├─ MockLlmClient
+                          │   │             └─ OpenAI-compatible Adapter
+                          │   v
+                          │ Governance ─> Approval State Machine
+                          │   │
+                          │   v
+                          ├─ Tool Gateway ─> Local Executor
+                          ├─ Validation & Feedback
+                          └─ Repository Interfaces ─> In-memory / SQLite
 ```
 
-- `harness-core`：主循环、上下文组织、状态机、预算与停机；不依赖 HTTP、UI 或具体 LLM。
+- `harness-core`：主循环、上下文组织、状态机、预算与停机；不依赖 HTTP 或具体 LLM。
 - `llm`：可注入的 LLM 接口、Mock 实现和 OpenAI-compatible adapter。
 - `tools-and-governance`：工具注册、路径/命令规范化、策略、审批与执行网关。
 - `validation-and-memory`：确定性验证、失败分类、反馈指纹和记忆检索。
-- `server-and-cli`：本地 Fastify composition root，以及 API、SSE、认证、任务与凭据命令。
-- `webui`：运行观察、风险解释和审批交互。
+- `server-and-cli`：本地 Fastify composition root，以及 CLI 使用的本地任务、事件与审批接口。
 
 core 的 LLM、repository、clock、tool gateway 等依赖均通过接口注入，且不得依赖 SQLite 或 Fastify。单元测试默认使用 in-memory repository；SQLite adapter 用于本地开发和测试。
 
@@ -288,7 +277,7 @@ CLI 提交任务
   → Core 检索受预算约束的记忆
   → LLM 提出严格 ToolAction / FinishAction
   → Governance 判定 ALLOW / REQUIRE_APPROVAL / DENY
-  → 必要时暂停并等待 WebUI/CLI 审批
+  → 必要时暂停并等待 CLI 审批
   → Tool Gateway 调用本地执行器
   → 状态变更动作触发验证
   → 结构化反馈回灌下一轮
@@ -301,7 +290,7 @@ CLI 提交任务
 
 - 课程 API 网关或其他 OpenAI-compatible 单次补全接口，仅用于手动 demo。
 - 操作系统凭据库：Windows Credential Manager、macOS Keychain、Linux Secret Service。
-- SQLite、HTTP/SSE、schema 与 UI 底层库。
+- SQLite、HTTP、schema 与 CLI 底层库。
 - 用户配置的 test、lint 与 typecheck 工具。
 
 不使用 LangChain AgentExecutor、AutoGen、CrewAI、LlamaIndex agent 或任何 SDK 自带 agent runner。
@@ -325,7 +314,7 @@ CLI 提交任务
 - `ConfigSnapshot`：非敏感配置、`allowedWorkspaceRoots`、schema 版本、内容哈希；创建后不可变。
 - `CredentialStatus`：provider、是否配置、来源类型、更新时间；不含密钥。
 
-实体 schema 必须显式区分 required、optional 和 nullable：ID、外键、状态、序号、时间戳、schema 版本和审计所需关联字段为 required；仅在实体生命周期中尚未产生或确实不存在的值才可 optional；只有业务语义允许“已知为空”的字段才可 nullable。密钥明文、原始未脱敏 rationale、原始异常堆栈和浏览器/环境 Secret 永远不得成为任何实体 schema 字段。
+实体 schema 必须显式区分 required、optional 和 nullable：ID、外键、状态、序号、时间戳、schema 版本和审计所需关联字段为 required；仅在实体生命周期中尚未产生或确实不存在的值才可 optional；只有业务语义允许“已知为空”的字段才可 nullable。密钥明文、原始未脱敏 rationale、原始异常堆栈和环境 Secret 永远不得成为任何实体 schema 字段。
 
 ### 6.2 状态与约束
 
@@ -364,13 +353,12 @@ CLI 提交任务
 - **Fastify**：用于本地 composition root；不承担 agent 决策。
 - **Zod 4**：运行时校验 Action、配置、工具参数和 API 输入；正式实现必须通过 `pnpm-lock.yaml` 锁定兼容版本，schema 写法以 Zod 4 API 为准。
 - **SQLite repository adapter**：SQLite 用于本地和测试；core 只依赖 repository ports。
-- **React + Vite**：构建轻量运行控制台。计划采用 Open Design 的 `linear-app` 设计系统；若工具不可用，使用等价的简洁工程控制台风格，并在 `AGENT_LOG.md` 记录偏离原因。计划使用 `od-react-export` skill 辅助 UI 产出。
 - **Vitest**：Mock LLM、假时钟、in-memory repository 和 fake executor 驱动确定性测试。
 - **CredentialStore adapter**：正式采用 `cross-keychain` 并由 `pnpm-lock.yaml` 锁定实际版本；验证并仅允许平台对应的 OS backend，拒绝 `file`、`null` 与 unknown backend，底层不可用时 fail closed。
 - **OpenAI-compatible adapter**：通过 `baseUrl`、`model`、`apiKey`、`providerName` 接入课程网关的 DeepSeek、Qwen 等模型；暂不实现 Anthropic。
 - **GitLab CI**：`.gitlab-ci.yml` 必须包含 `unit-test` job，并运行离线验证命令。
 
-所有第三方库只承担 HTTP、数据库、schema、UI、系统凭据或单次 LLM 调用等底层能力。agent loop、工具治理、审批、反馈、记忆选择和停机逻辑均由本项目代码实现。
+所有第三方库只承担 HTTP、数据库、schema、系统凭据或单次 LLM 调用等底层能力。agent loop、工具治理、审批、反馈、记忆选择和停机逻辑均由本项目代码实现。
 
 ## 9. 领域与机制设计
 
@@ -406,7 +394,7 @@ PROPOSED ToolAction / FinishAction
   → DENY → STOPPED
 ```
 
-主要贡献体现在：结构化规则解释、不可覆盖禁区、哈希绑定的限时授权、public/local 双模式、确定性失败分类、稳定失败指纹、一次治理反馈和综合预算停机。移除真实 LLM 后，这些行为仍可通过脚本化 Mock LLM 验证。
+主要贡献体现在：结构化规则解释、不可覆盖禁区、哈希绑定的限时授权、本地运行、确定性失败分类、稳定失败指纹、一次治理反馈和综合预算停机。移除真实 LLM 后，这些行为仍可通过脚本化 Mock LLM 验证。
 
 ## 10. 验收标准
 
@@ -424,8 +412,8 @@ PROPOSED ToolAction / FinishAction
 
 - realpath 后的访问仍限制于 workspace，外部 symlink 被拒绝。
 - workspace 必须落在 `allowedWorkspaceRoots` 中，且不得与 GCAH data、credential、audit 目录重叠。
-- 凭据不出现在请求、workspace、配置、浏览器状态、SQLite、事件、日志、错误或 WebUI。
-- Mock LLM 机制演示拒绝命令执行、网络、依赖安装、真实 LLM 和用户 key。
+- 凭据不出现在 workspace、配置、SQLite、事件、日志、错误或 CLI/API 输出。
+- 默认离线验证不访问真实 LLM，也不需要用户 key。
 - 审批哈希、作用域和过期轮次均通过确定性测试。
 
 ### 10.3 本地运行与 CI
@@ -449,13 +437,11 @@ PROPOSED ToolAction / FinishAction
 - **跨平台路径差异**：规范化与 realpath 双重校验，并建立 Windows/POSIX 路径测试。
 - **审批范围过宽**：使用工具、路径、命令模板、风险类别、哈希和过期轮次联合约束。
 - **反馈循环抖动**：失败指纹去除非稳定噪声；综合预算和重复失败阈值强制停机。
-- **SQLite 与 SSE 一致性**：事件先持久化再发布，支持 cursor replay 和断线恢复；写入失败时暂停，不执行后续副作用。
-- **Open Design 不可用**：降级到等价工程控制台风格并在 `AGENT_LOG.md` 说明偏离。
-- **演示资源误用**：固定 workspace、Mock LLM 和任务预算；不接受上传与 key。
+- **SQLite 事件一致性**：事件写入失败时暂停，不执行后续副作用；CLI 可按游标查看已持久化事件。
 - **课程 API 额度耗尽或模型不可用**：默认测试与机制演示使用 Mock LLM；DeepSeek/Qwen 仅手动 integration demo，失败不阻断默认 CI。
-- **SPEC/PLAN 含隐性上下文**：正式实现前由不同类型 agent 在全新 session 中仅凭 `SPEC.md` 与 `PLAN.md` 冷启动试做 1–2 个 task；将误解、提问和修订 diff 记录到 `SPEC_PROCESS.md`。
+- **规格隐性上下文**：实现前以新会话检查规格能否独立说明目标、边界与验收方式，并将发现记录到 `SPEC_PROCESS.md`。
 - **npm 供应链风险**：提交并锁定 pnpm lockfile；CI 使用 frozen lockfile；关键安全依赖变更记录到 `AGENT_LOG.md`。
-- **本地执行器隔离不足**：`LocalExecutor` 不是 OS 级沙箱，不能限制已批准子进程的全部宿主文件和网络访问；通过默认拒绝/审批高风险命令和 Mock LLM 演示禁止命令执行降低风险。
+- **本地执行器隔离不足**：`LocalExecutor` 不是 OS 级沙箱，不能限制已批准子进程的全部宿主文件和网络访问；通过默认拒绝/审批高风险命令降低风险。
 - **范围膨胀**：多用户、云端仓库、向量记忆、多 agent、完整 event sourcing 和 Anthropic adapter 均推迟。
 
 ### 11.2 实现前需验证的适配器选择
@@ -465,11 +451,9 @@ S01 已选定 `cross-keychain` 并仅完成 Windows 实测。macOS 与 Linux 凭
 ## 12. 测试与机制演示策略
 
 - **核心单元测试**：Mock LLM、fake clock、in-memory repository、fake credential store 和 fake executor；无网络、无真实 key。
-- **工具/适配器测试**：临时 workspace、路径/symlink 边界、命令模板、SQLite repository contract、Fastify HTTP API，以及 SSE cursor replay。
-- **Mock 演示安全测试**：证明请求、浏览器状态、日志和错误中均不存在 API key，且无 API key 输入/传输路径或真实 LLM adapter。
-- **WebUI 测试**：状态渲染、事件时间线、审批提交与 SSE 重连。
+- **工具/适配器测试**：临时 workspace、路径/symlink 边界、命令模板、SQLite repository contract，以及 Fastify 本地接口。
 - **机制演示**：一键脚本使用 Mock LLM 确定性演示三项核心行为。
 - **手动 integration demo**：显式启用时调用课程 API 网关 DeepSeek/Qwen；不进入默认 CI。
 - **CI**：GitLab `unit-test` 为必交 job。CI 使用 frozen lockfile，运行 `pnpm test`、`pnpm verify` 和 `pnpm demo:mechanisms`；真实 LLM integration demo 不进入默认 CI。
 
-在 `SPEC.md` 与后续 `PLAN.md` 通过冷启动验证之前，不开始实现代码。
+实现范围以本规格、CLI 使用说明和代码验收结果为准。

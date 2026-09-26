@@ -182,7 +182,7 @@ async function configStatus(transport: CliTransport): Promise<CliResult> {
   const response = await transport({ method: "GET", url: "/api/config/status" });
   const parsed = parseConfigStatusDto(response.body);
   if (response.status >= 300 || parsed === null) return fail("config status failed\n");
-  return ok(`mode=${parsed.mode} llm=${parsed.llmProvider} publicDemo=${parsed.publicDemo}\n`);
+  return ok(`mode=${parsed.mode} llm=${parsed.llmProvider}\n`);
 }
 
 async function credentialCommand(command: string | undefined, deps: RunCliDependencies & { args?: readonly string[] }): Promise<CliResult> {
@@ -256,7 +256,6 @@ interface RunEventsResponse {
 interface ConfigStatusDto {
   mode: string;
   llmProvider: string;
-  publicDemo: boolean;
 }
 
 function parseRunDto(value: unknown): RunDto | null {
@@ -275,8 +274,8 @@ function parseRunEventsResponse(value: unknown): RunEventsResponse | null {
 }
 
 function parseConfigStatusDto(value: unknown): ConfigStatusDto | null {
-  if (!isRecord(value) || typeof value.mode !== "string" || typeof value.llmProvider !== "string" || typeof value.publicDemo !== "boolean") return null;
-  return { mode: value.mode, llmProvider: value.llmProvider, publicDemo: value.publicDemo };
+  if (!isRecord(value) || typeof value.mode !== "string" || typeof value.llmProvider !== "string") return null;
+  return { mode: value.mode, llmProvider: value.llmProvider };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

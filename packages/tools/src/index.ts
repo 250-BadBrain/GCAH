@@ -1,5 +1,4 @@
 export type { ExecutionRequest, Executor } from "./executor/executor.js";
-export { DemoExecutor, type DemoExecutorPreset } from "./executor/demo-executor.js";
 export { FakeExecutor } from "./executor/fake-executor.js";
 export { ToolRegistry, type ToolDefinition } from "./gateway/tool-registry.js";
 export { createToolGateway, type ToolGatewayOptions } from "./gateway/tool-gateway.js";
@@ -8,7 +7,6 @@ export { sha256File } from "./tools/file-hash.js";
 export { matchCommandTemplate, type CommandMatch, type CommandTemplate } from "./command/template.js";
 export { CommandRunner, type SpawnRequest } from "./command/command-runner.js";
 export { CommandValidationRunner } from "./tools/validation-runner.js";
-export { DemoValidationRunner, type DemoValidationPreset } from "./validation/demo-validation-runner.js";
 export { LocalExecutor } from "./executor/local-executor.js";
 export { registerReadTools } from "./tools/read-tools.js";
 export { registerMutationTools } from "./tools/mutation-tools.js";

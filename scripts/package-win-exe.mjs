@@ -27,6 +27,7 @@ execFileSync("pnpm", ["--config.node-linker=hoisted", "--filter", "@gcah/cli", "
   shell: process.platform === "win32"
 });
 
+materializeRootDependencies(join(appDir, "node_modules"));
 assertNoLinks(appDir);
 rmSync(join(appDir, "src"), { recursive: true, force: true });
 rmSync(join(appDir, "test"), { recursive: true, force: true });

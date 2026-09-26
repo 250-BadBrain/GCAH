@@ -14,7 +14,6 @@
 - Do not call real LLM providers in automated tests.
 - Do not allow arbitrary shell validation commands.
 - Keep validation commands as structured executable plus args with workspace-fenced cwd.
-- Preserve public demo Mock-only behavior.
 - Default CI must remain offline and deterministic.
 
 ---
@@ -63,20 +62,18 @@
 - Consumes: `validationCommand?: CommandTemplate | null`.
 - Produces: empty `validation.required` in the config snapshot for explicit no-validation.
 
-- [x] **Step 1: Distinguish omitted validation command from explicit `null`.**
-- [x] **Step 2: Keep legacy demo-validator fallback only for omitted validation command.**
+- [x] **Step 1: Treat omitted and explicit `null` validation commands as no-validation.**
+- [x] **Step 2: Keep validator registration empty when no command is configured.**
 - [x] **Step 3: Ensure mutation validation is considered satisfied when no validators are required.**
 
 ### Task 4: Documentation and Verification
 
 **Files:**
-- Modify: `docs/submission/PLAN.md`
 - Modify: `README.md`
 - Modify: `docs/submission/README.md`
 
 **Interfaces:**
 - Documents: `auto`, `none`, and `pnpm-test` behavior and limitations.
 
-- [x] **Step 1: Append T31 to the submission plan.**
 - [x] **Step 2: Document that validation orchestrates project-native checks rather than proving universal correctness.**
 - [x] **Step 3: Run `pnpm verify`, `pnpm build`, and `git diff --check`.**

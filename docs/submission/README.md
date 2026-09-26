@@ -13,7 +13,7 @@ The project implements a coding-agent harness rather than a prompt-only wrapper.
 - read, patch, write, shell-template, and validation tools;
 - validation feedback returned to the next LLM round;
 - SQLite-backed local persistence;
-- a local CLI and REST/SSE server;
+- an interactive local CLI backed by an embedded Fastify application;
 - a mock-LLM mechanism demo for deterministic tests;
 - an OpenAI-compatible provider adapter for real local use.
 
@@ -161,8 +161,7 @@ The selected workspace must be a real local directory. `--validation auto` detec
 
 ```text
 apps/cli          command-line interface and local REPL
-apps/server       local REST/SSE composition root
-apps/webui        local web UI package
+apps/server       local production composition root used by the CLI
 packages/core     AgentLoop and core ports
 packages/llm      Mock LLM and OpenAI-compatible adapter
 packages/tools    governed tool implementations

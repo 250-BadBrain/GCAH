@@ -59,7 +59,7 @@ export function createToolGateway(options: ToolGatewayOptions): ToolGatewayPort 
         return error("tool arguments failed schema validation");
       }
 
-      const decision = options.governance.decide(normalized, { mode: "local" });
+      const decision = options.governance.decide(normalized);
       if (decision.result === "DENY") {
         try {
           await persistGovernanceDecision(options, normalized, decision.result);

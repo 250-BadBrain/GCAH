@@ -36,8 +36,7 @@ describe("run_command tool", () => {
     registerCommandTools({
       registry: runner.registry,
       runner,
-      templates: [{ id: "test", executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 1000 }],
-      publicDemo: false
+      templates: [{ id: "test", executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 1000 }]
     });
 
     await expect(gatewayFor(runner).execute({
@@ -49,9 +48,9 @@ describe("run_command tool", () => {
     });
   });
 
-  it("rejects undeclared commands and public demo execution", async () => {
+  it("rejects undeclared commands", async () => {
     const runner = new CommandRunner(async () => ({ status: "OK", summary: "bad" }));
-    registerCommandTools({ registry: runner.registry, runner, templates: [], publicDemo: true });
+    registerCommandTools({ registry: runner.registry, runner, templates: [] });
     await expect(gatewayFor(runner).execute({
       tool: "run_command",
       args: { executable: "pnpm", args: ["test"], cwd: ".", timeoutMs: 1000 }

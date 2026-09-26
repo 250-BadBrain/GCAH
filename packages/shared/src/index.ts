@@ -1,7 +1,6 @@
 export const workspaceReady = true as const;
 
 export * from "./agent-response.js";
-export * from "./api-contracts.js";
 export * from "./entities.js";
 export * from "./events.js";
 export * from "./safe-display.js";

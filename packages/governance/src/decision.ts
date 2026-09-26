@@ -7,10 +7,6 @@ export type NormalizedAction = ToolAction & {
   normalizedSummary: string;
 };
 
-export interface PolicySnapshot {
-  mode: "local" | "public-demo";
-}
-
 export type GovernanceResult = "ALLOW" | "REQUIRE_APPROVAL" | "DENY";
 
 export interface GovernanceDecision {
@@ -21,7 +17,7 @@ export interface GovernanceDecision {
 }
 
 export interface GovernanceEngine {
-  decide(action: NormalizedAction, policy: PolicySnapshot): GovernanceDecision;
+  decide(action: NormalizedAction): GovernanceDecision;
 }
 
 function pathOf(action: NormalizedAction): string | null {
@@ -69,7 +65,7 @@ function decision(result: GovernanceResult, ruleId: string, riskCategory: string
 
 export function createGovernanceEngine(): GovernanceEngine {
   return {
-    decide(action, policy) {
+    decide(action) {
       const targetPath = pathOf(action);
       if (targetPath !== null) {
         if (isPathEscape(targetPath)) return decision("DENY", "path.escape", "path", "path escapes workspace boundary");
@@ -80,11 +76,6 @@ export function createGovernanceEngine(): GovernanceEngine {
 
       if (action.tool === "run_command" && commandDenied(action.args.executable)) {
         return decision("DENY", "command.elevation", "elevation", "privilege elevation is denied");
-      }
-
-      if (policy.mode === "public-demo") {
-        if (action.tool === "run_command") return decision("DENY", "public-demo.no-shell", "public_demo", "public demo cannot run shell commands");
-        if (["write", "patch", "delete"].includes(action.tool)) return decision("DENY", "public-demo.no-mutations", "public_demo", "public demo cannot mutate workspaces");
       }
 
       if (action.tool === "patch") {

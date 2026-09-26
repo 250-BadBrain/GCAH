@@ -7,7 +7,6 @@ This file maps the AI4SE final project requirements in `docs/course/` to the sub
 | Requirement | Repository artifact |
 | --- | --- |
 | SPEC design document | `docs/submission/SPEC.md` |
-| PLAN implementation plan | `docs/submission/PLAN.md` |
 | SPEC process document | `docs/submission/SPEC_PROCESS.md` |
 | README with project overview, command-line installation, run commands, structure, and safety boundaries | `docs/submission/README.md` |
 | AGENT_LOG implementation/process evidence | `docs/submission/AGENT_LOG.md` |
@@ -22,14 +21,14 @@ The root `README.md` is intentionally kept as a short repository entry point tha
 | --- | --- |
 | Self-implemented harness core, not a hosted agent framework | `packages/core`, `packages/governance`, `packages/tools`, `packages/llm`, `packages/persistence` |
 | Agent main loop | `packages/core/src/agent-loop.ts` |
-| Injectable mock/stub LLM | `packages/llm`, `packages/core/test/agent-loop.test.ts`, public demo fixtures using Scripted Mock LLM |
+| Injectable mock/stub LLM | `packages/llm`, `packages/core/test/agent-loop.test.ts` |
 | OpenAI-compatible real provider path | `packages/llm/src/openai-compatible.ts`, `apps/server/src/local-production.ts`, `apps/cli/src/main.ts` |
 | Tool dispatch and workspace actions | `packages/tools` |
 | Governance and HITL approval | `packages/governance`, `apps/server/src/approvals-config.ts`, CLI approval commands |
 | Objective feedback/validation loop | `packages/core/src/validation.ts`, `packages/tools/src/validation`, local `pnpm-test` validation mode |
 | Memory/context capability | `packages/core` memory ports and repository-backed run context |
 | SQLite persistence | `packages/persistence` |
-| REST/SSE/local WebUI support | `apps/server`, `apps/webui` |
+| Local CLI task, event, and approval flows | `apps/cli`, `apps/server` |
 | Mechanism demo | `pnpm demo:mechanisms`, `docs/mechanism-demo.md` |
 
 ## Security And Credential Requirements
@@ -40,7 +39,7 @@ The root `README.md` is intentionally kept as a short repository entry point tha
 | Secure credential storage | `packages/credentials`, credential CLI commands documented in `docs/submission/README.md` |
 | Hidden key entry and no plaintext status | credential CLI tests and README command flow |
 | API key configured through credential CLI, not command-line arguments | credential CLI tests and `docs/security-review.md` |
-| API key not stored in config, SQLite, events, logs, REST, SSE, or browser state | local production integration tests and `docs/security-review.md` |
+| API key not stored in config, SQLite, events, logs, or CLI/API output | local production integration tests and `docs/security-review.md` |
 | Backend unavailable fails closed | credential/backend tests |
 
 ## Testing And Local Use

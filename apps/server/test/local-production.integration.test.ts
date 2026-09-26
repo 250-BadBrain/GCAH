@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import type { CredentialStore } from "@gcah/credentials";
 
 import { createLocalProductionApp } from "../src/local-production.js";
-import { createPublicDemoApp } from "../src/public-demo.js";
 
 describe("local production composition", () => {
   it("interrupts a persisted active run when a local app is reopened", async () => {
@@ -62,7 +61,7 @@ describe("local production composition", () => {
     }
   });
 
-  it("honors explicit no-validation without falling back to the legacy demo validator", async () => {
+  it("honors explicit no-validation without registering a validator", async () => {
     const root = await mkdtemp(join(tmpdir(), "gcah-prod-no-validation-"));
     await mkdir(join(root, "src"), { recursive: true });
     await writeFile(join(root, "src", "app.ts"), "export const value = \"broken\";\n", "utf8");
@@ -167,7 +166,7 @@ describe("local production composition", () => {
     }
   });
 
-  it("fails closed when the credential backend is unavailable and keeps public demo mock-only", async () => {
+  it("fails closed when the credential backend is unavailable", async () => {
     const root = await mkdtemp(join(tmpdir(), "gcah-prod-workspace-"));
     await writeFile(join(root, "README.md"), "x", "utf8");
     const app = await createLocalProductionApp({
@@ -186,11 +185,6 @@ describe("local production composition", () => {
       await app.close();
     }
 
-    const publicDemo = createPublicDemoApp({ examples: [{ id: "safe", title: "Safe", task: "mock" }] });
-    const rejected = await publicDemo.inject({ method: "POST", url: "/api/public-demo/runs", payload: { exampleId: "safe", apiKey: "sk-prod-sentinel" } });
-    expect(rejected.statusCode).toBe(403);
-    expect(rejected.body).not.toContain("sk-prod-sentinel");
-    await publicDemo.close();
   });
 });
 

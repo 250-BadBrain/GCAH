@@ -221,17 +221,6 @@ Risk:
 
 - Linux server containers usually lack a user Secret Service session and D-Bus keyring. GCAH should treat this as backend unavailable and require explicit environment/CI secret source configuration if needed.
 
-## Docker Behavior
-
-Docker was not available on this Windows machine, so no container run was performed.
-
-Expected behavior based on package docs and Linux platform requirements:
-
-- A plain Linux `amd64` container is unlikely to have Secret Service/D-Bus/keyring unlocked by default.
-- The adapter must return explicit backend-unavailable status in Docker when no OS-backed credential store is available.
-- It must not auto-create file backend secrets inside `/root/.local/share/keyring`, `/home/node/.local/share/keyring`, the workspace, or `/data`.
-- Public demo mode must not accept user API keys.
-
 ## Native Modules, Install Scripts, And Packaging
 
 - `cross-keychain@1.1.0` has Node engine `>=18`.
@@ -271,8 +260,8 @@ Adapter rules:
 - Implement `clear` with `deletePassword`; treat missing delete as idempotent success for CLI ergonomics only if no secret is returned or logged.
 - Expose plaintext only inside `withCredential` callback.
 - Do not return plaintext from `status`.
-- Do not store plaintext in config, events, SQLite, logs, errors, or browser state.
-- Sanitize error messages before showing them to CLI/WebUI.
+- Do not store plaintext in config, events, SQLite, logs, errors, or CLI/API output.
+- Sanitize error messages before showing them to the CLI or returning them in API responses.
 
 ## Known Platform Limits
 

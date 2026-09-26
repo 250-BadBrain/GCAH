@@ -29,9 +29,6 @@
       "path": "./apps/cli"
     },
     {
-      "path": "./apps/webui"
-    },
-    {
       "path": "./scripts/tsconfig.json"
     }
   ]

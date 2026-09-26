@@ -21,7 +21,6 @@
     "@gcah/persistence": "workspace:*",
     "@gcah/shared": "workspace:*",
     "@gcah/tools": "workspace:*",
-    "@fastify/static": "latest",
     "fastify": "5.10.0"
   },
   "devDependencies": {}

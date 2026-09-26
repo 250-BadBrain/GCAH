@@ -16,4 +16,13 @@ describe("CI contract", () => {
     expect(github).toContain("actions/setup-node");
     expect(github).toContain("pnpm/action-setup");
   });
+
+  it("materializes Windows release dependencies before rejecting linked files", async () => {
+    const packaging = await readFile("scripts/package-win-exe.mjs", "utf8");
+    const materializeCall = packaging.indexOf('materializeRootDependencies(join(appDir, "node_modules"))');
+    const linkCheck = packaging.indexOf("assertNoLinks(appDir)");
+
+    expect(materializeCall).toBeGreaterThanOrEqual(0);
+    expect(linkCheck).toBeGreaterThan(materializeCall);
+  });
 });

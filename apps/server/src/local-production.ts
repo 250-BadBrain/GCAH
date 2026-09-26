@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path, { join } from "node:path";
-import { Readable } from "node:stream";
 import { createConfigSnapshot, AgentLoop, type Clock, type UnitOfWork } from "@gcah/core";
 import { createCredentialResolver, type CredentialStore } from "@gcah/credentials";
 import { createGovernanceEngine, createWorkspaceFence, ApprovalService } from "@gcah/governance";
@@ -20,7 +19,7 @@ import {
   registerValidationTool
 } from "@gcah/tools";
 import type { CommandTemplate } from "@gcah/tools";
-import type { ConfigSnapshot, Run, RunEvent, RunDto, EventDto } from "@gcah/shared";
+import type { ConfigSnapshot, Run, RunEvent } from "@gcah/shared";
 import { interruptActiveRunsOnStartup } from "./server.js";
 
 export interface LocalProductionAppOptions {
@@ -33,24 +32,36 @@ export interface LocalProductionAppOptions {
   validationCommand?: CommandTemplate | null;
 }
 
+interface RunDto {
+  id: string;
+  status: Run["status"];
+  taskSummary: string;
+  stopReason: Run["stopReason"];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface EventDto {
+  id: string;
+  type: string;
+  summary: string;
+  cursor: number;
+  createdAt: string;
+}
+
 export async function createLocalProductionApp(options: LocalProductionAppOptions): Promise<FastifyInstance> {
   const clock = options.clock ?? new MonotonicClock();
   const unitOfWork = openSqliteRepositories({ dataDir: options.dataDir, clock });
   await interruptActiveRunsOnStartup({ unitOfWork, clock });
   const app = Fastify({ logger: false });
   const registeredWorkspaces = new Set<string>();
-  const subscribers = new Map<string, Set<(event: RunEvent) => void>>();
   const approvalService = new ApprovalService();
   const pausedLoops = new Map<string, AgentLoop>();
 
   app.addHook("onClose", async () => unitOfWork.close());
 
   app.get("/health", async () => ({ ok: true, mode: "local", llmProvider: "openai-compatible" }));
-  app.get("/api/config/status", async () => ({ mode: "local", llmProvider: "openai-compatible", publicDemo: false }));
-  app.get("/api/credential-status", async () => {
-    const status = await options.credentialStore.status("openai-compatible");
-    return { backend: status.available ? status.backend : "unavailable", providers: [{ provider: "openai-compatible", configured: status.available }] };
-  });
+  app.get("/api/config/status", async () => ({ mode: "local", llmProvider: "openai-compatible" }));
 
   app.post("/api/workspaces", async (request, reply) => {
     const body = request.body;
@@ -113,24 +124,6 @@ export async function createLocalProductionApp(options: LocalProductionAppOption
     return { events: events.map(toEventDto), nextCursor: events.at(-1)?.cursor ?? null };
   });
 
-  app.get("/api/runs/:id/events/stream", async (request, reply) => {
-    const id = (request.params as { id: string }).id;
-    const cursor = Number(request.headers["last-event-id"] ?? (request.query as { cursor?: string }).cursor ?? 0);
-    const events = await unitOfWork.repositories.events.listAfterCursor(id, cursor);
-    const stream = new Readable({ read() {} });
-    for (const event of events) stream.push(formatSse(event));
-    const send = (event: RunEvent): void => {
-      stream.push(formatSse(event));
-    };
-    const set = subscribers.get(id) ?? new Set<(event: RunEvent) => void>();
-    set.add(send);
-    subscribers.set(id, set);
-    stream.on("close", () => {
-      set.delete(send);
-    });
-    return reply.header("content-type", "text/event-stream; charset=utf-8").send(stream);
-  });
-
   app.post("/api/runs/:id/approvals/:actionId", async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const loop = pausedLoops.get(id);
@@ -168,18 +161,17 @@ function createLoop(input: {
   registerReadTools(executor);
   registerMutationTools(executor);
   const runner = new CommandRunner(async (request) => await spawnCommand(request.executable, request.args, join(input.workspaceRoot, request.cwd), request.timeoutMs));
-  const validationCommand = input.validationCommand ?? { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 };
-  const validationTemplates = input.validationCommand === null ? [] : [validationCommand];
+  const validationCommand = input.validationCommand ?? null;
+  const validationTemplates = validationCommand === null ? [] : [validationCommand];
   registerCommandTools({
     registry: executor.registry,
     runner,
-    templates: validationTemplates,
-    publicDemo: false
+    templates: validationTemplates
   });
   registerValidationTool({
     registry: executor.registry,
     runner,
-    validators: input.validationCommand === null ? {} : { test: stripTemplateId(validationCommand) }
+    validators: validationCommand === null ? {} : { test: stripTemplateId(validationCommand) }
   });
   const toolGateway = createToolGateway({
     runId: input.runId,
@@ -219,24 +211,12 @@ function createLoop(input: {
       })
     }),
     toolGateway,
-    validationRunner: new CommandValidationRunner(
-      input.validationCommand === undefined
-        ? new CommandRunner(async () => await validateWorkspaceState(input.workspaceRoot))
-        : runner,
-      input.validationCommand === null ? {} : { test: stripTemplateId(validationCommand) }
-    ),
+    validationRunner: new CommandValidationRunner(runner, validationCommand === null ? {} : { test: stripTemplateId(validationCommand) }),
     approval: {
       shouldPauseForFinish: () => false,
       consumeApproval: async (runId) => approvalDecisions.get(runId) ?? "pending"
     }
   });
-}
-
-async function validateWorkspaceState(workspaceRoot: string): Promise<{ status: "OK" | "ERROR"; summary: string }> {
-  const text = await import("node:fs/promises").then(async ({ readFile }) => await readFile(join(workspaceRoot, "src", "app.ts"), "utf8").catch(() => ""));
-  return text.includes("\"fixed\"")
-    ? { status: "OK", summary: "validation passed" }
-    : { status: "ERROR", summary: "Validation failed: src/app.ts does not contain fixed" };
 }
 
 async function spawnCommand(executable: string, args: string[], cwd: string, timeoutMs: number): Promise<{ status: "OK" | "ERROR"; summary: string }> {
@@ -272,10 +252,11 @@ function containsOrEquals(parent: string, child: string): boolean {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-function localConfig(workspaceRoot: string, validationCommand: CommandTemplate | null | undefined = { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 }): ConfigSnapshot {
-  const effective = validationCommand ?? { id: "test", executable: "demo-validator", args: ["test"], cwd: ".", timeoutMs: 30000 };
-  const required = validationCommand === null ? [] : ["test"];
-  const commands = validationCommand === null ? {} : { test: `${effective.executable} ${effective.args.join(" ")}`.trim() };
+function localConfig(workspaceRoot: string, validationCommand: CommandTemplate | null | undefined): ConfigSnapshot {
+  const required = validationCommand === null || validationCommand === undefined ? [] : ["test"];
+  const commands = validationCommand === null || validationCommand === undefined
+    ? {}
+    : { test: `${validationCommand.executable} ${validationCommand.args.join(" ")}`.trim() };
   return createConfigSnapshot({
     mode: "local",
     budgets: { maxRounds: 24, maxTokens: 100000, maxElapsedMs: 600000 },
@@ -309,10 +290,6 @@ function toRunDto(run: Run): RunDto {
 
 function toEventDto(event: RunEvent): EventDto {
   return { id: event.id, type: event.type, summary: event.summary, cursor: event.cursor, createdAt: event.createdAt };
-}
-
-function formatSse(event: RunEvent): string {
-  return [`id: ${event.cursor}`, `data: ${JSON.stringify(toEventDto(event))}`, "", ""].join("\n");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
