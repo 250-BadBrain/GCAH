@@ -201,7 +201,7 @@ describe("entity schemas", () => {
   });
 
   it("rejects secret-shaped fields from every persisted entity schema", () => {
-    const forbidden = ["apiKey", "secret", "plaintext", "rawStack", "browserSecret"];
+    const forbidden = ["apiKey", "secret", "plaintext", "rawStack", "accessToken"];
 
     for (const schema of Object.values(entitySchemas)) {
       const keys = JSON.stringify(schema.def);
