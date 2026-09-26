@@ -21,6 +21,7 @@ import {
 } from "@gcah/tools";
 import type { CommandTemplate } from "@gcah/tools";
 import type { ConfigSnapshot, Run, RunEvent, RunDto, EventDto } from "@gcah/shared";
+import { interruptActiveRunsOnStartup } from "./server.js";
 
 export interface LocalProductionAppOptions {
   dataDir: string;
@@ -35,6 +36,7 @@ export interface LocalProductionAppOptions {
 export async function createLocalProductionApp(options: LocalProductionAppOptions): Promise<FastifyInstance> {
   const clock = options.clock ?? new MonotonicClock();
   const unitOfWork = openSqliteRepositories({ dataDir: options.dataDir, clock });
+  await interruptActiveRunsOnStartup({ unitOfWork, clock });
   const app = Fastify({ logger: false });
   const registeredWorkspaces = new Set<string>();
   const subscribers = new Map<string, Set<(event: RunEvent) => void>>();

@@ -10,6 +10,58 @@ import { createLocalProductionApp } from "../src/local-production.js";
 import { createPublicDemoApp } from "../src/public-demo.js";
 
 describe("local production composition", () => {
+  it("interrupts a persisted active run when a local app is reopened", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gcah-prod-restart-workspace-"));
+    await writeFile(join(root, "README.md"), "restart recovery\n", "utf8");
+    const dataDir = await mkdtemp(join(tmpdir(), "gcah-prod-restart-data-"));
+    const fake = await fakeOpenAiServer(() => ({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            kind: "tool",
+            tool: "write",
+            args: { path: "solution.cpp", content: "int main() { return 0; }\n" },
+            rationale: "write the solution"
+          })
+        }
+      }],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+    }));
+    const options = {
+      dataDir,
+      credentialStore: fakeStore("sk-prod-sentinel"),
+      baseUrl: fake.url,
+      model: "course-model",
+      allowedWorkspaceRoots: [root],
+      validationCommand: null
+    };
+    const first = await createLocalProductionApp(options);
+
+    try {
+      await first.inject({ method: "POST", url: "/api/workspaces", payload: { path: root } });
+      const submitted = await first.inject({ method: "POST", url: "/api/runs", payload: { workspacePath: root, task: "write a solution" } });
+      expect(submitted.statusCode, submitted.body).toBe(201);
+      const run = JSON.parse(submitted.body) as { id: string; status: string };
+      expect(run.status).toBe("WAITING_APPROVAL");
+      await first.close();
+
+      const reopened = await createLocalProductionApp(options);
+      try {
+        const recovered = await reopened.inject({ method: "GET", url: `/api/runs/${run.id}` });
+        expect(recovered.statusCode).toBe(200);
+        expect(JSON.parse(recovered.body)).toMatchObject({ status: "INTERRUPTED", stopReason: "INTERRUPTED" });
+
+        await reopened.inject({ method: "POST", url: "/api/workspaces", payload: { path: root } });
+        const replacement = await reopened.inject({ method: "POST", url: "/api/runs", payload: { workspacePath: root, task: "write a replacement solution" } });
+        expect(replacement.statusCode, replacement.body).toBe(201);
+      } finally {
+        await reopened.close();
+      }
+    } finally {
+      await fake.close();
+    }
+  });
+
   it("honors explicit no-validation without falling back to the legacy demo validator", async () => {
     const root = await mkdtemp(join(tmpdir(), "gcah-prod-no-validation-"));
     await mkdir(join(root, "src"), { recursive: true });

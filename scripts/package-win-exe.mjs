@@ -1,7 +1,8 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { basename, join, resolve } from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { basename, dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -19,14 +20,14 @@ rmSync(zipPath, { force: true });
 mkdirSync(packageDir, { recursive: true });
 mkdirSync(runtimeDir, { recursive: true });
 
-execFileSync("pnpm", ["--filter", "@gcah/cli", "deploy", appDir, "--legacy", "--frozen-lockfile"], {
+execFileSync("pnpm", ["--config.node-linker=hoisted", "--filter", "@gcah/cli", "deploy", appDir, "--legacy", "--prod", "--frozen-lockfile"], {
   cwd: root,
   env: { ...process.env, CI: "true" },
   stdio: "inherit",
   shell: process.platform === "win32"
 });
 
-materializeHoistedDependencies(join(appDir, "node_modules"));
+assertNoLinks(appDir);
 rmSync(join(appDir, "src"), { recursive: true, force: true });
 rmSync(join(appDir, "test"), { recursive: true, force: true });
 copyFileSync(process.execPath, join(runtimeDir, "node.exe"));
@@ -92,6 +93,8 @@ writeFileSync(sumsPath, [
   `${sha256(join(runtimeDir, "node.exe"))}  runtime/node.exe`
 ].join("\n") + "\n", "utf8");
 
+verifyRelocatedPackage();
+
 if (process.argv.includes("--zip")) {
   execFileSync("tar", ["-a", "-cf", zipPath, "-C", packageDir, "."], { cwd: root, stdio: "inherit" });
   console.log(`Created ${zipPath}`);
@@ -104,56 +107,112 @@ function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-function materializeHoistedDependencies(nodeModulesDir) {
-  const hoistedDir = join(nodeModulesDir, ".pnpm", "node_modules");
-  if (!existsSync(hoistedDir)) return;
-  const seen = new Set();
-  for (const entry of readdirSync(hoistedDir, { withFileTypes: true })) {
-    if (entry.name === ".bin" || entry.name === "@gcah") continue;
-    if (entry.name.startsWith("@")) {
-      for (const scopedEntry of readdirSync(join(hoistedDir, entry.name), { withFileTypes: true })) {
-        materializePackage(`${entry.name}/${scopedEntry.name}`);
+function assertNoLinks(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = join(directory, entry.name);
+    const stats = lstatSync(entryPath);
+    if (stats.isSymbolicLink()) throw new Error(`Release package contains a link: ${entryPath}`);
+    if (stats.isDirectory()) assertNoLinks(entryPath);
+  }
+}
+
+function materializeRootDependencies(nodeModulesDir) {
+  materializeDependencies(nodeModulesDir, nodeModulesDir, new Set());
+  materializeDependencies(join(nodeModulesDir, ".pnpm", "node_modules"), nodeModulesDir, new Set());
+  rmSync(join(nodeModulesDir, ".pnpm"), { recursive: true, force: true });
+  rmSync(join(nodeModulesDir, ".bin"), { recursive: true, force: true });
+
+  function materializeDependencies(sourceDir, targetDir, ancestors) {
+    if (!existsSync(sourceDir)) return;
+    for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+      if (entry.name === ".pnpm" || entry.name === ".bin") continue;
+      const sourcePath = join(sourceDir, entry.name);
+      const targetPath = join(targetDir, entry.name);
+      if (!statSync(sourcePath).isDirectory()) {
+        copyFileSync(sourcePath, targetPath);
+        continue;
       }
-      continue;
+      if (entry.name.startsWith("@") && lstatSync(sourcePath).isDirectory()) {
+        for (const scopedEntry of readdirSync(sourcePath, { withFileTypes: true })) {
+          materializePackage(join(sourcePath, scopedEntry.name), join(targetPath, scopedEntry.name), ancestors);
+        }
+        continue;
+      }
+      materializePackage(sourcePath, targetPath, ancestors);
     }
-    materializePackage(entry.name);
   }
 
-  function materializePackage(packageName) {
-    if (packageName.startsWith("@gcah/") || seen.has(packageName)) return;
-    seen.add(packageName);
-    const source = packagePath(hoistedDir, packageName);
-    if (!existsSync(source)) return;
-    const target = packagePath(nodeModulesDir, packageName);
-    copyPackage(source, target);
-    const manifestPath = join(target, "package.json");
-    if (!existsSync(manifestPath)) return;
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    for (const dependencyName of Object.keys({
-      ...(manifest.dependencies ?? {}),
-      ...(manifest.optionalDependencies ?? {})
-    })) {
-      materializePackage(dependencyName);
+  function materializePackage(sourceLinkPath, targetPath, ancestors) {
+    const sourcePath = realpathSync(sourceLinkPath);
+    if (ancestors.has(sourcePath)) return;
+    const nextAncestors = new Set([...ancestors, sourcePath]);
+    if (resolve(sourcePath) === resolve(targetPath)) {
+      materializeDependencies(join(sourcePath, "node_modules"), join(targetPath, "node_modules"), nextAncestors);
+      return;
+    }
+    rmSync(targetPath, { recursive: true, force: true });
+    copyPackage(sourcePath, targetPath, nextAncestors);
+    const virtualDependencies = virtualDependencyDirectory(sourcePath);
+    if (virtualDependencies !== null) {
+      materializeDependencies(virtualDependencies, join(targetPath, "node_modules"), nextAncestors);
+    }
+  }
+
+  function virtualDependencyDirectory(packagePath) {
+    if (!/[\\/]\.pnpm[\\/]/u.test(packagePath)) return null;
+    const parent = dirname(packagePath);
+    return basename(parent).startsWith("@") ? dirname(parent) : parent;
+  }
+
+  function copyPackage(source, target, ancestors) {
+    mkdirSync(target, { recursive: true });
+    for (const entry of readdirSync(source, { withFileTypes: true })) {
+      if (entry.name === "test") continue;
+      const sourcePath = join(source, entry.name);
+      const targetPath = join(target, entry.name);
+      if (entry.name === "node_modules" && entry.isDirectory()) {
+        materializeDependencies(sourcePath, targetPath, ancestors);
+      } else if (entry.isDirectory()) {
+        copyPackage(sourcePath, targetPath, ancestors);
+      } else {
+        copyFileSync(sourcePath, targetPath);
+      }
     }
   }
 }
 
-function packagePath(nodeModulesDir, packageName) {
-  const [scope, name] = packageName.startsWith("@") ? packageName.split("/") : [null, packageName];
-  return scope === null ? join(nodeModulesDir, name) : join(nodeModulesDir, scope, name);
-}
-
-function copyPackage(source, target) {
-  mkdirSync(target, { recursive: true });
-  for (const entry of readdirSync(source, { withFileTypes: true })) {
-    if (entry.name === "node_modules") continue;
-    const sourcePath = join(source, entry.name);
-    const targetPath = join(target, entry.name);
-    if (entry.isDirectory()) {
-      copyPackage(sourcePath, targetPath);
-    } else if (entry.isFile() || statSync(sourcePath).isFile()) {
-      copyFileSync(sourcePath, targetPath);
+function verifyRelocatedPackage() {
+  const verificationRoot = mkdtempSync(join(tmpdir(), "gcah-release-"));
+  const relocatedPackage = join(verificationRoot, "moved-package");
+  try {
+    cpSync(packageDir, relocatedPackage, { recursive: true, dereference: true });
+    assertNoLinks(join(relocatedPackage, "app"));
+    execFileSync(join(relocatedPackage, "runtime", "node.exe"), [
+      "--input-type=module",
+      "--eval",
+      "await import('@gcah/credentials'); await import('@gcah/server');"
+    ], { cwd: join(relocatedPackage, "app"), stdio: "inherit" });
+    execFileSync(join(relocatedPackage, "gcah.exe"), ["credential", "status"], {
+      cwd: relocatedPackage,
+      stdio: "inherit"
+    });
+    const smokeWorkspace = join(verificationRoot, "workspace");
+    mkdirSync(smokeWorkspace);
+    const smoke = spawnSync(join(relocatedPackage, "gcah.exe"), [
+      "local",
+      "--workspace", smokeWorkspace,
+      "--base-url", "http://127.0.0.1:1",
+      "--model", "release-smoke",
+      "--validation", "none",
+      "--task", "release dependency smoke test"
+    ], { cwd: relocatedPackage, encoding: "utf8" });
+    if (smoke.error !== undefined) throw smoke.error;
+    const smokeOutput = `${smoke.stdout ?? ""}${smoke.stderr ?? ""}`;
+    if (/ERR_MODULE_NOT_FOUND|Cannot find module/u.test(smokeOutput)) {
+      throw new Error(`Release local-session smoke test could not load a runtime module:\n${smokeOutput}`);
     }
+  } finally {
+    rmSync(verificationRoot, { recursive: true, force: true });
   }
 }
 
